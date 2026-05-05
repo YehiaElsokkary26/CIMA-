@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(New-Item -ItemType File -Path \"C:/Users/mo_el/OneDrive/Desktop/CIMA/server/uploads/.gitkeep\" -Force)"
+    ]
+  }
+}

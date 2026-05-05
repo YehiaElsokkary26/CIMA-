@@ -1,0 +1,40 @@
+# ---- Dependencies ----------------
+node_modules/
+server/node_modules/
+
+# ---- Build output ----------------
+dist/
+server/dist/
+
+# ---- Environment (NEVER commit) --
+.env
+.env.local
+.env.production
+server/.env
+
+# ---- Database --------------------
+server/cima.db
+server/cima.db-shm
+server/cima.db-wal
+
+# ---- Uploads ---------------------
+server/uploads/*
+!server/uploads/.gitkeep
+
+# ---- OS / Editor -----------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ---- Logs ------------------------
+*.log
+npm-debug.log*
+
+# ---- Test coverage ---------------
+coverage/
