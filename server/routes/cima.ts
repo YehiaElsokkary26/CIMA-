@@ -12,20 +12,20 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
     const [membersRes, requestsRes] = await Promise.all([
       query(
         `SELECT cm.id, cm.joined_at,
-                u.id AS uid, u.name, u.email, u.role, u.bio, u.school,
-                u.city, u.avatar_url, u.top_genre, u.created_at
+                p.id AS uid, p.name, p.email, p.role, p.bio, p.school,
+                p.city, p.avatar_url, p.top_genre, p.created_at
          FROM   cima_members cm
-         JOIN   users u ON u.id = cm.member_id
+         JOIN   profiles p ON p.id = cm.member_id
          WHERE  cm.owner_id = $1
          ORDER  BY cm.joined_at DESC`,
         [req.userId]
       ),
       query(
         `SELECT cr.id, cr.status, cr.created_at,
-                u.id AS uid, u.name, u.email, u.role, u.bio,
-                u.school, u.avatar_url, u.created_at AS ucreated
+                p.id AS uid, p.name, p.email, p.role, p.bio,
+                p.school, p.avatar_url, p.created_at AS ucreated
          FROM   cima_requests cr
-         JOIN   users u ON u.id = cr.from_user_id
+         JOIN   profiles p ON p.id = cr.from_user_id
          WHERE  cr.to_user_id = $1 AND cr.status = 'pending'
          ORDER  BY cr.created_at DESC`,
         [req.userId]
@@ -52,11 +52,9 @@ router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, r
     next(new AppError('You cannot send a Cima request to yourself', 400)); return
   }
   try {
-    // Check target exists
-    const targetRes = await query('SELECT id, name FROM users WHERE id = $1', [targetUserId])
+    const targetRes = await query('SELECT id, name FROM profiles WHERE id = $1', [targetUserId])
     if (!targetRes.rowCount) throw notFound('User')
 
-    // Check not already sent
     const existing = await query(
       'SELECT id FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2',
       [req.userId, targetUserId]
@@ -69,8 +67,7 @@ router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, r
       [req.userId, targetUserId]
     )
 
-    // Notify
-    const fromRes = await query('SELECT name FROM users WHERE id = $1', [req.userId])
+    const fromRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
     await createNotification({
       userId:     targetUserId,
       type:       'cima_request',
@@ -105,8 +102,7 @@ router.post('/accept/:requestId', authMiddleware, async (req: AuthRequest, res: 
       )
     })
 
-    // Notify the requester
-    const toRes = await query('SELECT name FROM users WHERE id = $1', [req.userId])
+    const toRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
     await createNotification({
       userId:     cimaReq.from_user_id,
       type:       'cima_accepted',

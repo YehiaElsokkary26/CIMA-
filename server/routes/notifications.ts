@@ -9,11 +9,11 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response, next: Ne
   try {
     const result = await query(
       `SELECT n.*,
-              u.name       AS from_name,
-              u.avatar_url AS from_avatar,
-              u.role       AS from_role
+              p.name       AS from_name,
+              p.avatar_url AS from_avatar,
+              p.role       AS from_role
        FROM   notifications n
-       LEFT   JOIN users u ON u.id = n.from_user_id
+       LEFT   JOIN profiles p ON p.id = n.from_user_id
        WHERE  n.user_id = $1
        ORDER  BY n.created_at DESC
        LIMIT  50`,

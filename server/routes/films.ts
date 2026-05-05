@@ -31,19 +31,19 @@ const upload = multer({
 async function filmWithMeta(id: string) {
   const res = await query(
     `SELECT f.*,
-            u.name        AS uploader_name,
-            u.role        AS uploader_role,
-            u.school      AS uploader_school,
-            u.bio         AS uploader_bio,
-            u.avatar_url  AS uploader_avatar,
-            u.created_at  AS uploader_created_at,
+            p.name        AS uploader_name,
+            p.role        AS uploader_role,
+            p.school      AS uploader_school,
+            p.bio         AS uploader_bio,
+            p.avatar_url  AS uploader_avatar,
+            p.created_at  AS uploader_created_at,
             ROUND(AVG(r.rating)::numeric, 1)::float AS avg_rating,
             COUNT(r.id)::int                         AS rating_count
      FROM   films f
-     JOIN   users u ON u.id = f.uploader_id
-     LEFT JOIN ratings r ON r.film_id = f.id
+     JOIN   profiles p ON p.id = f.uploader_id
+     LEFT   JOIN ratings r ON r.film_id = f.id
      WHERE  f.id = $1
-     GROUP  BY f.id, u.id`,
+     GROUP  BY f.id, p.id`,
     [id]
   )
   return res.rows[0] ?? null
@@ -87,7 +87,6 @@ router.get('/featured/week', async (_req, res: Response, next: NextFunction) => 
     )
 
     let filmId = featRes.rows[0]?.film_id
-    // fallback: highest avg rating film this week
     if (!filmId) {
       const fallback = await query(
         `SELECT f.id FROM films f
@@ -109,15 +108,15 @@ router.get('/', async (req, res: Response, next: NextFunction) => {
   try {
     let sql = `
       SELECT f.*,
-             u.name       AS uploader_name,
-             u.role       AS uploader_role,
-             u.school     AS uploader_school,
-             u.avatar_url AS uploader_avatar,
-             u.created_at AS uploader_created_at,
+             p.name       AS uploader_name,
+             p.role       AS uploader_role,
+             p.school     AS uploader_school,
+             p.avatar_url AS uploader_avatar,
+             p.created_at AS uploader_created_at,
              ROUND(AVG(r.rating)::numeric, 1)::float AS avg_rating,
              COUNT(r.id)::int                         AS rating_count
       FROM   films f
-      JOIN   users u ON u.id = f.uploader_id
+      JOIN   profiles p ON p.id = f.uploader_id
       LEFT   JOIN ratings r ON r.film_id = f.id
     `
     const params: any[] = []
@@ -127,7 +126,7 @@ router.get('/', async (req, res: Response, next: NextFunction) => {
       params.push(genre)
     }
 
-    sql += ` GROUP BY f.id, u.id`
+    sql += ` GROUP BY f.id, p.id`
 
     if (sort === 'top') sql += ' ORDER BY avg_rating DESC NULLS LAST, f.created_at DESC'
     else                 sql += ' ORDER BY f.created_at DESC'
@@ -184,7 +183,6 @@ router.post(
 router.post('/:id/rate', authMiddleware, validate(rateFilmSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { rating } = req.body
   try {
-    // Upsert rating
     await query(
       `INSERT INTO ratings (film_id, user_id, rating)
        VALUES ($1,$2,$3)
@@ -192,16 +190,14 @@ router.post('/:id/rate', authMiddleware, validate(rateFilmSchema), async (req: A
       [req.params.id, req.userId, rating]
     )
 
-    // Notify film uploader (if not rating own film)
     const filmRes = await query('SELECT uploader_id, title FROM films WHERE id = $1', [req.params.id])
     const film = filmRes.rows[0]
     if (film && film.uploader_id !== req.userId) {
-      const fromRes = await query('SELECT name FROM users WHERE id = $1', [req.userId])
-      const from = fromRes.rows[0]
+      const fromRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
       await createNotification({
         userId:     film.uploader_id,
         type:       'rating',
-        message:    `${from?.name ?? 'Someone'} rated "${film.title}" ${rating} star${rating !== 1 ? 's' : ''}`,
+        message:    `${fromRes.rows[0]?.name ?? 'Someone'} rated "${film.title}" ${rating} star${rating !== 1 ? 's' : ''}`,
         fromUserId: req.userId,
         filmId:     req.params.id,
       })
@@ -216,11 +212,11 @@ router.get('/:id/reviews', async (req, res: Response, next: NextFunction) => {
   try {
     const result = await query(
       `SELECT rv.*,
-              u.name       AS user_name,
-              u.role       AS user_role,
-              u.avatar_url AS user_avatar
+              p.name       AS user_name,
+              p.role       AS user_role,
+              p.avatar_url AS user_avatar
        FROM   reviews rv
-       JOIN   users u ON u.id = rv.user_id
+       JOIN   profiles p ON p.id = rv.user_id
        WHERE  rv.film_id = $1
        ORDER  BY rv.created_at DESC`,
       [req.params.id]
@@ -248,7 +244,6 @@ router.get('/:id/reviews', async (req, res: Response, next: NextFunction) => {
 router.post('/:id/review', authMiddleware, validate(addReviewSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { rating, body } = req.body
   try {
-    // Check film exists
     const filmRes = await query('SELECT uploader_id, title FROM films WHERE id = $1', [req.params.id])
     if (!filmRes.rowCount) throw notFound('Film')
     const film = filmRes.rows[0]
@@ -261,7 +256,6 @@ router.post('/:id/review', authMiddleware, validate(addReviewSchema), async (req
     )
     const rv = result.rows[0]
 
-    // Also upsert rating
     await query(
       `INSERT INTO ratings (film_id, user_id, rating)
        VALUES ($1,$2,$3)
@@ -269,9 +263,8 @@ router.post('/:id/review', authMiddleware, validate(addReviewSchema), async (req
       [req.params.id, req.userId, rating]
     )
 
-    // Notify uploader
     if (film.uploader_id !== req.userId) {
-      const fromRes = await query('SELECT name FROM users WHERE id = $1', [req.userId])
+      const fromRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
       await createNotification({
         userId:     film.uploader_id,
         type:       'review',
@@ -281,7 +274,7 @@ router.post('/:id/review', authMiddleware, validate(addReviewSchema), async (req
       })
     }
 
-    const userRes = await query('SELECT id, name, role, avatar_url FROM users WHERE id = $1', [req.userId])
+    const userRes = await query('SELECT id, name, role, avatar_url FROM profiles WHERE id = $1', [req.userId])
     const u = userRes.rows[0]
 
     res.status(201).json({

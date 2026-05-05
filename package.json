@@ -11,6 +11,7 @@
     "server:dev": "npx tsx watch server/index.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "@tanstack/react-query": "^5.56.2",
     "@tanstack/react-query-devtools": "^5.56.2",
     "axios": "^1.7.7",

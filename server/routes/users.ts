@@ -27,9 +27,9 @@ function mapUser(u: any, counts?: { films: number; cima: number; reviews: number
 
 async function getUserCounts(userId: string) {
   const [films, cima, reviews] = await Promise.all([
-    query('SELECT COUNT(*)::int AS c FROM films   WHERE uploader_id = $1', [userId]),
-    query('SELECT COUNT(*)::int AS c FROM cima_members WHERE owner_id = $1', [userId]),
-    query('SELECT COUNT(*)::int AS c FROM reviews  WHERE user_id = $1',    [userId]),
+    query('SELECT COUNT(*)::int AS c FROM films        WHERE uploader_id = $1', [userId]),
+    query('SELECT COUNT(*)::int AS c FROM cima_members WHERE owner_id    = $1', [userId]),
+    query('SELECT COUNT(*)::int AS c FROM reviews      WHERE user_id     = $1', [userId]),
   ])
   return {
     films:   films.rows[0].c,
@@ -41,7 +41,7 @@ async function getUserCounts(userId: string) {
 // ---- GET /api/users/:id -----------------------------------------------------
 router.get('/:id', async (req, res: Response, next: NextFunction) => {
   try {
-    const result = await query('SELECT * FROM users WHERE id = $1', [req.params.id])
+    const result = await query('SELECT * FROM profiles WHERE id = $1', [req.params.id])
     if (!result.rowCount) throw notFound('User')
     const counts = await getUserCounts(req.params.id)
     res.json(mapUser(result.rows[0], counts))
@@ -72,17 +72,19 @@ router.get('/:id/films', async (req, res: Response, next: NextFunction) => {
 })
 
 // ---- PATCH /api/users/me ----------------------------------------------------
+// Note: this route must be defined BEFORE /:id to avoid "me" being treated as an ID
 router.patch('/me', authMiddleware, validate(updateUserSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
   const { name, bio, school, city, top_genre, looking_for_collaborators } = req.body
   try {
     const result = await query(
-      `UPDATE users SET
-         name                     = COALESCE($1, name),
-         bio                      = COALESCE($2, bio),
-         school                   = COALESCE($3, school),
-         city                     = COALESCE($4, city),
-         top_genre                = COALESCE($5, top_genre),
-         looking_for_collaborators = COALESCE($6, looking_for_collaborators)
+      `UPDATE profiles SET
+         name                      = COALESCE($1, name),
+         bio                       = COALESCE($2, bio),
+         school                    = COALESCE($3, school),
+         city                      = COALESCE($4, city),
+         top_genre                 = COALESCE($5, top_genre),
+         looking_for_collaborators = COALESCE($6, looking_for_collaborators),
+         updated_at                = NOW()
        WHERE id = $7
        RETURNING *`,
       [name ?? null, bio ?? null, school ?? null, city ?? null, top_genre ?? null, looking_for_collaborators ?? null, req.userId]
