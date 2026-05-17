@@ -1,0 +1,281 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode tokens */
+    --background: 40 30% 94%;
+    --foreground: 248 36% 14%;
+    --card: 38 25% 90%;
+    --card-foreground: 248 36% 14%;
+    --popover: 38 25% 88%;
+    --popover-foreground: 248 36% 14%;
+    --primary: 27 86% 55%;
+    --primary-foreground: 248 36% 10%;
+    --secondary: 340 47% 30%;
+    --secondary-foreground: 3 43% 90%;
+    --muted: 38 20% 85%;
+    --muted-foreground: 248 20% 40%;
+    --accent: 347 43% 47%;
+    --accent-foreground: 3 43% 95%;
+    --cta: 27 86% 55%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 340 30% 70%;
+    --input: 38 25% 88%;
+    --ring: 27 86% 55%;
+    --radius: 16px;
+
+    --film-badge: 340 47% 27%;
+    --film-badge-foreground: 27 86% 65%;
+    --rating-star: 27 86% 55%;
+    --cima-tag: 347 43% 47%;
+    --cima-tag-foreground: 3 43% 95%;
+    --record-led: 0 100% 60%;
+  }
+
+  .dark {
+    /* Dark mode tokens — cinematic, deep, warm */
+    --background: 248 36% 16%;
+    --foreground: 3 30% 88%;
+    --card: 310 44% 21%;
+    --card-foreground: 3 30% 88%;
+    --popover: 310 40% 24%;
+    --popover-foreground: 3 30% 88%;
+    --primary: 27 86% 65%;
+    --primary-foreground: 248 36% 10%;
+    --secondary: 340 47% 27%;
+    --secondary-foreground: 3 43% 82%;
+    --muted: 310 35% 18%;
+    --muted-foreground: 3 20% 58%;
+    --accent: 347 43% 47%;
+    --accent-foreground: 3 43% 92%;
+    --cta: 27 86% 65%;
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 340 35% 28%;
+    --input: 310 44% 21%;
+    --ring: 27 86% 65%;
+
+    --film-badge: 340 47% 27%;
+    --film-badge-foreground: 27 86% 65%;
+    --rating-star: 27 86% 65%;
+    --cima-tag: 347 43% 47%;
+    --cima-tag-foreground: 3 43% 92%;
+    --record-led: 0 100% 58%;
+  }
+
+  html,
+  body {
+    @apply fixed inset-0 w-full h-full overflow-hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  #root {
+    @apply w-full h-full overflow-hidden;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  @screen sm {
+    body {
+      font-size: 1rem;
+    }
+  }
+
+  /* Film grain overlay — the identity texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px 200px;
+    opacity: 0.055;
+    mix-blend-mode: overlay;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--secondary));
+  }
+
+  /* Safe area utilities */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Logo — always transparent, no filter, no outline */
+  .logo {
+    background: transparent;
+    border: none;
+    outline: none;
+    filter: none;
+    box-shadow: none;
+  }
+}
+
+@layer components {
+  /* Interactive utilities */
+  .interactive-lift {
+    @apply transition-transform duration-150 ease-out;
+  }
+
+  .interactive-lift:hover {
+    @apply -translate-y-0.5 shadow-film;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .interactive-lift:hover {
+      transform: none;
+    }
+  }
+
+  .icon-lift {
+    @apply transition-all duration-100 ease-out;
+  }
+
+  .icon-lift:hover {
+    @apply scale-110 opacity-80;
+  }
+
+  .film-card-hover {
+    @apply relative overflow-hidden;
+  }
+
+  .film-card-hover .film-overlay {
+    @apply absolute inset-0 bg-background/0 transition-all duration-200 flex items-center justify-center opacity-0;
+  }
+
+  .film-card-hover:hover .film-overlay {
+    @apply bg-background/60 opacity-100;
+  }
+
+  .cta-pulse {
+    animation: cta-pulse 2.5s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta-pulse {
+      animation: none;
+    }
+  }
+
+  .record-blink {
+    animation: record-blink 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .record-blink {
+      animation: none;
+    }
+  }
+
+  .projector-flicker {
+    animation: projector-flicker 8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .projector-flicker {
+      animation: none;
+    }
+  }
+
+  .animate-logo-flicker {
+    animation: logo-flicker 6s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-logo-flicker {
+      animation: none;
+    }
+  }
+
+  /* Review card left accent */
+  .review-card {
+    @apply bg-card rounded-2xl border border-border relative overflow-hidden;
+  }
+
+  .review-card::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-l-2xl;
+  }
+
+  /* Film badge */
+  .film-badge {
+    @apply bg-film-badge text-film-badge-foreground font-mono text-xs uppercase tracking-wider px-2 py-0.5 rounded-full;
+  }
+
+  /* Cima tag pill */
+  .cima-tag-pill {
+    @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5 rounded-full;
+  }
+
+  /* Tab bar glass */
+  .tab-bar {
+    @apply bg-card/90 border-t border-border backdrop-blur-md;
+  }
+
+  /* App scroll container */
+  .scroll-container {
+    @apply overflow-y-auto overflow-x-hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Horizontal scroll strip */
+  .scroll-x {
+    @apply overflow-x-auto overflow-y-hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Bottom sheet */
+  .bottom-sheet {
+    @apply bg-card rounded-t-3xl border-t border-border;
+  }
+
+  /* CRT glow text */
+  .crt-glow {
+    text-shadow: 0 0 12px hsl(3 43% 82% / 0.5);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .font-display {
+    font-family: 'Bebas Neue', sans-serif;
+  }
+}

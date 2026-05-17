@@ -1,0 +1,24 @@
+{
+  "name": "Cima — Your Film, Your Scene",
+  "short_name": "Cima",
+  "description": "Where film students share projects, get feedback, and team up on new shorts.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1D1A39",
+  "theme_color": "#1D1A39",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "social", "education"]
+}
