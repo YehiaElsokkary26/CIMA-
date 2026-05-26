@@ -4,65 +4,101 @@
 
 @layer base {
   :root {
-    /* Light mode tokens */
-    --background: 40 30% 94%;
-    --foreground: 248 36% 14%;
-    --card: 38 25% 90%;
-    --card-foreground: 248 36% 14%;
-    --popover: 38 25% 88%;
-    --popover-foreground: 248 36% 14%;
-    --primary: 27 86% 55%;
-    --primary-foreground: 248 36% 10%;
-    --secondary: 340 47% 30%;
-    --secondary-foreground: 3 43% 90%;
-    --muted: 38 20% 85%;
-    --muted-foreground: 248 20% 40%;
-    --accent: 347 43% 47%;
-    --accent-foreground: 3 43% 95%;
-    --cta: 27 86% 55%;
-    --destructive: 0 60% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 340 30% 70%;
-    --input: 38 25% 88%;
-    --ring: 27 86% 55%;
-    --radius: 16px;
+    /* ─── LIGHT MODE — Paper cream wall, dark film cards ──────────────────
+     * Cima brand: Official hex values → exact HSL conversions.
+     * ─────────────────────────────────────────────────────────────────── */
 
-    --film-badge: 340 47% 27%;
-    --film-badge-foreground: 27 86% 65%;
-    --rating-star: 27 86% 55%;
-    --cima-tag: 347 43% 47%;
-    --cima-tag-foreground: 3 43% 95%;
+    --background: 37 39% 85%;          /* Paper Cream  #E8DDCB */
+    --foreground: 20 7% 8%;            /* Ink Black    #161413 */
+
+    --card: 20 7% 8%;                  /* Ink Black cards on cream wall */
+    --card-foreground: 37 39% 85%;     /* Paper Cream text on dark cards */
+
+    --popover: 20 7% 11%;
+    --popover-foreground: 37 39% 85%;
+
+    --primary: 0 62% 39%;              /* Cinema Red   #A32626 */
+    --primary-foreground: 37 39% 92%;
+
+    --secondary: 19 20% 45%;           /* Dust Brown   #8B6B5C */
+    --secondary-foreground: 37 39% 90%;
+
+    --muted: 37 18% 75%;
+    --muted-foreground: 30 5% 29%;     /* Smoky Gray   #4E4A46 */
+
+    --accent: 35 38% 51%;              /* Muted Gold   #B28A52 */
+    --accent-foreground: 20 7% 8%;
+
+    --film-burn: 19 56% 51%;           /* Film Burn Orange #C96A3D */
+    --film-burn-foreground: 20 7% 8%;
+
+    --burgundy: 352 42% 20%;           /* Burgundy     #4A1E24 */
+    --burgundy-foreground: 37 39% 85%;
+
+    --cta: 0 62% 39%;
+
+    --destructive: 0 72% 44%;
+    --destructive-foreground: 37 39% 92%;
+
+    --border: 19 15% 68%;
+    --input: 37 28% 83%;
+    --ring: 0 62% 39%;
+    --radius: 12px;
+
+    --film-badge: 352 42% 20%;
+    --film-badge-foreground: 35 38% 72%;
+    --rating-star: 35 38% 51%;
+    --cima-tag: 19 56% 51%;
+    --cima-tag-foreground: 37 39% 92%;
     --record-led: 0 100% 60%;
   }
 
   .dark {
-    /* Dark mode tokens — cinematic, deep, warm */
-    --background: 248 36% 16%;
-    --foreground: 3 30% 88%;
-    --card: 310 44% 21%;
-    --card-foreground: 3 30% 88%;
-    --popover: 310 40% 24%;
-    --popover-foreground: 3 30% 88%;
-    --primary: 27 86% 65%;
-    --primary-foreground: 248 36% 10%;
-    --secondary: 340 47% 27%;
-    --secondary-foreground: 3 43% 82%;
-    --muted: 310 35% 18%;
-    --muted-foreground: 3 20% 58%;
-    --accent: 347 43% 47%;
-    --accent-foreground: 3 43% 92%;
-    --cta: 27 86% 65%;
-    --destructive: 0 55% 45%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 340 35% 28%;
-    --input: 310 44% 21%;
-    --ring: 27 86% 65%;
+    /* ─── DARK MODE — Cinematic ink black, paper cream text ───────────────
+     * Primary experience: film archive at night.
+     * ─────────────────────────────────────────────────────────────────── */
 
-    --film-badge: 340 47% 27%;
-    --film-badge-foreground: 27 86% 65%;
-    --rating-star: 27 86% 65%;
-    --cima-tag: 347 43% 47%;
-    --cima-tag-foreground: 3 43% 92%;
+    --background: 20 7% 8%;            /* #161413 near-black charcoal */
+    --foreground: 37 39% 85%;          /* Paper Cream */
+
+    --card: 20 7% 11%;                 /* Slightly lighter dark surface */
+    --card-foreground: 37 39% 85%;
+
+    --popover: 20 6% 14%;
+    --popover-foreground: 37 39% 85%;
+
+    --primary: 0 62% 45%;              /* Cinema Red (brightened for dark) */
+    --primary-foreground: 37 39% 92%;
+
+    --secondary: 19 18% 32%;
+    --secondary-foreground: 37 30% 78%;
+
+    --muted: 20 6% 16%;
+    --muted-foreground: 37 12% 52%;
+
+    --accent: 35 38% 51%;              /* Muted Gold — same across modes */
+    --accent-foreground: 20 7% 8%;
+
+    --film-burn: 19 56% 51%;
+    --film-burn-foreground: 20 7% 8%;
+
+    --burgundy: 352 42% 20%;
+    --burgundy-foreground: 37 39% 85%;
+
+    --cta: 0 62% 45%;
+
+    --destructive: 0 62% 42%;
+    --destructive-foreground: 37 39% 92%;
+
+    --border: 20 8% 20%;
+    --input: 20 7% 13%;
+    --ring: 0 62% 45%;
+
+    --film-badge: 352 42% 20%;
+    --film-badge-foreground: 35 38% 68%;
+    --rating-star: 35 38% 55%;
+    --cima-tag: 19 56% 51%;
+    --cima-tag-foreground: 37 39% 92%;
     --record-led: 0 100% 58%;
   }
 
@@ -84,12 +120,10 @@
   }
 
   @screen sm {
-    body {
-      font-size: 1rem;
-    }
+    body { font-size: 1rem; }
   }
 
-  /* Film grain overlay — the identity texture */
+  /* Brand: Film grain / paper texture overlay — cinematic analog identity */
   body::before {
     content: '';
     position: fixed;
@@ -99,39 +133,19 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E");
     background-repeat: repeat;
     background-size: 200px 200px;
-    opacity: 0.055;
+    opacity: 0.065;
     mix-blend-mode: overlay;
   }
 
-  /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--secondary)); }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  .safe-area-top    { padding-top:    env(safe-area-inset-top); }
+  .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--secondary));
-  }
-
-  /* Safe area utilities */
-  .safe-area-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
-  .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  /* Logo — always transparent, no filter, no outline */
+  /* Brand logo: no filters, no shadow */
   .logo {
     background: transparent;
     border: none;
@@ -142,140 +156,211 @@
 }
 
 @layer components {
-  /* Interactive utilities */
+  /* ─── Card grain overlay ─────────────────────────────────────────────── */
+  .card-grain {
+    position: relative;
+  }
+  .card-grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 150px;
+    opacity: 0.06;
+    mix-blend-mode: overlay;
+  }
+
+  /* ─── Cinematic button (flat, no radius) ─────────────────────────────── */
+  .btn-cima {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    border-radius: 0;
+    padding: 10px 24px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .btn-cima:hover { background: hsl(var(--burgundy)); }
+
+  /* ─── Cinematic input (bottom border only) ───────────────────────────── */
+  .input-cima {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid hsl(var(--border));
+    border-radius: 0;
+    color: hsl(var(--foreground));
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 8px 0;
+    outline: none;
+    transition: border-color 0.15s ease;
+    width: 100%;
+  }
+  .input-cima:focus { border-bottom-color: hsl(var(--primary)); }
+  .input-cima::placeholder { color: hsl(var(--muted-foreground) / 0.5); }
+
+  /* ─── Interactive utilities ──────────────────────────────────────────── */
   .interactive-lift {
     @apply transition-transform duration-150 ease-out;
   }
-
-  .interactive-lift:hover {
-    @apply -translate-y-0.5 shadow-film;
-  }
+  .interactive-lift:hover { @apply -translate-y-0.5; }
 
   @media (prefers-reduced-motion: reduce) {
-    .interactive-lift:hover {
-      transform: none;
-    }
+    .interactive-lift:hover { transform: none; }
   }
 
   .icon-lift {
     @apply transition-all duration-100 ease-out;
   }
+  .icon-lift:hover { @apply scale-110 opacity-80; }
 
-  .icon-lift:hover {
-    @apply scale-110 opacity-80;
-  }
-
-  .film-card-hover {
-    @apply relative overflow-hidden;
-  }
-
-  .film-card-hover .film-overlay {
-    @apply absolute inset-0 bg-background/0 transition-all duration-200 flex items-center justify-center opacity-0;
-  }
-
-  .film-card-hover:hover .film-overlay {
-    @apply bg-background/60 opacity-100;
-  }
-
-  .cta-pulse {
-    animation: cta-pulse 2.5s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .cta-pulse {
-      animation: none;
-    }
-  }
-
-  .record-blink {
-    animation: record-blink 2s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .record-blink {
-      animation: none;
-    }
-  }
-
-  .projector-flicker {
-    animation: projector-flicker 8s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .projector-flicker {
-      animation: none;
-    }
-  }
-
-  .animate-logo-flicker {
-    animation: logo-flicker 6s ease-in-out infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .animate-logo-flicker {
-      animation: none;
-    }
-  }
-
-  /* Review card left accent */
-  .review-card {
-    @apply bg-card rounded-2xl border border-border relative overflow-hidden;
-  }
-
-  .review-card::before {
-    content: '';
-    @apply absolute left-0 top-0 bottom-0 w-1 bg-accent rounded-l-2xl;
-  }
-
-  /* Film badge */
-  .film-badge {
-    @apply bg-film-badge text-film-badge-foreground font-mono text-xs uppercase tracking-wider px-2 py-0.5 rounded-full;
-  }
-
-  /* Cima tag pill */
-  .cima-tag-pill {
-    @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5 rounded-full;
-  }
-
-  /* Tab bar glass */
+  /* ─── Tab bar ────────────────────────────────────────────────────────── */
   .tab-bar {
-    @apply bg-card/90 border-t border-border backdrop-blur-md;
+    @apply bg-card/95 border-t border-border backdrop-blur-md;
   }
 
-  /* App scroll container */
+  /* ─── Scroll containers ──────────────────────────────────────────────── */
   .scroll-container {
     @apply overflow-y-auto overflow-x-hidden;
     -webkit-overflow-scrolling: touch;
   }
-
-  /* Horizontal scroll strip */
   .scroll-x {
     @apply overflow-x-auto overflow-y-hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
+  .scroll-x::-webkit-scrollbar { display: none; }
 
-  .scroll-x::-webkit-scrollbar {
-    display: none;
+  /* ─── Review card ────────────────────────────────────────────────────── */
+  .review-card {
+    @apply bg-card rounded-xl border border-border relative overflow-hidden;
+  }
+  .review-card::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1;
+    background: hsl(var(--primary));
   }
 
-  /* Bottom sheet */
-  .bottom-sheet {
-    @apply bg-card rounded-t-3xl border-t border-border;
+  /* ─── Genre / crew badges ────────────────────────────────────────────── */
+  .film-badge {
+    @apply bg-film-badge text-film-badge-foreground font-mono text-[10px] uppercase tracking-wider px-2 py-0.5;
+  }
+  .cima-tag-pill {
+    @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5;
   }
 
-  /* CRT glow text */
+  /* ─── Section label — clapperboard strip style ───────────────────────── */
+  .section-label {
+    @apply flex items-center gap-3 px-4 py-2;
+  }
+  .section-label-bar {
+    @apply w-[3px] h-3.5 rounded-full shrink-0;
+    background: hsl(var(--primary));
+  }
+  .section-label-text {
+    @apply font-mono text-[11px] uppercase tracking-[0.3em];
+    color: hsl(var(--muted-foreground));
+  }
+  .section-label-rule {
+    @apply flex-1 h-px;
+    background: hsl(var(--border) / 0.5);
+  }
+
+  /* ─── Film gradient helpers ──────────────────────────────────────────── */
+  .gradient-film-burn {
+    background: linear-gradient(
+      to right,
+      hsl(352 42% 20% / 0.9) 0%,
+      hsl(352 42% 20% / 0.6) 50%,
+      transparent 100%
+    );
+  }
+  .gradient-dark-bottom {
+    background: linear-gradient(
+      to top,
+      hsl(20 7% 8%) 0%,
+      hsl(20 7% 8% / 0.6) 50%,
+      transparent 100%
+    );
+  }
+
+  /* ─── CRT projector glow ─────────────────────────────────────────────── */
   .crt-glow {
-    text-shadow: 0 0 12px hsl(3 43% 82% / 0.5);
+    text-shadow: 0 0 14px hsl(37 39% 85% / 0.4);
+  }
+
+  /* ─── Bottom sheet ───────────────────────────────────────────────────── */
+  .bottom-sheet {
+    @apply bg-card rounded-t-2xl border-t border-border;
+  }
+
+  /* ─── Animations ─────────────────────────────────────────────────────── */
+  .cta-pulse    { animation: cta-pulse 2.5s ease-in-out infinite; }
+  .record-blink { animation: record-blink 2s ease-in-out infinite; }
+  .projector-flicker { animation: projector-flicker 8s ease-in-out infinite; }
+  .animate-logo-flicker { animation: logo-flicker 6s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta-pulse, .record-blink, .projector-flicker, .animate-logo-flicker {
+      animation: none;
+    }
+    .interactive-lift:hover { transform: none; }
   }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
 
-  .font-display {
-    font-family: 'Bebas Neue', sans-serif;
+  .font-display { font-family: 'Special Elite', serif; }
+
+  /* Legacy CSS-columns masonry (kept for compatibility) */
+  .masonry-grid {
+    columns: 1;
+    column-gap: 12px;
   }
+  @media (min-width: 640px) {
+    .masonry-grid { columns: 2; column-gap: 14px; }
+  }
+  @media (min-width: 1024px) {
+    .masonry-grid { columns: 3; column-gap: 16px; }
+  }
+  @media (min-width: 1280px) {
+    .masonry-grid { columns: 4; column-gap: 16px; }
+  }
+  .masonry-item { break-inside: avoid; margin-bottom: 12px; }
+  @media (min-width: 640px) { .masonry-item { margin-bottom: 14px; } }
+  @media (min-width: 1024px) { .masonry-item { margin-bottom: 16px; } }
+
+  /* react-masonry-css grid */
+  .cima-masonry-grid {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+  }
+  .cima-masonry-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  @media (min-width: 640px) {
+    .cima-masonry-grid { gap: 16px; }
+    .cima-masonry-column { gap: 16px; }
+  }
+}
+
+/* Ken Burns poster animation (no-video hover fallback) */
+@keyframes ken-burns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.06); }
+}
+.ken-burns-active {
+  animation: ken-burns 3s ease-in-out forwards;
+  transform-origin: center center;
 }

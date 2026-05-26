@@ -59,7 +59,7 @@ export function useAuth() {
   const handleLogout = async () => {
     try { await supabase.auth.signOut() } catch { /* ignore */ }
     logout()
-    navigate('/onboarding')
+    navigate('/login')
   }
 
   return {

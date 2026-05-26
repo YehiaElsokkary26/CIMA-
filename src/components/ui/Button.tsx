@@ -13,9 +13,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          'inline-flex items-center justify-center gap-2 font-sans font-semibold rounded-xl transition-all duration-150 active:scale-95 disabled:opacity-50 disabled:pointer-events-none',
+          'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-wider rounded-none transition-all duration-150 active:scale-95 disabled:opacity-50 disabled:pointer-events-none',
           {
-            'bg-primary text-primary-foreground hover:brightness-110 shadow-glow-orange/20': variant === 'primary',
+            'bg-primary text-primary-foreground hover:brightness-110': variant === 'primary',
             'bg-secondary text-secondary-foreground hover:brightness-110': variant === 'secondary',
             'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted': variant === 'ghost',
             'bg-accent text-accent-foreground hover:brightness-110': variant === 'cima',
@@ -23,9 +23,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'bg-transparent border border-border text-foreground hover:bg-muted': variant === 'outline',
           },
           {
-            'text-xs px-3 py-1.5': size === 'sm',
-            'text-sm px-4 py-2.5': size === 'md',
-            'text-base px-6 py-3.5': size === 'lg',
+            'text-[10px] px-3 py-1.5': size === 'sm',
+            'text-[11px] px-4 py-2.5': size === 'md',
+            'text-xs px-6 py-3': size === 'lg',
           },
           pulse && 'cta-pulse',
           className

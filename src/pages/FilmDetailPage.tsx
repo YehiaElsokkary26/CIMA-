@@ -6,6 +6,7 @@ import { useFilm, useFilmReviews, useAddReview } from '@/hooks/useFilms'
 import { useRating } from '@/hooks/useRating'
 import { useSendCimaRequest } from '@/hooks/useCima'
 import ReviewCard from '@/components/film/ReviewCard'
+import VoteSection from '@/components/film/VoteSection'
 import StarRating from '@/components/ui/StarRating'
 import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
@@ -148,6 +149,9 @@ export default function FilmDetailPage() {
             </p>
           </div>
         </div>
+
+        {/* Vote section */}
+        <VoteSection film={displayFilm as import('@/types').Film} />
 
         {/* Filmmaker chip */}
         {displayFilm.uploader && (

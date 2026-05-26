@@ -11,21 +11,21 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          <label className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
             {label}
           </label>
         )}
         <input
           ref={ref}
           className={cn(
-            'w-full bg-input text-foreground border border-border rounded-xl px-4 py-2.5 text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all duration-150',
-            error && 'border-destructive focus:ring-destructive',
+            'input-cima',
+            error && '!border-b-destructive focus:!border-b-destructive',
             className
           )}
           {...props}
         />
         {error && (
-          <span className="font-mono text-xs text-destructive">{error}</span>
+          <span className="font-mono text-[10px] text-destructive">{error}</span>
         )}
       </div>
     )

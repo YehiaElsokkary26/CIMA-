@@ -1,64 +1,82 @@
 import { cn } from '@/lib/utils'
 
 interface CimaLogoProps {
+  variant?: 'auto' | 'dark' | 'light' | 'red'
   size?: number
-  className?: string
   animate?: boolean
+  className?: string
 }
 
-/* Inline SVG logo — no external asset required */
-export default function CimaLogo({ size = 40, className, animate = false }: CimaLogoProps) {
-  const radius = Math.round(size * 0.2)
+/**
+ * CimaLogo — brand wordmark as JSX text.
+ *
+ * Renders "cima" in Special Elite with the 'i' always in Cinema Red (#A32626).
+ * variant='auto' inherits color from parent via currentColor.
+ * variant='dark'  → Paper Cream text (for use on dark/ink-black surfaces).
+ * variant='light' → Ink Black text (for use on cream/light surfaces).
+ * variant='red'   → Paper Cream text (for use on Cinema Red / Burgundy bg).
+ */
+export default function CimaLogo({
+  variant = 'auto',
+  size = 24,
+  animate = false,
+  className,
+}: CimaLogoProps) {
+  const letterColor =
+    variant === 'dark' || variant === 'red'
+      ? '#E8DDCB'
+      : variant === 'light'
+        ? '#161413'
+        : 'currentColor'
 
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn('logo shrink-0', animate && 'animate-logo-flicker', className)}
-      style={{ borderRadius: radius }}
-      aria-label="Cima"
+    <span
+      className={cn('font-display leading-none tracking-tight select-none shrink-0', className)}
+      style={{ fontSize: size }}
+      aria-label="cima"
     >
-      {/* Background */}
-      <rect width="100" height="100" rx={radius} fill="hsl(310 44% 21%)" />
-
-      {/* Film reel sprockets top */}
-      <rect x="8"  y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="20" y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="32" y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="44" y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="56" y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="68" y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="80" y="6" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-
-      {/* Film reel sprockets bottom */}
-      <rect x="8"  y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="20" y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="32" y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="44" y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="56" y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="68" y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-      <rect x="80" y="84" width="6" height="10" rx="2" fill="hsl(27 86% 65%)" />
-
-      {/* Film strip borders */}
-      <rect x="4" y="4" width="92" height="18" rx="3" fill="none" stroke="hsl(27 86% 65% / 0.3)" strokeWidth="1" />
-      <rect x="4" y="78" width="92" height="18" rx="3" fill="none" stroke="hsl(27 86% 65% / 0.3)" strokeWidth="1" />
-
-      {/* "C" letterform — bold cinematic */}
-      <text
-        x="50"
-        y="70"
-        textAnchor="middle"
-        fontFamily="'Bebas Neue', sans-serif"
-        fontSize="52"
-        fontWeight="400"
-        fill="hsl(3 43% 82%)"
-        letterSpacing="2"
+      <span style={{ color: letterColor }}>c</span>
+      <span
+        style={{ color: '#A32626' }}
+        className={cn(animate && 'animate-logo-flicker inline-block')}
       >
-        C
-      </text>
-    </svg>
+        i
+      </span>
+      <span style={{ color: letterColor }}>ma</span>
+    </span>
+  )
+}
+
+/**
+ * CimaIconMark — circular 'i' mark variant.
+ * Used in collapsed sidebar or wherever a compact icon is needed.
+ */
+export function CimaIconMark({
+  size = 32,
+  className,
+}: {
+  size?: number
+  className?: string
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center justify-center rounded-full shrink-0',
+        className,
+      )}
+      style={{
+        width: size,
+        height: size,
+        border: '1.5px solid #A32626',
+      }}
+      aria-label="cima"
+    >
+      <span
+        className="font-display leading-none"
+        style={{ fontSize: Math.round(size * 0.55), color: '#A32626' }}
+      >
+        i
+      </span>
+    </span>
   )
 }

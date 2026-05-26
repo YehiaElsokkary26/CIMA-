@@ -1,41 +1,51 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Film, Upload, Image, Check, ArrowLeft, ArrowRight, X } from 'lucide-react'
+import { Film, Upload, Image, Check, ArrowLeft, ArrowRight, X, Clapperboard } from 'lucide-react'
 import { useUploadFilm } from '@/hooks/useFilms'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { GENRES } from '@/lib/utils'
+import { useAuthStore } from '@/store/authStore'
+import { addFilm } from '@/lib/mockData'
+import { getCurrentWeekKey } from '@/lib/votingUtils'
+import { toast } from '@/store/toastStore'
 
-const STEPS = ['Upload', 'Details', 'Publish']
+const STEPS = ['Film File', 'Details', 'Trailer', 'Publish']
 
 export default function UploadPage() {
   const navigate = useNavigate()
+  const user = useAuthStore((s) => s.user)
   const [step, setStep] = useState(0)
+
+  // Step 0 state
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(null)
+  const videoInput = useRef<HTMLInputElement>(null)
+  const thumbInput = useRef<HTMLInputElement>(null)
+
+  // Step 1 state
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [year, setYear] = useState(String(new Date().getFullYear()))
   const [runtime, setRuntime] = useState('')
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const [published, setPublished] = useState(false)
-  const videoInput = useRef<HTMLInputElement>(null)
-  const thumbInput = useRef<HTMLInputElement>(null)
+
+  // Step 2 state — trailer
+  const [trailerFile, setTrailerFile] = useState<File | null>(null)
+  const [trailerPreview, setTrailerPreview] = useState<string | null>(null)
+  const trailerInput = useRef<HTMLInputElement>(null)
+
   const uploadFilm = useUploadFilm()
 
-  const toggleGenre = (g: string) => {
-    setSelectedGenres((prev) =>
-      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-    )
-  }
+  const toggleGenre = (g: string) =>
+    setSelectedGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
 
   const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
-    setVideoFile(file)
+    if (file) setVideoFile(file)
   }
 
   const handleThumbSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,45 +55,55 @@ export default function UploadPage() {
     setThumbPreview(URL.createObjectURL(file))
   }
 
-  const handlePublish = async () => {
-    const fd = new FormData()
-    if (videoFile) fd.append('video', videoFile)
-    if (thumbFile) fd.append('thumbnail', thumbFile)
-    fd.append('title', title)
-    fd.append('description', description)
-    fd.append('year', year)
-    fd.append('runtime', runtime)
-    selectedGenres.forEach((g) => fd.append('genre', g))
-
-    try {
-      await uploadFilm.mutateAsync(fd)
-    } catch {
-      // mock success for demo
-    }
-    setPublished(true)
+  const handleTrailerSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setTrailerFile(file)
+    setTrailerPreview(URL.createObjectURL(file))
   }
 
-  if (published) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="min-h-full flex flex-col items-center justify-center px-6 text-center gap-6"
-      >
-        <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center shadow-glow-orange">
-          <Check size={32} className="text-primary" />
-        </div>
-        <div>
-          <h1 className="font-display text-5xl uppercase tracking-widest text-foreground">
-            Cut!
-          </h1>
-          <p className="font-mono text-sm text-muted-foreground mt-2">
-            Your film is live. Time to get feedback.
-          </p>
-        </div>
-        <Button onClick={() => navigate('/home')}>Back to Feed</Button>
-      </motion.div>
-    )
+  const removeTrailer = () => {
+    if (trailerPreview) URL.revokeObjectURL(trailerPreview)
+    setTrailerFile(null)
+    setTrailerPreview(null)
+    if (trailerInput.current) trailerInput.current.value = ''
+  }
+
+  const handlePublish = async () => {
+    try {
+      const fd = new FormData()
+      if (videoFile) fd.append('video', videoFile)
+      if (thumbFile) fd.append('thumbnail', thumbFile)
+      if (trailerFile) fd.append('trailer', trailerFile)
+      fd.append('title', title)
+      fd.append('description', description)
+      fd.append('year', year)
+      fd.append('runtime', runtime)
+      selectedGenres.forEach((g) => fd.append('genre', g))
+      await uploadFilm.mutateAsync(fd)
+    } catch {
+      if (!user) return
+      addFilm({
+        title,
+        description,
+        genre: selectedGenres,
+        runtime: runtime ? parseInt(runtime, 10) : undefined,
+        year: parseInt(year, 10),
+        thumbnailUrl:
+          thumbPreview ?? `https://picsum.photos/seed/${encodeURIComponent(title)}/600/400`,
+        trailerUrl: trailerPreview ?? undefined,
+        uploaderId: user.id,
+        uploader: user,
+        rating: undefined,
+        ratingCount: 0,
+        votes: 0,
+        weekKey: getCurrentWeekKey(),
+        isFilmOfTheWeek: false,
+      })
+    }
+
+    toast.success('Your film is live. 🎬')
+    navigate('/home', { replace: true })
   }
 
   return (
@@ -99,9 +119,9 @@ export default function UploadPage() {
       </div>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
+      <div className="flex items-center gap-2 mb-8 overflow-x-auto">
         {STEPS.map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
+          <div key={s} className="flex items-center gap-2 shrink-0">
             <div className="flex items-center gap-1.5">
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-[10px] transition-colors ${
@@ -119,24 +139,35 @@ export default function UploadPage() {
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`flex-1 h-px w-8 ${i < step ? 'bg-primary' : 'bg-border'}`} />
+              <div className={`h-px w-6 ${i < step ? 'bg-primary' : 'bg-border'}`} />
             )}
           </div>
         ))}
       </div>
 
       <AnimatePresence mode="wait">
-        {/* Step 0: File Upload */}
+        {/* ── Step 0: Film File ──────────────────────────────── */}
         {step === 0 && (
-          <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-            {/* Video drop zone */}
+          <motion.div
+            key="step0"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
             <div
               onClick={() => videoInput.current?.click()}
               className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 cursor-pointer transition-colors ${
                 videoFile ? 'border-primary bg-primary/5' : 'border-border hover:border-secondary'
               }`}
             >
-              <input ref={videoInput} type="file" accept="video/mp4,video/mov,video/webm" className="hidden" onChange={handleVideoSelect} />
+              <input
+                ref={videoInput}
+                type="file"
+                accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
+                className="hidden"
+                onChange={handleVideoSelect}
+              />
               {videoFile ? (
                 <>
                   <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
@@ -159,20 +190,27 @@ export default function UploadPage() {
                   </div>
                   <div className="text-center">
                     <p className="font-display text-2xl uppercase tracking-wider text-foreground">
-                      Drop Your Film Here
+                      Tap to Select Your Film
                     </p>
-                    <p className="font-mono text-xs text-muted-foreground mt-1">MP4, MOV, WebM · max 2GB</p>
+                    <p className="font-mono text-xs text-muted-foreground mt-1">
+                      MP4, MOV, WebM · max 2 GB
+                    </p>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Thumbnail */}
             <div
               onClick={() => thumbInput.current?.click()}
               className="border border-dashed border-border rounded-2xl p-6 flex items-center gap-4 cursor-pointer hover:border-secondary transition-colors"
             >
-              <input ref={thumbInput} type="file" accept="image/*" className="hidden" onChange={handleThumbSelect} />
+              <input
+                ref={thumbInput}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleThumbSelect}
+              />
               {thumbPreview ? (
                 <img src={thumbPreview} alt="" className="w-16 h-12 object-cover rounded-xl" />
               ) : (
@@ -182,45 +220,73 @@ export default function UploadPage() {
               )}
               <div>
                 <p className="font-sans text-sm font-medium text-foreground">
-                  {thumbPreview ? 'Change Thumbnail' : 'Add Thumbnail'}
+                  {thumbPreview ? 'Change Poster' : 'Add Poster / Thumbnail'}
                 </p>
                 <p className="font-mono text-xs text-muted-foreground">PNG, JPG · 16:9 recommended</p>
               </div>
             </div>
 
-            <Button
-              size="lg"
-              className="w-full"
-              disabled={!videoFile}
-              onClick={() => setStep(1)}
-            >
+            <Button size="lg" className="w-full" disabled={!videoFile} onClick={() => setStep(1)}>
               Next <ArrowRight size={16} />
             </Button>
           </motion.div>
         )}
 
-        {/* Step 1: Metadata */}
+        {/* ── Step 1: Details ───────────────────────────────── */}
         {step === 1 && (
-          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-            <Input label="Film Title" placeholder="ENTER TITLE" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-5"
+          >
+            <Input
+              label="Film Title"
+              placeholder="ENTER TITLE"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+
             <div className="flex flex-col gap-1.5">
-              <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Short Description</label>
+              <div className="flex items-center justify-between">
+                <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                  Short Description
+                </label>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {description.length}/280
+                </span>
+              </div>
               <textarea
                 placeholder="What's your film about?"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value.slice(0, 280))}
                 rows={3}
                 className="w-full bg-input text-foreground border border-border rounded-xl px-4 py-2.5 text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Year" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
-              <Input label="Runtime (min)" type="number" placeholder="24" value={runtime} onChange={(e) => setRuntime(e.target.value)} />
+              <Input
+                label="Year"
+                type="number"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+              />
+              <Input
+                label="Runtime (min)"
+                type="number"
+                placeholder="12"
+                value={runtime}
+                onChange={(e) => setRuntime(e.target.value)}
+              />
             </div>
 
-            {/* Genre chips */}
             <div className="space-y-2">
-              <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Genres</label>
+              <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                Genres
+              </label>
               <div className="flex flex-wrap gap-2">
                 {GENRES.map((g) => (
                   <button
@@ -244,34 +310,159 @@ export default function UploadPage() {
                 <ArrowLeft size={16} /> Back
               </Button>
               <Button className="flex-1" disabled={!title} onClick={() => setStep(2)}>
-                Preview <ArrowRight size={16} />
+                Next <ArrowRight size={16} />
               </Button>
             </div>
           </motion.div>
         )}
 
-        {/* Step 2: Preview + Publish */}
+        {/* ── Step 2: Trailer (optional) ────────────────────── */}
         {step === 2 && (
-          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-            <div className="bg-card rounded-2xl border border-border overflow-hidden">
-              {thumbPreview && (
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-5"
+          >
+            {/* Section header */}
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-xs uppercase tracking-widest text-foreground">
+                  Add a Trailer
+                </span>
+                <span className="font-mono text-xs" style={{ color: '#4E4A46' }}>
+                  (optional)
+                </span>
+              </div>
+              <p className="font-sans text-sm mt-1 text-muted-foreground">
+                Your trailer plays when people hover over your film. Keep it under 2 minutes.
+              </p>
+            </div>
+
+            {trailerFile ? (
+              /* Trailer selected — preview + controls */
+              <div className="space-y-3">
+                <video
+                  src={trailerPreview ?? undefined}
+                  controls
+                  className="w-full rounded-xl"
+                  style={{ maxHeight: 160, background: '#161413' }}
+                />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-mono text-xs text-foreground truncate max-w-[200px]">
+                      {trailerFile.name}
+                    </p>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {(trailerFile.size / (1024 * 1024)).toFixed(1)} MB
+                    </p>
+                  </div>
+                  <button
+                    onClick={removeTrailer}
+                    className="font-mono text-xs transition-opacity hover:opacity-70"
+                    style={{ color: '#A32626' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Upload zone */
+              <div
+                onClick={() => trailerInput.current?.click()}
+                className="border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 cursor-pointer transition-colors hover:border-secondary"
+                style={{ borderColor: 'rgba(163,38,38,0.5)' }}
+              >
+                <input
+                  ref={trailerInput}
+                  type="file"
+                  accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
+                  className="hidden"
+                  onChange={handleTrailerSelect}
+                />
+                <Clapperboard size={28} style={{ color: '#B28A52' }} />
+                <div className="text-center">
+                  <p className="font-mono text-sm uppercase tracking-wider" style={{ color: '#E8DDCB' }}>
+                    Upload your trailer
+                  </p>
+                  <p className="font-mono text-xs mt-1" style={{ color: '#4E4A46' }}>
+                    MP4, MOV or WEBM · Max 500MB · Under 2 min recommended
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                <ArrowLeft size={16} /> Back
+              </Button>
+              <Button className="flex-1" onClick={() => setStep(3)}>
+                Next <ArrowRight size={16} />
+              </Button>
+            </div>
+
+            <button
+              onClick={() => setStep(3)}
+              className="w-full text-center font-mono text-xs uppercase tracking-wider transition-opacity hover:opacity-70"
+              style={{ color: '#4E4A46' }}
+            >
+              Skip This Step →
+            </button>
+          </motion.div>
+        )}
+
+        {/* ── Step 3: Publish preview ───────────────────────── */}
+        {step === 3 && (
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-5"
+          >
+            <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-card">
+              {thumbPreview ? (
                 <img src={thumbPreview} alt="" className="w-full aspect-video object-cover" />
+              ) : (
+                <div className="w-full aspect-video bg-gradient-to-br from-muted to-card flex items-center justify-center">
+                  <Film size={36} className="text-muted-foreground/30" />
+                </div>
               )}
               <div className="p-4 space-y-2">
                 <div className="flex flex-wrap gap-1">
                   {selectedGenres.map((g) => <Badge key={g} variant="film">{g}</Badge>)}
                 </div>
-                <h2 className="font-display text-3xl uppercase tracking-widest text-foreground">{title}</h2>
+                <h2 className="font-display text-3xl uppercase tracking-widest text-foreground">
+                  {title || 'UNTITLED'}
+                </h2>
                 <div className="flex gap-3">
                   {year && <span className="font-mono text-xs text-muted-foreground">{year}</span>}
-                  {runtime && <span className="font-mono text-xs text-muted-foreground">{runtime} min</span>}
+                  {runtime && (
+                    <span className="font-mono text-xs text-muted-foreground">{runtime} min</span>
+                  )}
                 </div>
-                {description && <p className="font-sans text-sm text-muted-foreground">{description}</p>}
+                {description && (
+                  <p className="font-sans text-sm text-muted-foreground">{description}</p>
+                )}
+                {trailerFile && (
+                  <p className="font-mono text-[10px]" style={{ color: '#B28A52' }}>
+                    Trailer: {trailerFile.name}
+                  </p>
+                )}
+                {user && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-[10px] font-mono">
+                      {user.name.charAt(0)}
+                    </div>
+                    <span className="font-mono text-xs text-muted-foreground">{user.name}</span>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+              <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                 <ArrowLeft size={16} /> Edit
               </Button>
               <Button

@@ -23,6 +23,8 @@ export interface Film {
   description: string
   thumbnailUrl?: string
   videoUrl?: string
+  trailerUrl?: string
+  aspectRatio?: '16:9' | '4:5' | '2:3'
   genre: string[]
   runtime?: number
   year: number
@@ -30,6 +32,9 @@ export interface Film {
   ratingCount?: number
   uploaderId: string
   uploader?: User
+  isFilmOfTheWeek?: boolean
+  votes?: number
+  weekKey?: string
   createdAt: string
 }
 
