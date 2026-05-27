@@ -87,12 +87,13 @@ export default function FilmDetailPage() {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
 
-          {/* Back button */}
+          {/* Back button — Rule 3: min 44×44px touch target (w-11 h-11 = 44px) */}
           <Link
             to="/home"
-            className="absolute top-4 left-4 w-9 h-9 bg-background/60 backdrop-blur-sm rounded-full flex items-center justify-center border border-border"
+            className="absolute top-4 left-4 w-11 h-11 bg-background/60 backdrop-blur-sm rounded-full flex items-center justify-center border border-border"
+            aria-label="Back to home"
           >
-            <ArrowLeft size={16} className="text-foreground" />
+            <ArrowLeft size={18} className="text-foreground" />
           </Link>
 
           {/* Play button */}
@@ -208,8 +209,12 @@ export default function FilmDetailPage() {
             animate={{ opacity: 1, height: 'auto' }}
             className="bg-card rounded-2xl border border-border p-4 space-y-3"
           >
-            <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Your Review</p>
+            {/* Rule 7: label explicitly associated with textarea for accessibility */}
+            <label htmlFor="review-body" className="font-mono text-xs text-muted-foreground uppercase tracking-wider block">
+              Your Review
+            </label>
             <textarea
+              id="review-body"
               value={reviewBody}
               onChange={(e) => setReviewBody(e.target.value)}
               placeholder="What did you think about this film?"

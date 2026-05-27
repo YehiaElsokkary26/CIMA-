@@ -62,6 +62,14 @@ export default function TabBar() {
               >
                 {link.label}
               </span>
+              {/* Rule 9: active indicator dot — cinema-red pip below label */}
+              {isActive && !isUpload && (
+                <span
+                  className="w-1 h-1 rounded-full"
+                  style={{ background: '#A32626' }}
+                  aria-hidden="true"
+                />
+              )}
             </NavLink>
           )
         })}

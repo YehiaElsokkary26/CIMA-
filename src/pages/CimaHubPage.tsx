@@ -4,7 +4,7 @@ import { useCima, useAcceptCimaRequest, useDeclineCimaRequest } from '@/hooks/us
 import CimaRequestCard from '@/components/cima/CimaRequestCard'
 import CimaMemberChip from '@/components/cima/CimaMemberChip'
 import EmptyState from '@/components/ui/EmptyState'
-import LoadingDots from '@/components/ui/LoadingDots'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { Link } from 'react-router-dom'
 import Avatar from '@/components/ui/Avatar'
 
@@ -46,9 +46,20 @@ export default function CimaHubPage() {
         </p>
       </div>
 
+      {/* Rule 5: skeleton placeholders match real content layout */}
       {isLoading && (
-        <div className="flex justify-center py-12">
-          <LoadingDots />
+        <div className="space-y-3" aria-hidden="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl p-4" style={{ border: '1px solid rgba(139,107,92,0.15)', background: 'var(--card, #1E1A16)' }}>
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-32" />
+                  <Skeleton className="h-2.5 w-48" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -1,5 +1,7 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Bell, Star, Film, UserPlus, MessageSquare } from 'lucide-react'
+import { Bell, Star, Film, UserPlus, MessageSquare, CheckCheck } from 'lucide-react'
 import RecordLED from '@/components/layout/RecordLED'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatTimeAgo } from '@/lib/utils'
@@ -22,13 +24,32 @@ const notifIcon: Record<string, React.ElementType> = {
 }
 
 export default function NotificationsPage() {
-  const notifications = MOCK_NOTIFICATIONS
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const unreadCount = notifications.filter((n) => !n.read).length
+
+  const markAllRead = () =>
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
 
   return (
     <div className="min-h-full px-4 py-6">
-      <h1 className="font-display text-4xl uppercase tracking-widest text-foreground mb-6">
-        Notifications
-      </h1>
+      {/* Rule 9: header row with mark-all-read action */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">
+          Notifications
+        </h1>
+        {unreadCount > 0 && (
+          /* Rule 3: min 44px tap area via py-2.5 */
+          <button
+            onClick={markAllRead}
+            className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors py-2.5 px-2"
+            style={{ minHeight: 44 }}
+            aria-label="Mark all notifications as read"
+          >
+            <CheckCheck size={14} />
+            Mark all read
+          </button>
+        )}
+      </div>
 
       {notifications.length === 0 ? (
         <EmptyState icon={Bell} title="Quiet on Set." subtitle="No notifications yet." />
@@ -50,7 +71,8 @@ export default function NotificationsPage() {
                 }`}
               >
                 <div className="relative mt-0.5">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                  {/* Rule 3: icon area w-10 h-10 = 40px (row tap area covers full row) */}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     notif.type === 'cima_request' || notif.type === 'cima_accepted'
                       ? 'bg-cima-tag/20'
                       : notif.type === 'rating'

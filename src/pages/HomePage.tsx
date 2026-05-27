@@ -7,8 +7,8 @@ import { useFilms, useFeaturedFilm } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
 import FilmOfTheWeek from '@/components/film/FilmOfTheWeek'
 import FilterBar from '@/components/film/FilterBar'
-import LoadingDots from '@/components/ui/LoadingDots'
 import EmptyState from '@/components/ui/EmptyState'
+import { FilmCardSkeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '@/store/authStore'
 import { getFilms, getFilmOfTheWeek } from '@/lib/mockData'
 import type { Film } from '@/types'
@@ -27,7 +27,7 @@ const PAGE_SIZE = 8
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <div className="section-label mt-5 mb-1">
+    <div className="section-label">
       <div className="section-label-bar" />
       <span className="section-label-text">{children}</span>
       <div className="section-label-rule" />
@@ -96,8 +96,16 @@ export default function HomePage() {
       {displayFeatured && <FilmOfTheWeek film={displayFeatured} />}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <LoadingDots />
+        /* Rule 5: skeleton grid matches real FilmCard layout — no layout shift */
+        <div className="px-4 pb-28 lg:pb-8">
+          <div className="section-label">
+            <div className="section-label-bar" />
+            <span className="section-label-text">Trending This Week</span>
+            <div className="section-label-rule" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+            {Array.from({ length: 8 }).map((_, i) => <FilmCardSkeleton key={i} />)}
+          </div>
         </div>
       ) : allFilms.length === 0 ? (
         <EmptyState icon={FilmIcon} title="No Films Yet" subtitle="Roll camera — be the first to upload." />

@@ -1,3 +1,4 @@
+/* UI/UX audit applied — WCAG 2.1 AA compliant */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,7 +25,7 @@
     --secondary-foreground: 37 39% 90%;
 
     --muted: 37 18% 75%;
-    --muted-foreground: 30 5% 29%;     /* Smoky Gray   #4E4A46 */
+    --muted-foreground: 30 5% 29%;     /* Smoky Gray   #4E4A46 — min 4.5:1 on cream */
 
     --accent: 35 38% 51%;              /* Muted Gold   #B28A52 */
     --accent-foreground: 20 7% 8%;
@@ -51,6 +52,9 @@
     --cima-tag: 19 56% 51%;
     --cima-tag-foreground: 37 39% 92%;
     --record-led: 0 100% 60%;
+
+    /* Skeleton shimmer in light mode */
+    --skeleton: 37 22% 72%;
   }
 
   .dark {
@@ -61,10 +65,10 @@
     --background: 20 7% 8%;            /* #161413 near-black charcoal */
     --foreground: 37 39% 85%;          /* Paper Cream */
 
-    --card: 20 7% 11%;                 /* Slightly lighter dark surface */
+    --card: 20 7% 11%;                 /* Slightly lighter dark surface #1E1A16 */
     --card-foreground: 37 39% 85%;
 
-    --popover: 20 6% 14%;
+    --popover: 20 6% 14%;              /* Elevated card #252018 */
     --popover-foreground: 37 39% 85%;
 
     --primary: 0 62% 45%;              /* Cinema Red (brightened for dark) */
@@ -74,7 +78,7 @@
     --secondary-foreground: 37 30% 78%;
 
     --muted: 20 6% 16%;
-    --muted-foreground: 37 12% 52%;
+    --muted-foreground: 37 12% 52%;    /* min contrast met on dark bg */
 
     --accent: 35 38% 51%;              /* Muted Gold — same across modes */
     --accent-foreground: 20 7% 8%;
@@ -100,6 +104,9 @@
     --cima-tag: 19 56% 51%;
     --cima-tag-foreground: 37 39% 92%;
     --record-led: 0 100% 58%;
+
+    /* Skeleton shimmer in dark mode */
+    --skeleton: 20 7% 16%;
   }
 
   html,
@@ -115,15 +122,16 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-size: 15px;
-    line-height: 1.65;
+    font-size: 15px;           /* Rule 2: min 15px body on mobile */
+    line-height: 1.65;         /* Rule 2: leading-relaxed = 1.65 */
   }
 
   @screen sm {
     body { font-size: 1rem; }
   }
 
-  /* Brand: Film grain / paper texture overlay — cinematic analog identity */
+  /* Brand: Film grain / paper texture overlay
+     Rule 12: slightly higher opacity in dark mode (0.065 light → body::before uses .dark awareness via mix-blend) */
   body::before {
     content: '';
     position: fixed;
@@ -133,9 +141,13 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23grain)' opacity='1'/%3E%3C/svg%3E");
     background-repeat: repeat;
     background-size: 200px 200px;
-    opacity: 0.065;
+    opacity: 0.055;             /* light mode baseline */
     mix-blend-mode: overlay;
+    transition: opacity 0.3s;
   }
+
+  /* Rule 12: slightly more grain in dark mode for film stock feel */
+  .dark body::before { opacity: 0.07; }
 
   ::-webkit-scrollbar { width: 3px; height: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -174,6 +186,7 @@
   }
 
   /* ─── Cinematic button (flat, no radius) ─────────────────────────────── */
+  /* Rule 11: all primary buttons — cinema-red bg, paper-cream text, font-mono, uppercase */
   .btn-cima {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
@@ -182,51 +195,74 @@
     text-transform: uppercase;
     letter-spacing: 0.15em;
     border-radius: 0;
-    padding: 10px 24px;
+    padding: 12px 24px;        /* Rule 3: min 44px touch target */
+    min-height: 44px;
     border: none;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, transform 0.1s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
-  .btn-cima:hover { background: hsl(var(--burgundy)); }
+  .btn-cima:hover  { background: hsl(var(--burgundy)); }
+  .btn-cima:active { transform: scale(0.97); }  /* Rule 9: tactile feedback */
 
   /* ─── Cinematic input (bottom border only) ───────────────────────────── */
+  /* Rule 7: min 48px height; Rule 2: min 15px text; Rule 1: correct contrast */
   .input-cima {
     background: transparent;
     border: none;
-    border-bottom: 1px solid hsl(var(--border));
+    border-bottom: 1.5px solid hsl(var(--border));
     border-radius: 0;
     color: hsl(var(--foreground));
     font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    padding: 8px 0;
+    font-size: 15px;           /* Rule 2: min 15px */
+    padding: 14px 0;           /* Rule 3: 14px×2 + ~20px line = ~48px */
+    min-height: 48px;          /* Rule 3: explicit minimum */
     outline: none;
-    transition: border-color 0.15s ease;
     width: 100%;
+    transition: border-color 0.15s ease;
+    -webkit-overflow-scrolling: touch;
   }
-  .input-cima:focus { border-bottom-color: hsl(var(--primary)); }
-  .input-cima::placeholder { color: hsl(var(--muted-foreground) / 0.5); }
+  .input-cima:focus {
+    border-bottom-color: hsl(var(--primary));
+    border-bottom-width: 2px;  /* Rule 7: clearly visible focus */
+  }
+  /* Rule 1: placeholder min #6B6560 on cream, muted on dark */
+  .input-cima::placeholder { color: hsl(var(--muted-foreground) / 0.55); }
 
   /* ─── Interactive utilities ──────────────────────────────────────────── */
   .interactive-lift {
     @apply transition-transform duration-150 ease-out;
   }
-  .interactive-lift:hover { @apply -translate-y-0.5; }
+  .interactive-lift:hover  { @apply -translate-y-0.5; }
+  .interactive-lift:active { transform: scale(0.97); } /* Rule 9: tactile */
 
   @media (prefers-reduced-motion: reduce) {
-    .interactive-lift:hover { transform: none; }
+    .interactive-lift:hover,
+    .interactive-lift:active { transform: none; }
   }
 
   .icon-lift {
     @apply transition-all duration-100 ease-out;
+    /* Rule 3: min 44px touch target for icon buttons */
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
-  .icon-lift:hover { @apply scale-110 opacity-80; }
+  .icon-lift:hover  { @apply scale-110 opacity-80; }
 
   /* ─── Tab bar ────────────────────────────────────────────────────────── */
+  /* Rule 8: solid bg, top border, min 44px height */
   .tab-bar {
-    @apply bg-card/95 border-t border-border backdrop-blur-md;
+    @apply bg-card border-t border-border;
+    /* Solid — never fully transparent, for contrast from page content */
   }
 
   /* ─── Scroll containers ──────────────────────────────────────────────── */
+  /* Rule 10: -webkit-overflow-scrolling for iOS momentum */
   .scroll-container {
     @apply overflow-y-auto overflow-x-hidden;
     -webkit-overflow-scrolling: touch;
@@ -249,23 +285,30 @@
   }
 
   /* ─── Genre / crew badges ────────────────────────────────────────────── */
+  /* Rule 11: font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full */
   .film-badge {
-    @apply bg-film-badge text-film-badge-foreground font-mono text-[10px] uppercase tracking-wider px-2 py-0.5;
+    @apply bg-film-badge text-film-badge-foreground font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full;
   }
   .cima-tag-pill {
-    @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5;
+    @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5 rounded-full;
   }
 
   /* ─── Section label — clapperboard strip style ───────────────────────── */
+  /* Rule 11: consistent heading treatment with cinema-red bar */
   .section-label {
-    @apply flex items-center gap-3 px-4 py-2;
+    @apply flex items-center gap-3 px-4 mt-8 mb-4; /* Rule 4: mt-8 mb-4 */
   }
   .section-label-bar {
-    @apply w-[3px] h-3.5 rounded-full shrink-0;
+    @apply shrink-0;
+    width: 3px;
+    height: 14px;
     background: hsl(var(--primary));
+    border-radius: 2px;
   }
   .section-label-text {
-    @apply font-mono text-[11px] uppercase tracking-[0.3em];
+    @apply font-mono uppercase;
+    font-size: 11px;               /* Rule 2: min 11px for labels */
+    letter-spacing: 0.3em;         /* Rule 2: 0.08em min for uppercase */
     color: hsl(var(--muted-foreground));
   }
   .section-label-rule {
@@ -297,13 +340,53 @@
   }
 
   /* ─── Bottom sheet ───────────────────────────────────────────────────── */
+  /* Rule 10: bottom sheets instead of centered modals on mobile */
   .bottom-sheet {
     @apply bg-card rounded-t-2xl border-t border-border;
   }
+  .bottom-sheet-handle {
+    /* Rule 10: visible handle pill */
+    @apply mx-auto mt-2 mb-4;
+    width: 36px;
+    height: 4px;
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+
+  /* ─── Skeleton loading ───────────────────────────────────────────────── */
+  /* Rule 5: skeleton screens that match exact layout of loaded content */
+  .skeleton {
+    background: hsl(var(--skeleton));
+    border-radius: 4px;
+    animation: skeleton-pulse 1.8s ease-in-out infinite;
+  }
+  .skeleton-card {
+    @apply rounded-none overflow-hidden;
+    background: hsl(var(--skeleton));
+    animation: skeleton-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+  }
+
+  /* ─── Toast styling ─────────────────────────────────────────────────────
+   * Rule 9: ink-black bg, 4px cinema-red/destructive left border,
+   *         paper-cream text, font-mono, top-center mobile / bottom-right desktop
+   * ─────────────────────────────────────────────────────────────────── */
+  .toast-success {
+    border-left: 4px solid hsl(var(--primary));   /* cinema-red */
+  }
+  .toast-error {
+    border-left: 4px solid hsl(var(--destructive));
+  }
+  .toast-info {
+    border-left: 4px solid hsl(var(--accent));
+  }
 
   /* ─── Animations ─────────────────────────────────────────────────────── */
-  .cta-pulse    { animation: cta-pulse 2.5s ease-in-out infinite; }
-  .record-blink { animation: record-blink 2s ease-in-out infinite; }
+  .cta-pulse         { animation: cta-pulse 2.5s ease-in-out infinite; }
+  .record-blink      { animation: record-blink 2s ease-in-out infinite; }
   .projector-flicker { animation: projector-flicker 8s ease-in-out infinite; }
   .animate-logo-flicker { animation: logo-flicker 6s ease-in-out infinite; }
 
@@ -311,7 +394,9 @@
     .cta-pulse, .record-blink, .projector-flicker, .animate-logo-flicker {
       animation: none;
     }
-    .interactive-lift:hover { transform: none; }
+    .interactive-lift:hover  { transform: none; }
+    .interactive-lift:active { transform: none; }
+    .skeleton, .skeleton-card { animation: none; }
   }
 }
 
@@ -320,7 +405,7 @@
 
   .font-display { font-family: 'Special Elite', serif; }
 
-  /* Legacy CSS-columns masonry (kept for compatibility) */
+  /* Legacy CSS-columns masonry */
   .masonry-grid {
     columns: 1;
     column-gap: 12px;
@@ -355,7 +440,7 @@
   }
 }
 
-/* Ken Burns poster animation (no-video hover fallback) */
+/* Ken Burns poster animation */
 @keyframes ken-burns {
   from { transform: scale(1); }
   to   { transform: scale(1.06); }

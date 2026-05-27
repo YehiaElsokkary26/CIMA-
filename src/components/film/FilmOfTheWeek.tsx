@@ -123,23 +123,23 @@ export default function FilmOfTheWeek({ film }: FilmOfTheWeekProps) {
           {film.title.toUpperCase()}
         </h2>
 
-        {/* Filmmaker + runtime + year */}
+        {/* Filmmaker + runtime + year — Rule 1: dust-brown (#8B6B5C) fails on dark overlay → use muted cream */}
         <div className="flex items-center gap-2 mb-2.5">
-          <span className="font-mono text-xs" style={{ color: '#8B6B5C' }}>
+          <span className="font-mono text-xs" style={{ color: 'rgba(232,221,203,0.75)' }}>
             {film.uploader?.name}
           </span>
           {film.runtime && (
             <>
-              <span style={{ color: '#4E4A46' }}>·</span>
-              <span className="font-mono text-xs" style={{ color: '#8B6B5C' }}>
+              <span style={{ color: 'rgba(232,221,203,0.35)' }}>·</span>
+              <span className="font-mono text-xs" style={{ color: 'rgba(232,221,203,0.75)' }}>
                 {formatRuntime(film.runtime)}
               </span>
             </>
           )}
           {film.year && (
             <>
-              <span style={{ color: '#4E4A46' }}>·</span>
-              <span className="font-mono text-xs" style={{ color: '#8B6B5C' }}>
+              <span style={{ color: 'rgba(232,221,203,0.35)' }}>·</span>
+              <span className="font-mono text-xs" style={{ color: 'rgba(232,221,203,0.75)' }}>
                 {film.year}
               </span>
             </>

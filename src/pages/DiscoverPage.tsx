@@ -42,24 +42,27 @@ export default function DiscoverPage() {
       <div className="px-4 pt-6 pb-4 space-y-4 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
         <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">Discover</h1>
 
-        {/* Search */}
+        {/* Search — Rule 4: min-height 48px (Baymard) */}
         <div className="relative">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search filmmakers, schools, cities…"
-            className="w-full bg-input text-foreground border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Search filmmakers"
+            className="w-full bg-input text-foreground border border-border rounded-xl pl-9 pr-4 text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+            style={{ minHeight: 48, paddingTop: 13, paddingBottom: 13 }}
           />
         </div>
 
-        {/* Genre filters */}
+        {/* Genre filters — Rule 3: min 44px touch targets */}
         <div className="scroll-x flex gap-2 pb-1">
           {GENRE_FILTERS.map((g) => (
             <button
               key={g}
               onClick={() => setActiveGenre(g)}
-              className={`shrink-0 font-mono text-xs px-3 py-1 rounded-full border transition-colors ${
+              style={{ minHeight: 44 }}
+              className={`shrink-0 font-mono text-xs px-3 py-2.5 rounded-full border transition-colors ${
                 activeGenre === g
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-transparent text-muted-foreground border-border hover:border-secondary'

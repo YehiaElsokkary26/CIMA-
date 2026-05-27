@@ -129,25 +129,28 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
             >
               {film.title}
             </h3>
-            <p className="font-mono text-[10px] mt-1" style={{ color: '#B28A52' }}>
+            {/* Rule 1: uploader name — muted cream, not muted-gold (#B28A52) which fails on dark bg */}
+            <p className="font-mono text-[10px] mt-1" style={{ color: 'rgba(232,221,203,0.6)' }}>
               {film.uploader?.name ?? 'Unknown'}
             </p>
 
             {/* Bottom row: vote pill */}
             <div className="flex items-center justify-between mt-2">
+              {/* Rule 1: genre pill — cream text on very dark tinted bg ✓ */}
               <span
                 className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5"
-                style={{ background: 'rgba(178,138,82,0.12)', color: '#4E4A46' }}
+                style={{ background: 'rgba(178,138,82,0.12)', color: 'rgba(232,221,203,0.55)' }}
               >
                 {film.genre?.[0]}
               </span>
 
+              {/* Rule 1: vote badge — leading uses #161413 on gold ✓; non-leading uses cream on dark ✓ */}
               <span
                 className="flex items-center gap-0.5 font-mono text-[9px] px-2 py-0.5"
                 style={
                   isLeading
                     ? { background: '#B28A52', color: '#161413' }
-                    : { background: 'rgba(78,74,70,0.15)', color: '#4E4A46' }
+                    : { background: 'rgba(78,74,70,0.18)', color: 'rgba(232,221,203,0.55)' }
                 }
               >
                 <ArrowUp size={8} strokeWidth={2.5} />
