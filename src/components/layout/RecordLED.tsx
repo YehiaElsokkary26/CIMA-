@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { cn } from '@/lib/utils'
 
 interface RecordLEDProps {

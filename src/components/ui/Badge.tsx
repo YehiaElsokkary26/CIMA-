@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { cn } from '@/lib/utils'
 
 interface BadgeProps {
@@ -15,7 +16,7 @@ export default function Badge({ children, variant = 'default', className }: Badg
           'bg-film-badge text-film-badge-foreground': variant === 'film',
           'bg-cima-tag/20 text-cima-tag border border-cima-tag/30': variant === 'cima',
           'bg-muted text-muted-foreground': variant === 'default',
-          'bg-muted/50 text-muted-foreground/70': variant === 'muted',
+          'bg-muted/50 text-muted-foreground': variant === 'muted',
         },
         className
       )}

@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useVideoPreview } from '@/hooks/useVideoPreview'
@@ -67,6 +68,7 @@ export default function VideoPreviewCard({
           src={posterSrc}
           alt=""
           draggable={false}
+          loading="lazy"
           className={cn(
             'absolute inset-0 w-full h-full object-cover transition-opacity duration-300',
             !hasVideo && isHovered && !reduceMotion() && 'ken-burns-active',

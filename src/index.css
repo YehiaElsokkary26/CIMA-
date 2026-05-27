@@ -178,7 +178,7 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     font-family: 'Space Mono', monospace;
-    font-size: 11px;
+    font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.15em;
     border-radius: 8px;
@@ -202,14 +202,14 @@
     border-radius: 0;
     color: hsl(var(--foreground));
     font-family: 'Inter', sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     padding: 8px 0;
     outline: none;
     transition: border-color 0.15s ease;
     width: 100%;
   }
   .input-cima:focus { border-bottom-color: hsl(var(--primary)); }
-  .input-cima::placeholder { color: hsl(var(--muted-foreground) / 0.5); }
+  .input-cima::placeholder { color: hsl(var(--muted-foreground) / 0.65); }
 
   /* ─── Interactive utilities ──────────────────────────────────────────── */
   .interactive-lift {
@@ -347,6 +347,19 @@
     background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--film-burn)));
     color: hsl(var(--primary-foreground));
   }
+
+  /* ─── Skeleton shimmer ──────────────────────────────────────────────── */
+  .skeleton {
+    @apply animate-pulse;
+    background-color: #D4C9B8;
+    border-radius: 4px;
+  }
+  .dark .skeleton { background-color: #2A2420; }
+
+  /* ─── Toast border accents ───────────────────────────────────────────── */
+  .toast-success { border-left: 4px solid #A32626; }
+  .toast-error   { border-left: 4px solid #D94040; }
+  .toast-info    { border-left: 4px solid #B28A52; }
 
   /* ─── Creator card ───────────────────────────────────────────────────── */
   .creator-card {

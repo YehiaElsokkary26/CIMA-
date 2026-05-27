@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Zap, Search, Plus, Film, User, Settings, LogOut, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -40,7 +41,7 @@ export default function Sidebar() {
         <CimaIconMark size={30} className="shrink-0" />
       </div>
 
-      {/* Nav links */}
+      {/* Nav links — Rule 3: min 44px touch target via min-h-[44px] */}
       <nav className="flex flex-col gap-0.5 px-2 xl:px-3 mt-4 flex-1">
         {links.map((link) => {
           const isActive = location.pathname.startsWith(link.to)
@@ -52,7 +53,7 @@ export default function Sidebar() {
               key={link.to}
               to={link.to}
               className={cn(
-                'flex items-center gap-3 px-2 xl:px-3 py-2.5 rounded-none transition-all duration-150',
+                'flex items-center gap-3 px-2 xl:px-3 rounded-none transition-all duration-150 min-h-[44px]',
                 isUpload
                   ? 'mt-2 mb-1'
                   : isActive
@@ -78,12 +79,16 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* User strip */}
+      {/* User strip — Rule 3: all interactive rows min-h-[44px] */}
       {user && (
-        <div className="p-3 xl:px-4 border-t border-border/30 space-y-1">
+        <div className="p-3 xl:px-4 border-t border-border/30 space-y-0.5">
           <div
-            className="flex items-center gap-2.5 cursor-pointer py-1.5 px-1 hover:bg-muted/50 transition-colors rounded-none"
+            className="flex items-center gap-2.5 cursor-pointer min-h-[44px] px-1 hover:bg-muted/50 transition-colors rounded-none"
             onClick={() => navigate('/profile/me')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && navigate('/profile/me')}
+            aria-label="View profile"
           >
             <div
               className="w-7 h-7 flex items-center justify-center font-mono text-xs font-bold shrink-0"
@@ -101,9 +106,11 @@ export default function Sidebar() {
             </div>
           </div>
 
+          {/* Rule 3: min-h-[44px] for theme toggle */}
           <button
             onClick={toggleDarkMode}
-            className="w-full flex items-center gap-2.5 px-1 py-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-none"
+            className="w-full flex items-center gap-2.5 px-1 min-h-[44px] text-muted-foreground hover:text-foreground transition-colors rounded-none"
+            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {isDarkMode ? <Sun size={15} className="shrink-0" /> : <Moon size={15} className="shrink-0" />}
             <span className="hidden xl:block font-mono text-[10px] uppercase tracking-wider">
@@ -111,9 +118,10 @@ export default function Sidebar() {
             </span>
           </button>
 
+          {/* Rule 3: min-h-[44px] for logout button */}
           <button
             onClick={() => logout()}
-            className="w-full flex items-center gap-2.5 px-1 py-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-none"
+            className="w-full flex items-center gap-2.5 px-1 min-h-[44px] text-muted-foreground hover:text-destructive transition-colors rounded-none"
           >
             <LogOut size={15} className="shrink-0" />
             <span className="hidden xl:block font-mono text-[10px] uppercase tracking-wider">

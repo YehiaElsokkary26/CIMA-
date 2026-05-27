@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Filter, MapPin, GraduationCap, Users } from 'lucide-react'

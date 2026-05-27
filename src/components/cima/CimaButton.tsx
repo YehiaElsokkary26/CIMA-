@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { Film, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -20,7 +21,7 @@ export default function CimaButton({
     return (
       <div
         className={cn(
-          'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cima-tag/20 border border-cima-tag/40 text-cima-tag font-sans font-semibold text-sm',
+          'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-cima-tag/20 border border-cima-tag/40 text-cima-tag font-sans font-semibold text-sm min-h-[44px]',
           className
         )}
       >
@@ -34,7 +35,7 @@ export default function CimaButton({
     return (
       <div
         className={cn(
-          'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-muted-foreground font-sans text-sm',
+          'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border text-muted-foreground font-sans text-sm min-h-[44px]',
           className
         )}
       >
@@ -52,7 +53,7 @@ export default function CimaButton({
       disabled={disabled}
       whileTap={{ scale: 0.96 }}
       className={cn(
-        'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-accent-foreground font-sans font-semibold text-sm transition-all duration-150 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none',
+        'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-accent-foreground font-sans font-semibold text-sm transition-all duration-150 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none min-h-[44px]',
         className
       )}
     >

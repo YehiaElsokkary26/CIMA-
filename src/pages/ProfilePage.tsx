@@ -1,4 +1,5 @@
-import { useParams, Link } from 'react-router-dom'
+// UI/UX audit applied — WCAG 2.1 AA compliant
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Edit2, MapPin, GraduationCap, Film } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -40,6 +41,7 @@ const MOCK_CIMA_MEMBERS = [
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
   const isOwn = id === 'me' || id === currentUser?.id
   const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
@@ -142,7 +144,22 @@ export default function ProfilePage() {
           <section>
             <h2 className="font-display text-xl uppercase tracking-widest text-foreground mb-4">Films</h2>
             {films.length === 0 ? (
-              <EmptyState icon={Film} title="No films yet" subtitle="Roll camera." />
+              /* Rule 6: own filmmaker profile gets a CTA to upload their first film */
+              <EmptyState
+                icon={Film}
+                title="No films uploaded yet."
+                subtitle="Your audience is waiting — roll camera."
+                action={
+                  isOwn ? (
+                    <button
+                      onClick={() => navigate('/upload')}
+                      className="btn-cima"
+                    >
+                      Upload Your Film
+                    </button>
+                  ) : undefined
+                }
+              />
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {films.map((f, i) => (

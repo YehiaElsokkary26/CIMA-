@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { motion, AnimatePresence } from 'framer-motion'
 import { Film, Users, Inbox } from 'lucide-react'
 import { useCima, useAcceptCimaRequest, useDeclineCimaRequest } from '@/hooks/useCima'

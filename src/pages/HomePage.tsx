@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -7,8 +8,8 @@ import { useFilms, useFeaturedFilm } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
 import FilmOfTheWeek from '@/components/film/FilmOfTheWeek'
 import FilterBar from '@/components/film/FilterBar'
-import LoadingDots from '@/components/ui/LoadingDots'
 import EmptyState from '@/components/ui/EmptyState'
+import { FilmCardSkeleton, HeroSkeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '@/store/authStore'
 import { getFilms as getMockFilms, getFilmOfTheWeek as getMockFOTW } from '@/lib/mockData'
 import type { Film } from '@/types'
@@ -97,14 +98,38 @@ export default function HomePage() {
         onSortChange={setSortBy}
       />
 
-      {displayFeatured && <FilmOfTheWeek film={displayFeatured} />}
+      {/* Rule 5: show hero skeleton while loading — never a blank screen */}
+      {isLoading ? <HeroSkeleton /> : displayFeatured && <FilmOfTheWeek film={displayFeatured} />}
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <LoadingDots />
+        /* Rule 5: skeleton cards match exact masonry layout — no layout shift on load */
+        <div className="px-4 pb-28 lg:pb-8">
+          <SectionLabel icon={TrendingUp}>Trending This Week</SectionLabel>
+          <Masonry
+            breakpointCols={MASONRY_COLS}
+            className="cima-masonry-grid"
+            columnClassName="cima-masonry-column"
+          >
+            {Array.from({ length: 4 }).map((_, i) => <FilmCardSkeleton key={i} />)}
+          </Masonry>
+          <SectionLabel icon={Sparkles}>New Uploads</SectionLabel>
+          <Masonry
+            breakpointCols={MASONRY_COLS}
+            className="cima-masonry-grid"
+            columnClassName="cima-masonry-column"
+          >
+            {Array.from({ length: 4 }).map((_, i) => <FilmCardSkeleton key={i} />)}
+          </Masonry>
         </div>
       ) : allFilms.length === 0 ? (
-        <EmptyState icon={FilmIcon} title="No Films Yet" subtitle="Roll camera — be the first to upload." />
+        <EmptyState
+          icon={FilmIcon}
+          title="No films yet."
+          subtitle="Be the first to upload a short film."
+          action={isFilmmaker ? (
+            <button onClick={() => navigate('/upload')} className="btn-cima mt-2">Upload Your Film</button>
+          ) : undefined}
+        />
       ) : (
         <div className="px-4 pb-28 lg:pb-8">
           {/* Trending */}

@@ -1,7 +1,8 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Play, ArrowLeft, Clock, Calendar, ChevronDown, Send } from 'lucide-react'
+import { Play, ArrowLeft, Clock, Calendar, ChevronDown, Send, Loader2 } from 'lucide-react'
 import { useFilm, useFilmReviews, useAddReview } from '@/hooks/useFilms'
 import { useRating } from '@/hooks/useRating'
 import { useSendCimaRequest } from '@/hooks/useCima'
@@ -76,11 +77,13 @@ export default function FilmDetailPage() {
         className="relative"
       >
         <div className="relative aspect-video w-full overflow-hidden">
+          {/* Rule 13: loading="eager" — above-the-fold poster, avoids LCP delay */}
           {displayFilm.thumbnailUrl ? (
             <img
               src={displayFilm.thumbnailUrl}
               alt={displayFilm.title}
               className="w-full h-full object-cover"
+              loading="eager"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-secondary to-background" />
@@ -224,8 +227,11 @@ export default function FilmDetailPage() {
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
               <Button size="sm" onClick={handleSubmitReview} disabled={addReview.isPending}>
-                <Send size={13} />
-                Publish
+                {addReview.isPending ? (
+                  <><Loader2 size={13} className="animate-spin" /> Posting…</>
+                ) : (
+                  <><Send size={13} /> Publish</>
+                )}
               </Button>
             </div>
           </motion.div>

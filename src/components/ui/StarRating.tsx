@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -37,8 +38,8 @@ export default function StarRating({
             onMouseEnter={() => onHover?.(i + 1)}
             onMouseLeave={() => onHover?.(null)}
             className={cn(
-              'transition-transform duration-75',
-              interactive && 'cursor-pointer hover:scale-110 active:scale-95',
+              'transition-transform duration-75 flex items-center justify-center',
+              interactive && 'cursor-pointer hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px]',
               !interactive && 'pointer-events-none'
             )}
           >

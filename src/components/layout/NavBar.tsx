@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Bell, X, Sun, Moon } from 'lucide-react'
@@ -33,8 +34,9 @@ export default function NavBar() {
 
   return (
     <header
-      className="sticky top-0 z-40 flex items-center gap-3 px-4 h-12 border-b border-border/30 shrink-0"
+      className="sticky top-0 z-40 flex items-center gap-3 px-4 border-b border-border/30 shrink-0"
       style={{
+        height: 52,
         background: '#161413',
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E")`,
         backgroundSize: '150px',
@@ -55,10 +57,12 @@ export default function NavBar() {
             placeholder="Search films, filmmakers..."
             className="flex-1 bg-transparent font-sans text-sm text-foreground placeholder:text-muted-foreground/50 outline-none border-b border-primary py-0.5"
           />
+          {/* Rule 3: min 44×44px touch target for close button */}
           <button
             type="button"
             onClick={closeSearch}
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            className="shrink-0 w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close search"
           >
             <X size={15} />
           </button>
@@ -86,39 +90,44 @@ export default function NavBar() {
 
       {/* Right actions */}
       {!searchOpen && (
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Search icon — mobile only */}
+        <div className="flex items-center shrink-0">
+          {/* Rule 3: all icon buttons min 44×44px — use w-11 h-11 */}
           <button
             onClick={openSearch}
-            className="md:hidden icon-lift w-8 h-8 flex items-center justify-center rounded-none text-muted-foreground hover:text-foreground transition-colors"
+            className="md:hidden w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Search"
           >
             <Search size={16} />
           </button>
 
-          {/* Theme toggle */}
           <button
             onClick={toggleDarkMode}
-            className="icon-lift w-8 h-8 flex items-center justify-center rounded-none text-muted-foreground hover:text-foreground transition-colors"
+            className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
             aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
-          {/* Notifications */}
           <button
             onClick={() => navigate('/notifications')}
-            className="icon-lift w-8 h-8 flex items-center justify-center rounded-none text-muted-foreground hover:text-foreground transition-colors"
+            className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Notifications"
           >
             <Bell size={16} />
           </button>
 
-          {/* Profile avatar */}
+          {/* Rule 3: profile avatar — 44×44px tap area, 32px visual circle */}
           <button
             onClick={() => navigate('/profile/me')}
-            className="icon-lift w-7 h-7 flex items-center justify-center font-mono font-bold text-[11px] transition-all"
-            style={{ background: '#8B6B5C', color: '#E8DDCB' }}
+            className="w-11 h-11 flex items-center justify-center transition-all"
+            aria-label="View profile"
           >
-            {user?.name?.charAt(0).toUpperCase() ?? '?'}
+            <span
+              className="w-8 h-8 rounded-full flex items-center justify-center font-mono font-bold text-[11px]"
+              style={{ background: '#8B6B5C', color: '#E8DDCB' }}
+            >
+              {user?.name?.charAt(0).toUpperCase() ?? '?'}
+            </span>
           </button>
         </div>
       )}

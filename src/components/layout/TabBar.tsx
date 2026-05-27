@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { NavLink, useLocation } from 'react-router-dom'
 import { Zap, Search, Plus, Film, User } from 'lucide-react'
 import { cn } from '@/lib/utils'

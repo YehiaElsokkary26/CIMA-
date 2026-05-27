@@ -19,7 +19,7 @@ export function FilmCardSkeleton() {
   return (
     <div
       className="overflow-hidden"
-      style={{ border: '1px solid rgba(139,107,92,0.15)', background: '#161413' }}
+      style={{ border: '1px solid rgba(139,107,92,0.15)', background: '#161413', borderRadius: 16 }}
       aria-hidden="true"
     >
       {/* Poster area — 4:5 aspect ratio matches default film card */}
@@ -79,7 +79,7 @@ export function HeroSkeleton() {
   return (
     <div
       className="relative overflow-hidden mx-4 my-3 skeleton"
-      style={{ height: 'clamp(260px, 38vw, 420px)' }}
+      style={{ height: 'clamp(260px, 38vw, 420px)', borderRadius: 20 }}
       aria-hidden="true"
     />
   )

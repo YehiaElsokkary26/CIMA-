@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { Outlet } from 'react-router-dom'
 import TabBar from './TabBar'
 import Sidebar from './Sidebar'

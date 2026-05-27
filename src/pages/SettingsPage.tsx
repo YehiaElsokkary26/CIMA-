@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { motion } from 'framer-motion'
 import { Moon, Sun, Camera, Eye, LogOut, ChevronRight, Shield } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'

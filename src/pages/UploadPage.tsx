@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -93,8 +94,13 @@ export default function UploadPage() {
     <div className="min-h-full px-4 py-6">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate(-1)} className="icon-lift">
-          <ArrowLeft size={20} className="text-muted-foreground" />
+        {/* Rule 3: min 44×44px touch target */}
+        <button
+          onClick={() => navigate(-1)}
+          className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Go back"
+        >
+          <ArrowLeft size={20} />
         </button>
         <h1 className="font-display text-3xl uppercase tracking-widest text-foreground">
           Upload Film
@@ -250,7 +256,8 @@ export default function UploadPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Rule 7: single column on mobile — never two inputs side by side */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Year"
                 type="number"

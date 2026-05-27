@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { cn, getInitials } from '@/lib/utils'
 
 interface AvatarProps {

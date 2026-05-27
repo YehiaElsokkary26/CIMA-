@@ -96,7 +96,8 @@ export default function NotificationsPage() {
                   <p className={`font-sans text-sm leading-snug ${!notif.read ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                     {notif.message}
                   </p>
-                  <p className="font-mono text-[10px] text-muted-foreground/60 mt-1">
+                  {/* Rule 1: /60 opacity drops below 4.5:1 — use full muted-foreground */}
+                  <p className="font-mono text-[10px] text-muted-foreground mt-1">
                     {formatTimeAgo(notif.createdAt)}
                   </p>
                 </div>

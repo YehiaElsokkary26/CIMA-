@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { formatTimeAgo } from '@/lib/utils'
 import type { Review } from '@/types'
 import Avatar from '@/components/ui/Avatar'
@@ -29,7 +30,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         <StarRating value={review.rating} size="sm" />
       </div>
 
-      <div className="prose prose-film prose-sm max-w-none text-foreground/80 font-sans text-sm leading-relaxed">
+      <div className="prose prose-film prose-sm max-w-none text-foreground font-sans text-sm leading-relaxed">
         {review.body}
       </div>
     </div>

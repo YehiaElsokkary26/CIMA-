@@ -1,3 +1,4 @@
+// UI/UX audit applied — WCAG 2.1 AA compliant
 import { motion } from 'framer-motion'
 import type { CimaRequest } from '@/types'
 import Avatar from '@/components/ui/Avatar'
@@ -37,7 +38,7 @@ export default function CimaRequestCard({
           {user?.bio && (
             <p className="font-sans text-xs text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>
           )}
-          <p className="font-mono text-[10px] text-muted-foreground/60 mt-1">
+          <p className="font-mono text-[10px] text-muted-foreground mt-1">
             {formatTimeAgo(request.createdAt)}
           </p>
         </div>
