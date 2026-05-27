@@ -177,7 +177,7 @@
   .btn-cima {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
-    font-family: 'Space Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.15em;
@@ -321,7 +321,7 @@
 
   /* ─── Genre pill ─────────────────────────────────────────────────────── */
   .genre-pill {
-    font-family: 'Space Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -339,7 +339,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Space Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
     font-weight: bold;
     text-transform: uppercase;
@@ -389,7 +389,7 @@
 @layer utilities {
   .text-balance { text-wrap: balance; }
 
-  .font-display { font-family: 'Special Elite', serif; }
+  .font-display { font-family: 'Bebas Neue', sans-serif; }
 
   /* Legacy CSS-columns masonry (kept for compatibility) */
   .masonry-grid {

@@ -82,8 +82,8 @@ const config: Config = {
 
       fontFamily: {
         sans:    ['Inter', 'system-ui', 'sans-serif'],
-        display: ['"Special Elite"', 'serif'],
-        mono:    ['"Space Mono"', 'monospace'],
+        display: ['"Bebas Neue"', 'sans-serif'],
+        mono:    ['"JetBrains Mono"', 'monospace'],
       },
 
       boxShadow: {
