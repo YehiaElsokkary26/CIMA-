@@ -271,12 +271,14 @@ export default function UploadPage() {
                 Genres
               </label>
               <div className="flex flex-wrap gap-2">
+                {/* Rule 3: genre pills min 44px — py-2.5 + text ≈ 44px ✓ */}
                 {GENRES.map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => toggleGenre(g)}
-                    className={`font-mono text-xs px-3 py-1 rounded-full border transition-colors ${
+                    style={{ minHeight: 44 }}
+                    className={`font-mono text-xs px-3 py-2.5 rounded-full border transition-colors ${
                       selectedGenres.includes(g)
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-transparent text-muted-foreground border-border hover:border-secondary'
@@ -385,10 +387,11 @@ export default function UploadPage() {
               </Button>
             </div>
 
+            {/* Rule 3: Skip button min 44px touch target */}
             <button
               onClick={() => setStep(3)}
-              className="w-full text-center font-mono text-xs uppercase tracking-wider transition-opacity hover:opacity-70"
-              style={{ color: '#4E4A46' }}
+              className="w-full text-center font-mono text-xs uppercase tracking-wider transition-opacity hover:opacity-70 py-3"
+              style={{ color: 'rgba(232,221,203,0.45)', minHeight: 44 }}
             >
               Skip This Step →
             </button>

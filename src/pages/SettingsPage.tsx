@@ -94,11 +94,12 @@ export default function SettingsPage() {
         </motion.section>
       ))}
 
-      {/* Logout */}
+      {/* Logout — Rule 3: min 44px touch target via py-3.5 (14×2 + ~20px text = 48px ✓) */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-2xl py-3.5 font-sans font-semibold text-sm hover:bg-destructive/20 transition-colors"
+          style={{ minHeight: 48 }}
+          className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-2xl py-3.5 font-sans font-semibold text-sm hover:bg-destructive/20 active:scale-[0.98] transition-all"
         >
           <LogOut size={16} />
           Sign Out
