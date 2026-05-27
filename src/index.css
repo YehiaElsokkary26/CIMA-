@@ -173,7 +173,7 @@
     mix-blend-mode: overlay;
   }
 
-  /* ─── Cinematic button (flat, no radius) ─────────────────────────────── */
+  /* ─── Cinematic button ──────────────────────────────────────────────── */
   .btn-cima {
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
@@ -181,13 +181,18 @@
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    border-radius: 0;
+    border-radius: 8px;
     padding: 10px 24px;
     border: none;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
   }
-  .btn-cima:hover { background: hsl(var(--burgundy)); }
+  .btn-cima:hover {
+    background: hsl(var(--burgundy));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px hsl(0 62% 39% / 0.35);
+  }
+  .btn-cima:active { transform: translateY(0); }
 
   /* ─── Cinematic input (bottom border only) ───────────────────────────── */
   .input-cima {
@@ -256,21 +261,22 @@
     @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5;
   }
 
-  /* ─── Section label — clapperboard strip style ───────────────────────── */
+  /* ─── Section label ─────────────────────────────────────────────────── */
   .section-label {
-    @apply flex items-center gap-3 px-4 py-2;
+    @apply flex items-center gap-3 px-4 py-3;
   }
   .section-label-bar {
-    @apply w-[3px] h-3.5 rounded-full shrink-0;
-    background: hsl(var(--primary));
+    @apply w-1 h-5 shrink-0;
+    background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--film-burn)));
+    border-radius: 2px;
   }
   .section-label-text {
-    @apply font-mono text-[11px] uppercase tracking-[0.3em];
-    color: hsl(var(--muted-foreground));
+    @apply font-mono text-[11px] uppercase tracking-[0.25em] font-medium;
+    color: hsl(var(--foreground));
   }
   .section-label-rule {
     @apply flex-1 h-px;
-    background: hsl(var(--border) / 0.5);
+    background: linear-gradient(to right, hsl(var(--border) / 0.6), transparent);
   }
 
   /* ─── Film gradient helpers ──────────────────────────────────────────── */
@@ -299,6 +305,58 @@
   /* ─── Bottom sheet ───────────────────────────────────────────────────── */
   .bottom-sheet {
     @apply bg-card rounded-t-2xl border-t border-border;
+  }
+
+  /* ─── Film card ─────────────────────────────────────────────────────── */
+  .film-card {
+    border-radius: 16px;
+    overflow: hidden;
+    transition: box-shadow 0.25s ease, transform 0.2s ease;
+    will-change: transform;
+  }
+  .film-card:hover {
+    box-shadow: 0 12px 40px hsl(20 7% 8% / 0.35), 0 0 0 1px hsl(0 62% 39% / 0.15);
+    transform: translateY(-3px);
+  }
+
+  /* ─── Genre pill ─────────────────────────────────────────────────────── */
+  .genre-pill {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border-radius: 999px;
+    padding: 3px 9px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* ─── Filmmaker avatar initial ───────────────────────────────────────── */
+  .avatar-initial {
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    font-weight: bold;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--film-burn)));
+    color: hsl(var(--primary-foreground));
+  }
+
+  /* ─── Creator card ───────────────────────────────────────────────────── */
+  .creator-card {
+    border-radius: 16px;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .creator-card:hover {
+    box-shadow: 0 8px 28px hsl(20 7% 8% / 0.25);
+    transform: translateY(-2px);
   }
 
   /* ─── Animations ─────────────────────────────────────────────────────── */
@@ -341,17 +399,17 @@
   /* react-masonry-css grid */
   .cima-masonry-grid {
     display: flex;
-    gap: 12px;
+    gap: 14px;
     width: 100%;
   }
   .cima-masonry-column {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
   }
   @media (min-width: 640px) {
-    .cima-masonry-grid { gap: 16px; }
-    .cima-masonry-column { gap: 16px; }
+    .cima-masonry-grid { gap: 18px; }
+    .cima-masonry-column { gap: 18px; }
   }
 }
 

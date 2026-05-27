@@ -35,7 +35,7 @@ export default function FilmOfTheWeek({ film }: FilmOfTheWeekProps) {
     <div
       ref={ref}
       className="relative overflow-hidden mx-4 my-3"
-      style={{ height: 'clamp(260px, 38vw, 420px)' }}
+      style={{ height: 'clamp(260px, 38vw, 420px)', borderRadius: 20 }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -72,7 +72,15 @@ export default function FilmOfTheWeek({ film }: FilmOfTheWeekProps) {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'linear-gradient(to right, rgba(74,30,36,0.92) 0%, rgba(74,30,36,0.65) 45%, transparent 100%)',
+            'linear-gradient(to right, rgba(22,20,19,0.92) 0%, rgba(74,30,36,0.75) 35%, rgba(74,30,36,0.35) 65%, transparent 100%)',
+        }}
+      />
+      {/* Bottom vignette */}
+      <div
+        className="absolute inset-x-0 bottom-0 pointer-events-none"
+        style={{
+          height: '40%',
+          background: 'linear-gradient(to top, rgba(22,20,19,0.6) 0%, transparent 100%)',
         }}
       />
 

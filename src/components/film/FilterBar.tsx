@@ -17,9 +17,9 @@ export default function FilterBar({
   onSortChange,
 }: FilterBarProps) {
   return (
-    <div className="flex items-center gap-0 px-4 py-2 border-b border-border/40">
-      {/* Scrollable genre chips */}
-      <div className="flex-1 scroll-x flex items-center gap-1.5 pb-0.5">
+    <div className="flex items-center gap-0 px-4 py-2.5 border-b border-border/30">
+      {/* Scrollable genre pill chips */}
+      <div className="flex-1 scroll-x flex items-center gap-2 pb-0.5">
         {GENRES.map((genre) => {
           const active = genre === activeGenre
           return (
@@ -27,12 +27,16 @@ export default function FilterBar({
               key={genre}
               onClick={() => onGenreChange(genre)}
               className={cn(
-                'shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] px-3 py-1 rounded-none transition-all duration-150',
+                'shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] px-3.5 py-1.5 rounded-full transition-all duration-200',
                 active
-                  ? 'text-primary-foreground'
-                  : 'border border-border text-muted-foreground hover:text-foreground hover:border-foreground/40'
+                  ? 'text-primary-foreground shadow-sm'
+                  : 'border border-border/60 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-foreground/5',
               )}
-              style={active ? { background: '#A32626' } : undefined}
+              style={
+                active
+                  ? { background: '#A32626', boxShadow: '0 2px 10px rgba(163,38,38,0.3)' }
+                  : undefined
+              }
             >
               {genre}
             </button>

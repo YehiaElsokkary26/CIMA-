@@ -8,8 +8,6 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { GENRES } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
-import { addFilm } from '@/lib/mockData'
-import { getCurrentWeekKey } from '@/lib/votingUtils'
 import { toast } from '@/store/toastStore'
 
 const STEPS = ['Film File', 'Details', 'Trailer', 'Publish']
@@ -70,40 +68,25 @@ export default function UploadPage() {
   }
 
   const handlePublish = async () => {
+    if (!user) return
     try {
-      const fd = new FormData()
-      if (videoFile) fd.append('video', videoFile)
-      if (thumbFile) fd.append('thumbnail', thumbFile)
-      if (trailerFile) fd.append('trailer', trailerFile)
-      fd.append('title', title)
-      fd.append('description', description)
-      fd.append('year', year)
-      fd.append('runtime', runtime)
-      selectedGenres.forEach((g) => fd.append('genre', g))
-      await uploadFilm.mutateAsync(fd)
-    } catch {
-      if (!user) return
-      addFilm({
+      await uploadFilm.mutateAsync({
+        videoFile,
+        thumbFile,
+        trailerFile,
         title,
         description,
         genre: selectedGenres,
         runtime: runtime ? parseInt(runtime, 10) : undefined,
         year: parseInt(year, 10),
-        thumbnailUrl:
-          thumbPreview ?? `https://picsum.photos/seed/${encodeURIComponent(title)}/600/400`,
-        trailerUrl: trailerPreview ?? undefined,
         uploaderId: user.id,
-        uploader: user,
-        rating: undefined,
-        ratingCount: 0,
-        votes: 0,
-        weekKey: getCurrentWeekKey(),
-        isFilmOfTheWeek: false,
+        uploaderName: user.name,
       })
+      toast.success('Your film is live. 🎬')
+      navigate('/home', { replace: true })
+    } catch {
+      // Error toast is shown by the mutation's onError handler
     }
-
-    toast.success('Your film is live. 🎬')
-    navigate('/home', { replace: true })
   }
 
   return (

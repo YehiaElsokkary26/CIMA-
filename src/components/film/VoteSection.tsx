@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Film as FilmIcon, ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { voteForFilm } from '@/lib/mockData'
-import { getUserVoteThisWeek } from '@/lib/votingUtils'
+import { getUserVoteThisWeek, setUserVote, getCurrentWeekKey } from '@/lib/votingUtils'
+import { getUserVoteFromDB, castVote } from '@/lib/supabaseApi'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Film } from '@/types'
 
 interface VoteSectionProps {
@@ -13,24 +14,53 @@ interface VoteSectionProps {
 
 export default function VoteSection({ film }: VoteSectionProps) {
   const user = useAuthStore((s) => s.user)
+  const qc = useQueryClient()
   const [votes, setVotes] = useState(film.votes ?? 0)
   const [votedFilmId, setVotedFilmId] = useState<string | null>(null)
+  const [isCheckingVote, setIsCheckingVote] = useState(true)
 
   useEffect(() => {
-    if (user) setVotedFilmId(getUserVoteThisWeek(user.id))
+    if (!user) { setIsCheckingVote(false); return }
+    // Fast path: localStorage
+    const localVote = getUserVoteThisWeek(user.id)
+    if (localVote !== null) {
+      setVotedFilmId(localVote)
+      setIsCheckingVote(false)
+      return
+    }
+    // Slow path: Supabase
+    const weekKey = getCurrentWeekKey()
+    getUserVoteFromDB(user.id, weekKey).then((filmId) => {
+      if (filmId) {
+        setVotedFilmId(filmId)
+        setUserVote(user.id, filmId) // sync to localStorage
+      }
+      setIsCheckingVote(false)
+    })
   }, [user])
 
   const votedThisFilm = votedFilmId === film.id
   const votedOtherFilm = votedFilmId !== null && votedFilmId !== film.id
-  const canVote = !votedFilmId && !!user
+  const canVote = !votedFilmId && !!user && !isCheckingVote
 
-  const handleVote = () => {
+  const handleVote = async () => {
     if (!user || !canVote) return
-    const result = voteForFilm(film.id, user.id)
-    if (result.success) {
-      setVotes((v) => v + 1)
-      setVotedFilmId(film.id)
+    // Optimistic update
+    setVotes((v) => v + 1)
+    setVotedFilmId(film.id)
+    setUserVote(user.id, film.id)
+
+    try {
+      await castVote(film.id, user.id)
+      qc.invalidateQueries({ queryKey: ['films'] })
+      qc.invalidateQueries({ queryKey: ['film', film.id] })
       toast.success('Your vote is in. Check back Friday. 🎬')
+    } catch (err) {
+      // Roll back optimistic update
+      setVotes((v) => v - 1)
+      setVotedFilmId(null)
+      try { localStorage.removeItem(`cima_vote_${user.id}_${getCurrentWeekKey()}`) } catch { /* ignore */ }
+      toast.error(err instanceof Error ? err.message : 'Vote failed. Try again.')
     }
   }
 
@@ -41,7 +71,6 @@ export default function VoteSection({ film }: VoteSectionProps) {
     >
       {/* Info row */}
       <div className="flex items-start justify-between p-4 pb-3">
-        {/* Left */}
         <div className="flex items-start gap-3">
           <FilmIcon size={18} className="shrink-0 mt-0.5" style={{ color: '#B28A52' }} />
           <div>
@@ -57,12 +86,8 @@ export default function VoteSection({ film }: VoteSectionProps) {
           </div>
         </div>
 
-        {/* Right — vote count */}
         <div className="text-right shrink-0 ml-4">
-          <span
-            className="font-display text-4xl leading-none"
-            style={{ color: '#E8DDCB' }}
-          >
+          <span className="font-display text-4xl leading-none" style={{ color: '#E8DDCB' }}>
             {votes.toLocaleString()}
           </span>
           <p className="font-mono text-[10px] mt-0.5" style={{ color: '#4E4A46' }}>
@@ -71,14 +96,12 @@ export default function VoteSection({ film }: VoteSectionProps) {
         </div>
       </div>
 
-      {/* Voted other film notice */}
       {votedOtherFilm && (
         <p className="font-mono text-xs px-4 pb-2" style={{ color: '#4E4A46' }}>
           You voted for another film this week.
         </p>
       )}
 
-      {/* Vote button */}
       <button
         onClick={handleVote}
         disabled={!canVote}
@@ -88,16 +111,14 @@ export default function VoteSection({ film }: VoteSectionProps) {
           'transition-all duration-200',
           votedThisFilm
             ? 'cursor-default'
-            : votedOtherFilm || !user
+            : votedOtherFilm || !user || isCheckingVote
               ? 'cursor-not-allowed opacity-50'
               : 'hover:opacity-90 active:opacity-75',
         )}
         style={{
           background: votedThisFilm ? '#4A1E24' : '#A32626',
           color: '#E8DDCB',
-          boxShadow: votedThisFilm
-            ? '0 0 0 1px rgba(163,38,38,0.5) inset'
-            : 'none',
+          boxShadow: votedThisFilm ? '0 0 0 1px rgba(163,38,38,0.5) inset' : 'none',
         }}
       >
         <ArrowUp size={13} strokeWidth={2.5} />

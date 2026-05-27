@@ -74,25 +74,28 @@ export default function DiscoverPage() {
       <div className="px-4 space-y-8 pb-8">
         {/* Featured spotlight */}
         <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Filter size={13} className="text-muted-foreground" />
-            <h2 className="font-display text-xl uppercase tracking-widest text-foreground">
-              Looking for Collaborators
-            </h2>
+          <div className="section-label mb-4">
+            <div className="section-label-bar" />
+            <div className="flex items-center gap-1.5">
+              <Filter size={12} style={{ color: '#A32626' }} />
+              <span className="section-label-text">Looking for Collaborators</span>
+            </div>
+            <div className="section-label-rule" />
           </div>
-          <div className="scroll-x flex gap-3 -mx-0 pb-2">
+          <div className="scroll-x flex gap-3 pb-2">
             {featured.map((f, i) => (
               <motion.div
                 key={f.id}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.07 }}
-                className="shrink-0 w-48 bg-card rounded-2xl border border-border p-4 space-y-3"
+                className="creator-card shrink-0 w-48 bg-card border border-border p-4 space-y-3"
+                style={{ borderColor: 'rgba(139,107,92,0.2)' }}
               >
                 <Avatar name={f.name} size="md" />
                 <div>
                   <p className="font-sans font-semibold text-sm text-foreground line-clamp-1">{f.name}</p>
-                  <p className="font-mono text-[10px] text-muted-foreground">{f.topGenre}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground mt-0.5">{f.topGenre}</p>
                 </div>
                 <Badge variant="cima">Collab Open</Badge>
                 <CimaButton
@@ -107,9 +110,14 @@ export default function DiscoverPage() {
 
         {/* All filmmakers */}
         <section>
-          <h2 className="font-display text-xl uppercase tracking-widest text-foreground mb-4">
-            All Filmmakers
-          </h2>
+          <div className="section-label mb-4">
+            <div className="section-label-bar" />
+            <div className="flex items-center gap-1.5">
+              <Users size={12} style={{ color: '#A32626' }} />
+              <span className="section-label-text">All Filmmakers</span>
+            </div>
+            <div className="section-label-rule" />
+          </div>
           {filtered.length === 0 ? (
             <EmptyState icon={Users} title="No Results" subtitle="Try a different search or filter." />
           ) : (
@@ -120,7 +128,8 @@ export default function DiscoverPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
-                  className="bg-card rounded-2xl border border-border p-4"
+                  className="creator-card bg-card rounded-2xl border p-4"
+                  style={{ borderColor: 'rgba(139,107,92,0.2)' }}
                 >
                   <div className="flex items-start gap-3">
                     <Link to={`/profile/${filmmaker.id}`}>

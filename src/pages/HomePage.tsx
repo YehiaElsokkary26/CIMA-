@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus } from 'lucide-react'
+import { Plus, TrendingUp, Sparkles, Layers } from 'lucide-react'
 import Masonry from 'react-masonry-css'
 import { useFilms, useFeaturedFilm } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
@@ -10,7 +10,7 @@ import FilterBar from '@/components/film/FilterBar'
 import LoadingDots from '@/components/ui/LoadingDots'
 import EmptyState from '@/components/ui/EmptyState'
 import { useAuthStore } from '@/store/authStore'
-import { getFilms, getFilmOfTheWeek } from '@/lib/mockData'
+import { getFilms as getMockFilms, getFilmOfTheWeek as getMockFOTW } from '@/lib/mockData'
 import type { Film } from '@/types'
 import type { SortOption } from '@/components/film/FilterBar'
 import { Film as FilmIcon } from 'lucide-react'
@@ -25,11 +25,14 @@ const MASONRY_COLS = {
 
 const PAGE_SIZE = 8
 
-function SectionLabel({ children }: { children: string }) {
+function SectionLabel({ children, icon: Icon }: { children: string; icon?: React.ElementType }) {
   return (
-    <div className="section-label mt-5 mb-1">
+    <div className="section-label mt-6 mb-2">
       <div className="section-label-bar" />
-      <span className="section-label-text">{children}</span>
+      <div className="flex items-center gap-1.5">
+        {Icon && <Icon size={12} style={{ color: '#A32626' }} />}
+        <span className="section-label-text">{children}</span>
+      </div>
       <div className="section-label-rule" />
     </div>
   )
@@ -48,8 +51,9 @@ export default function HomePage() {
   const { data: serverFilms, isLoading } = useFilms()
   const { data: serverFeatured } = useFeaturedFilm()
 
-  const allFilms: Film[] = serverFilms ?? getFilms()
-  const displayFeatured: Film = serverFeatured ?? getFilmOfTheWeek()
+  // Fall back to mock data only while Supabase DB has no content yet
+  const allFilms: Film[] = (serverFilms && serverFilms.length > 0) ? serverFilms : getMockFilms()
+  const displayFeatured: Film = serverFeatured ?? getMockFOTW()
 
   const filteredFilms = useMemo(() => {
     const byGenre =
@@ -104,7 +108,7 @@ export default function HomePage() {
       ) : (
         <div className="px-4 pb-28 lg:pb-8">
           {/* Trending */}
-          <SectionLabel>Trending This Week</SectionLabel>
+          <SectionLabel icon={TrendingUp}>Trending This Week</SectionLabel>
           <Masonry
             breakpointCols={MASONRY_COLS}
             className="cima-masonry-grid"
@@ -121,7 +125,7 @@ export default function HomePage() {
           </Masonry>
 
           {/* New uploads */}
-          <SectionLabel>New Uploads</SectionLabel>
+          <SectionLabel icon={Sparkles}>New Uploads</SectionLabel>
           <Masonry
             breakpointCols={MASONRY_COLS}
             className="cima-masonry-grid"
@@ -138,7 +142,7 @@ export default function HomePage() {
           </Masonry>
 
           {/* All / filtered films */}
-          <SectionLabel>
+          <SectionLabel icon={Layers}>
             {activeGenre === 'All' ? 'All Films' : activeGenre}
           </SectionLabel>
 
@@ -166,11 +170,13 @@ export default function HomePage() {
               {hasMore && (
                 <button
                   onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                  className="w-full mt-6 py-3 font-mono text-xs uppercase tracking-widest transition-opacity hover:opacity-75"
+                  className="w-full mt-8 py-3 font-mono text-xs uppercase tracking-widest transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0"
                   style={{
-                    border: '1px solid rgba(139,107,92,0.3)',
+                    border: '1px solid rgba(163,38,38,0.4)',
                     color: '#A32626',
-                    background: 'transparent',
+                    background: 'rgba(163,38,38,0.05)',
+                    borderRadius: 10,
+                    boxShadow: '0 2px 12px rgba(163,38,38,0.1)',
                   }}
                 >
                   Load More Films
