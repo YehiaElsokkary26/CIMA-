@@ -74,7 +74,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-full">
+    <motion.div
+      className="min-h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       {/* Profile header */}
       <div className="relative">
         <div className="h-32 bg-gradient-to-br from-secondary via-accent/40 to-background" />
@@ -110,8 +116,8 @@ export default function ProfilePage() {
               <RoleBadge role={profile.role} />
               {openToCollab && (
                 <span
-                  className="genre-pill flex items-center gap-1"
-                  style={{ background: 'rgba(178,138,82,0.15)', color: '#B28A52', border: '1px solid rgba(178,138,82,0.4)' }}
+                  className="genre-pill flex items-center gap-1 text-accent"
+                  style={{ background: 'rgba(178,138,82,0.15)', border: '1px solid rgba(178,138,82,0.4)' }}
                 >
                   <Handshake size={9} />
                   Open to Collab
@@ -142,8 +148,8 @@ export default function ProfilePage() {
                 {((profile as typeof MOCK_PROFILE).crewRoles ?? []).map((r) => (
                   <span
                     key={r}
-                    className="genre-pill"
-                    style={{ background: 'rgba(178,138,82,0.12)', color: '#B28A52', border: '1px solid rgba(178,138,82,0.25)' }}
+                    className="genre-pill text-accent"
+                    style={{ background: 'rgba(178,138,82,0.12)', border: '1px solid rgba(178,138,82,0.25)' }}
                   >
                     {r}
                   </span>
@@ -161,11 +167,11 @@ export default function ProfilePage() {
           {isFilmmaker && (
             <button
               onClick={handleToggleCollab}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors"
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${openToCollab ? 'text-accent' : 'text-secondary'}`}
               style={
                 openToCollab
-                  ? { background: 'rgba(178,138,82,0.12)', borderColor: 'rgba(178,138,82,0.4)', color: '#B28A52' }
-                  : { background: 'transparent', borderColor: 'rgba(139,107,92,0.25)', color: '#8B6B5C' }
+                  ? { background: 'rgba(178,138,82,0.12)', borderColor: 'rgba(178,138,82,0.4)' }
+                  : { background: 'transparent', borderColor: 'rgba(139,107,92,0.25)' }
               }
             >
               <div className="flex items-center gap-2">
@@ -174,11 +180,10 @@ export default function ProfilePage() {
               </div>
               {/* Toggle pill */}
               <div
-                className="w-10 h-5 rounded-full relative transition-colors"
-                style={{ background: openToCollab ? '#B28A52' : 'rgba(139,107,92,0.3)' }}
+                className={`w-10 h-5 rounded-full relative transition-colors ${openToCollab ? 'bg-accent' : 'bg-secondary/30'}`}
               >
                 <div
-                  className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                  className="absolute top-0.5 w-4 h-4 rounded-full bg-background transition-transform"
                   style={{ transform: openToCollab ? 'translateX(22px)' : 'translateX(2px)' }}
                 />
               </div>
@@ -189,8 +194,8 @@ export default function ProfilePage() {
           {!isFilmmaker && (
             <button
               onClick={handleBecomeFilmmaker}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border transition-colors"
-              style={{ background: 'rgba(163,38,38,0.08)', borderColor: 'rgba(163,38,38,0.35)', color: '#A32626' }}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border transition-colors text-primary"
+              style={{ background: 'rgba(163,38,38,0.08)', borderColor: 'rgba(163,38,38,0.35)' }}
             >
               <Film size={15} />
               <div className="text-left">
@@ -203,7 +208,7 @@ export default function ProfilePage() {
       )}
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-0 border-y border-border mx-4 mb-6 rounded-2xl overflow-hidden bg-card">
+      <div className="film-card card-grain grid grid-cols-3 gap-0 border border-border mx-4 mb-6 overflow-hidden bg-card">
         {[
           { label: 'Films', value: (profile as typeof MOCK_PROFILE).filmsCount ?? 0 },
           { label: 'Cima', value: (profile as typeof MOCK_PROFILE).cimaCount ?? 0 },
@@ -219,20 +224,20 @@ export default function ProfilePage() {
       <div className="px-4 space-y-8 pb-8">
         {/* Cima section */}
         {cimaMembers.length > 0 && (
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <div className="flex items-center gap-2 mb-3">
-              <Film size={16} className="text-cima-tag" />
-              <h2 className="font-display text-xl uppercase tracking-widest text-foreground">Cima</h2>
-              <span className="font-mono text-xs text-muted-foreground">— Creative Circle</span>
+          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
+            <div className="section-label mt-4 mb-2">
+              <div className="section-label-bar" />
+              <span className="section-label-text">Cima</span>
+              <div className="section-label-rule" />
             </div>
-            <div className="bg-card rounded-2xl border border-cima-tag/20 p-4">
+            <div className="film-card card-grain bg-card border border-cima-tag/20 p-4">
               <div className="flex flex-wrap gap-2">
                 {cimaMembers.map((m) => (
                   <CimaMemberChip key={m.id} user={m.user} />
                 ))}
               </div>
               {isOwn && (
-                <Link to="/cima" className="block mt-3">
+                <Link to="/cima" className="interactive-lift block mt-3">
                   <Button variant="ghost" size="sm" className="text-cima-tag border border-cima-tag/30">
                     Manage Cima →
                   </Button>
@@ -245,7 +250,11 @@ export default function ProfilePage() {
         {/* Films grid */}
         {profile.role === 'filmmaker' && (
           <section>
-            <h2 className="font-display text-xl uppercase tracking-widest text-foreground mb-4">Films</h2>
+            <div className="section-label mt-4 mb-2">
+              <div className="section-label-bar" />
+              <span className="section-label-text">Films</span>
+              <div className="section-label-rule" />
+            </div>
             {films.length === 0 ? (
               <EmptyState
                 icon={Film}
@@ -289,7 +298,7 @@ export default function ProfilePage() {
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(163,38,38,0.12)' }}>
-                <LogOut size={16} style={{ color: '#A32626' }} />
+                <LogOut size={16} className="text-primary" />
               </div>
               <div>
                 <p className="font-display text-lg uppercase tracking-widest text-foreground">Log Out</p>
@@ -299,9 +308,9 @@ export default function ProfilePage() {
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setShowLogoutConfirm(false)}>Cancel</Button>
               <Button
+                variant="primary"
                 className="flex-1"
                 onClick={handleLogout}
-                style={{ background: '#A32626', color: '#E8DDCB' }}
               >
                 <LogOut size={13} /> Log Out
               </Button>
@@ -309,6 +318,6 @@ export default function ProfilePage() {
           </motion.div>
         </motion.div>
       )}
-    </div>
+    </motion.div>
   )
 }

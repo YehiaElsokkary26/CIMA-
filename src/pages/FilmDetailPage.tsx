@@ -68,7 +68,13 @@ export default function FilmDetailPage() {
   }
 
   return (
-    <div className="min-h-full">
+    <motion.div
+      className="min-h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       {/* Poster Header */}
       <motion.div
         initial={{ y: 40, opacity: 0 }}
@@ -100,8 +106,8 @@ export default function FilmDetailPage() {
           </Link>
 
           {/* Play button */}
-          <button className="absolute inset-0 flex items-center justify-center group">
-            <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center shadow-glow-orange group-hover:scale-110 transition-transform duration-200">
+          <button className="absolute inset-0 flex items-center justify-center" aria-label="Play film">
+            <div className="icon-lift w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center shadow-glow-orange">
               <Play size={22} fill="currentColor" className="text-primary-foreground ml-1" />
             </div>
           </button>
@@ -161,7 +167,7 @@ export default function FilmDetailPage() {
         {displayFilm.uploader && (
           <Link
             to={`/profile/${displayFilm.uploader.id}`}
-            className="flex items-center gap-3 bg-card rounded-xl p-3 border border-border interactive-lift"
+            className="film-card card-grain flex items-center gap-3 bg-card border border-border p-3 interactive-lift"
           >
             <Avatar name={displayFilm.uploader.name} size="sm" />
             <div>
@@ -194,7 +200,7 @@ export default function FilmDetailPage() {
         </div>
 
         {/* Rate this film */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+        <div className="film-card card-grain bg-card border border-border p-4 space-y-2">
           <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Rate this film</p>
           <StarRating
             value={rating.displayRating}
@@ -210,7 +216,7 @@ export default function FilmDetailPage() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-card rounded-2xl border border-border p-4 space-y-3"
+            className="film-card card-grain bg-card border border-border p-4 space-y-3"
           >
             {/* Rule 7: label explicitly associated with textarea for accessibility */}
             <label htmlFor="review-body" className="font-mono text-xs text-muted-foreground uppercase tracking-wider block">
@@ -220,9 +226,10 @@ export default function FilmDetailPage() {
               id="review-body"
               value={reviewBody}
               onChange={(e) => setReviewBody(e.target.value)}
-              placeholder="What did you think about this film?"
-              rows={4}
-              className="w-full bg-input text-foreground border border-border rounded-xl p-3 text-sm font-sans resize-none placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Write your review…"
+              rows={3}
+              className="input-cima w-full resize-none"
+              style={{ paddingTop: 8, paddingBottom: 8 }}
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
@@ -239,9 +246,11 @@ export default function FilmDetailPage() {
 
         {/* Reviews */}
         <div className="space-y-3 pb-8">
-          <h2 className="font-display text-2xl uppercase tracking-widest text-foreground">
-            Reviews
-          </h2>
+          <div className="section-label mt-4 mb-2">
+            <div className="section-label-bar" />
+            <span className="section-label-text">Reviews</span>
+            <div className="section-label-rule" />
+          </div>
           {displayReviews.length === 0 ? (
             <EmptyState icon={MessageSquare} title="No Reviews Yet" subtitle="Be the first critic on set." />
           ) : (
@@ -249,6 +258,6 @@ export default function FilmDetailPage() {
           )}
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   )
 }
