@@ -1,7 +1,7 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake, Users2 } from 'lucide-react'
+import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import RoleBadge from '@/components/profile/RoleBadge'
 import FilmCard from '@/components/film/FilmCard'
@@ -83,11 +83,24 @@ export default function ProfilePage() {
     >
       {/* Profile header */}
       <div className="relative">
-        <div className="h-32 bg-gradient-to-br from-secondary via-accent/40 to-background" />
+        <div className="relative h-32 overflow-hidden bg-gradient-to-br from-secondary via-accent/40 to-background">
+          {(profile as typeof MOCK_PROFILE & { bannerUrl?: string }).bannerUrl && (
+            <img
+              src={(profile as typeof MOCK_PROFILE & { bannerUrl?: string }).bannerUrl}
+              alt="Banner"
+              className="w-full h-full object-cover"
+            />
+          )}
+        </div>
 
         <div className="px-4 pb-4">
           <div className="flex items-end justify-between -mt-8 mb-4">
-            <Avatar name={profile.name} size="xl" className="border-4 border-background shadow-film" />
+            <Avatar
+              src={(profile as typeof MOCK_PROFILE & { avatar?: string }).avatar}
+              name={profile.name}
+              size="xl"
+              className="border-4 border-background shadow-film"
+            />
             {isOwn ? (
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => navigate('/profile/me/edit')}>
@@ -96,7 +109,7 @@ export default function ProfilePage() {
                 </Button>
                 <button
                   onClick={() => setShowLogoutConfirm(true)}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl border transition-colors text-muted-foreground hover:text-foreground"
+                  className="w-11 h-11 flex items-center justify-center rounded-xl border transition-colors text-muted-foreground hover:text-foreground"
                   style={{ borderColor: 'rgba(139,107,92,0.3)' }}
                   aria-label="Log out"
                 >
@@ -165,44 +178,28 @@ export default function ProfilePage() {
         <div className="px-4 mb-4 space-y-2">
           {/* Open to Collab toggle — filmmakers only */}
           {isFilmmaker && (
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleToggleCollab}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${openToCollab ? 'text-accent' : 'text-secondary'}`}
-              style={
-                openToCollab
-                  ? { background: 'rgba(178,138,82,0.12)', borderColor: 'rgba(178,138,82,0.4)' }
-                  : { background: 'transparent', borderColor: 'rgba(139,107,92,0.25)' }
-              }
+              className="w-full rounded-full"
             >
-              <div className="flex items-center gap-2">
-                <Handshake size={15} />
-                <span className="font-mono text-xs uppercase tracking-wider">Open to Collab</span>
-              </div>
-              {/* Toggle pill */}
-              <div
-                className={`w-10 h-5 rounded-full relative transition-colors ${openToCollab ? 'bg-accent' : 'bg-secondary/30'}`}
-              >
-                <div
-                  className="absolute top-0.5 w-4 h-4 rounded-full bg-background transition-transform"
-                  style={{ transform: openToCollab ? 'translateX(22px)' : 'translateX(2px)' }}
-                />
-              </div>
-            </button>
+              <Handshake size={13} />
+              {openToCollab ? 'Open to Collab ✓' : 'Open to Collab'}
+            </Button>
           )}
 
           {/* Become a Filmmaker — viewers only */}
           {!isFilmmaker && (
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               onClick={handleBecomeFilmmaker}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border transition-colors text-primary"
-              style={{ background: 'rgba(163,38,38,0.08)', borderColor: 'rgba(163,38,38,0.35)' }}
+              className="w-full"
             >
               <Film size={15} />
-              <div className="text-left">
-                <p className="font-mono text-xs uppercase tracking-wider">Become a Filmmaker</p>
-                <p className="font-sans text-[10px] text-muted-foreground mt-0.5">Upload films and join the creative community</p>
-              </div>
-            </button>
+              Become a Filmmaker
+            </Button>
           )}
         </div>
       )}

@@ -79,7 +79,7 @@ export default function FilmDetailPage() {
       <motion.div
         initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className="relative"
       >
         <div className="relative aspect-video w-full overflow-hidden">

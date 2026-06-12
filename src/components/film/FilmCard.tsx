@@ -33,8 +33,8 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.45), ease: [0.22, 1, 0.36, 1] }}
-      className={cn('film-card card-grain', className)}
-      style={{ background: '#161413', border: '1px solid rgba(139,107,92,0.18)' }}
+      className={cn('film-card card-grain bg-card', className)}
+      style={{ border: '1px solid rgba(139,107,92,0.18)' }}
     >
       <Link to={`/film/${film.id}`} className="block" tabIndex={-1}>
         {/* Poster / video area */}
@@ -70,7 +70,7 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
           {hasVideo && (
             <div
               className={cn(
-                'absolute top-2.5 right-2.5 z-10 transition-all duration-200',
+                'absolute top-2.5 right-2.5 z-10 transition-opacity transition-transform duration-200',
                 isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1',
               )}
             >
@@ -97,13 +97,13 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
                 navigate(`/upload?edit=${film.id}`)
               }}
               className={cn(
-                'absolute top-9 right-2.5 z-20 w-7 h-7 flex items-center justify-center rounded-full transition-all duration-200',
+                'absolute top-9 right-2.5 z-20 w-11 h-11 flex items-center justify-center rounded-full transition-opacity transition-transform duration-200',
                 isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-90',
               )}
               style={{ background: 'rgba(22,20,19,0.85)', backdropFilter: 'blur(4px)' }}
               aria-label="Edit film"
             >
-              <Pencil size={11} style={{ color: '#E8DDCB' }} />
+              <Pencil size={11} className="text-foreground" />
             </button>
           )}
 
@@ -154,8 +154,7 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
         {/* Below-poster content strip */}
         <div style={{ padding: '12px 14px 14px' }}>
           <h3
-            className="font-display text-sm leading-tight line-clamp-2 mb-1.5"
-            style={{ color: '#E8DDCB' }}
+            className="font-display text-sm leading-tight line-clamp-2 mb-1.5 text-foreground"
           >
             {film.title}
           </h3>
@@ -163,7 +162,7 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
           {/* Filmmaker row with avatar */}
           <div className="flex items-center gap-1.5">
             <span className="avatar-initial">{avatarLetter}</span>
-            <p className="font-mono text-[10px]" style={{ color: '#B28A52' }}>
+            <p className="font-mono text-[10px] text-accent">
               {uploaderName}
             </p>
           </div>
@@ -172,12 +171,12 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
           {film.runtime && (
             <div className="flex items-center gap-2 mt-2">
               <span
-                className="genre-pill"
-                style={{ background: 'rgba(178,138,82,0.12)', color: '#8B6B5C' }}
+                className="genre-pill text-secondary"
+                style={{ background: 'rgba(178,138,82,0.12)' }}
               >
                 {film.genre?.[0]}
               </span>
-              <span className="font-mono text-[9px]" style={{ color: '#4E4A46' }}>
+              <span className="font-mono text-[9px] text-muted-foreground">
                 {Math.floor(film.runtime / 60)}:{String(film.runtime % 60).padStart(2, '0')} min
               </span>
             </div>

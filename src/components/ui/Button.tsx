@@ -18,7 +18,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         className={cn(
           // Base: font-mono uppercase tracking for all buttons (Rule 11)
-          'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-wider rounded-none',
+          'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-wider rounded-lg',
           'transition-all duration-150',
           // Rule 9: tactile pressed feedback
           'active:scale-[0.97]',

@@ -91,7 +91,13 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="min-h-full px-4 py-6">
+    <motion.div
+      className="min-h-full px-4 py-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         {/* Rule 3: min 44×44px touch target */}
@@ -168,8 +174,12 @@ export default function UploadPage() {
                       {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
                     </p>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); setVideoFile(null) }} className="icon-lift">
-                    <X size={14} className="text-muted-foreground" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setVideoFile(null) }}
+                    className="icon-lift w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground"
+                    aria-label="Remove video"
+                  >
+                    <X size={14} />
                   </button>
                 </>
               ) : (
@@ -252,7 +262,8 @@ export default function UploadPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value.slice(0, 280))}
                 rows={3}
-                className="w-full bg-input text-foreground border border-border rounded-xl px-4 py-2.5 text-sm font-sans placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                className="input-cima w-full resize-none"
+                style={{ paddingTop: 8, paddingBottom: 8 }}
               />
             </div>
 
@@ -323,7 +334,7 @@ export default function UploadPage() {
                 <span className="font-mono text-xs uppercase tracking-widest text-foreground">
                   Add a Trailer
                 </span>
-                <span className="font-mono text-xs" style={{ color: '#4E4A46' }}>
+                <span className="font-mono text-xs text-muted-foreground">
                   (optional)
                 </span>
               </div>
@@ -338,8 +349,8 @@ export default function UploadPage() {
                 <video
                   src={trailerPreview ?? undefined}
                   controls
-                  className="w-full rounded-xl"
-                  style={{ maxHeight: 160, background: '#161413' }}
+                  className="w-full rounded-xl bg-card"
+                  style={{ maxHeight: 160 }}
                 />
                 <div className="flex items-center justify-between">
                   <div>
@@ -350,13 +361,9 @@ export default function UploadPage() {
                       {(trailerFile.size / (1024 * 1024)).toFixed(1)} MB
                     </p>
                   </div>
-                  <button
-                    onClick={removeTrailer}
-                    className="font-mono text-xs transition-opacity hover:opacity-70"
-                    style={{ color: '#A32626' }}
-                  >
+                  <Button variant="ghost" size="sm" onClick={removeTrailer}>
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -373,12 +380,12 @@ export default function UploadPage() {
                   className="hidden"
                   onChange={handleTrailerSelect}
                 />
-                <Clapperboard size={28} style={{ color: '#B28A52' }} />
+                <Clapperboard size={28} className="text-accent" />
                 <div className="text-center">
-                  <p className="font-mono text-sm uppercase tracking-wider" style={{ color: '#E8DDCB' }}>
+                  <p className="font-mono text-sm uppercase tracking-wider text-foreground">
                     Upload your trailer
                   </p>
-                  <p className="font-mono text-xs mt-1" style={{ color: '#4E4A46' }}>
+                  <p className="font-mono text-xs mt-1 text-muted-foreground">
                     MP4, MOV or WEBM · Max 500MB · Under 2 min recommended
                   </p>
                 </div>
@@ -397,8 +404,7 @@ export default function UploadPage() {
             {/* Rule 3: Skip button min 44px touch target */}
             <button
               onClick={() => setStep(3)}
-              className="w-full text-center font-mono text-xs uppercase tracking-wider transition-opacity hover:opacity-70 py-3"
-              style={{ color: 'rgba(232,221,203,0.45)', minHeight: 44 }}
+              className="w-full text-center font-mono text-xs uppercase tracking-wider transition-opacity hover:opacity-70 py-3 min-h-[44px] text-foreground/45"
             >
               Skip This Step →
             </button>
@@ -414,7 +420,7 @@ export default function UploadPage() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-5"
           >
-            <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-card">
+            <div className="film-card card-grain bg-card border border-border overflow-hidden shadow-card">
               {thumbPreview ? (
                 <img src={thumbPreview} alt="" className="w-full aspect-video object-cover" />
               ) : (
@@ -439,7 +445,7 @@ export default function UploadPage() {
                   <p className="font-sans text-sm text-muted-foreground">{description}</p>
                 )}
                 {trailerFile && (
-                  <p className="font-mono text-[10px]" style={{ color: '#B28A52' }}>
+                  <p className="font-mono text-[10px] text-accent">
                     Trailer: {trailerFile.name}
                   </p>
                 )}
@@ -471,6 +477,6 @@ export default function UploadPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }

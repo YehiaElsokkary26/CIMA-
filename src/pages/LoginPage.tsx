@@ -76,18 +76,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-full bg-background flex flex-col items-center justify-center px-6 py-12 overflow-y-auto">
+    <motion.div
+      className="min-h-full bg-background flex flex-col items-center justify-center px-6 py-12 overflow-y-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.38, ease: 'easeOut' }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-xs space-y-8"
       >
         {/* Logo + tagline */}
         <div className="flex flex-col items-center">
           <CimaIconMark size={72} />
           {/* Rule 1: min contrast — #4E4A46 on cream = 4.5:1 ✓ */}
-          <p className="font-sans text-sm text-center mt-2" style={{ color: '#4E4A46' }}>
+          <p className="font-sans text-sm text-center mt-2 text-muted-foreground">
             Where student cinema comes to life.
           </p>
         </div>
@@ -175,7 +181,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => loginAsDemo(acc)}
                   // Rule 3: min 44px — py-3 = 12px×2 + content ≈ 50px ✓
-                  className={`flex flex-col items-center gap-1.5 border rounded-xl px-3 py-3 transition-all duration-150 interactive-lift ${acc.color}`}
+                  className={`flex flex-col items-center gap-1.5 border rounded-xl px-3 py-3 transition-colors duration-150 interactive-lift ${acc.color}`}
                   style={{ minHeight: 44 }}
                 >
                   <Icon size={18} />
@@ -192,6 +198,6 @@ export default function LoginPage() {
           </div>
         </div>
       </motion.div>
-    </div>
+    </motion.div>
   )
 }

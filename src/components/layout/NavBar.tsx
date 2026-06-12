@@ -1,17 +1,20 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Search, Bell, X, Sun, Moon } from 'lucide-react'
 import { CimaIconMark } from './CimaLogo'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
+import { useSearchStore } from '@/store/searchStore'
 
 export default function NavBar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useAuthStore((s) => s.user)
   const { isDarkMode, toggleDarkMode } = useUIStore()
+  const { query, setQuery, clear } = useSearchStore()
+
   const [searchOpen, setSearchOpen] = useState(false)
-  const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const openSearch = () => {
@@ -21,14 +24,25 @@ export default function NavBar() {
 
   const closeSearch = () => {
     setSearchOpen(false)
-    setQuery('')
+    clear()
   }
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleChange = (value: string) => {
+    setQuery(value)
+    // Navigate to home on first character so results are immediately visible
+    if (value && location.pathname !== '/home') {
+      navigate('/home')
+    }
+    // Clear URL ?q param if present (we now use the store, not the URL)
+    if (!value && location.search) {
+      navigate('/home', { replace: true })
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (query.trim()) {
-      navigate(`/discover?q=${encodeURIComponent(query.trim())}`)
-      closeSearch()
+    if (query.trim() && location.pathname !== '/home') {
+      navigate('/home')
     }
   }
 
@@ -50,11 +64,11 @@ export default function NavBar() {
 
       {/* Search bar — center on desktop, hidden on mobile until icon tapped */}
       {searchOpen ? (
-        <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2">
+        <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleChange(e.target.value)}
             placeholder="Search films, filmmakers..."
             className="flex-1 bg-transparent font-sans text-sm text-foreground placeholder:text-muted-foreground/50 outline-none border-b border-primary py-0.5"
           />
@@ -72,16 +86,26 @@ export default function NavBar() {
         <>
           {/* Desktop search bar */}
           <form
-            onSubmit={handleSearch}
+            onSubmit={handleSubmit}
             className="hidden md:flex flex-1 items-center gap-2 border-b border-border/60 focus-within:border-primary transition-colors max-w-xs mx-auto"
           >
             <Search size={13} className="text-muted-foreground shrink-0" />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => handleChange(e.target.value)}
               placeholder="Search films, filmmakers..."
               className="flex-1 bg-transparent font-sans text-xs text-foreground placeholder:text-muted-foreground/40 outline-none py-1"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => handleChange('')}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X size={11} />
+              </button>
+            )}
           </form>
 
           {/* Spacer on mobile to push icons right */}
@@ -120,7 +144,7 @@ export default function NavBar() {
           {/* Rule 3: profile avatar — 44×44px tap area, 32px visual circle */}
           <button
             onClick={() => navigate('/profile/me')}
-            className="w-11 h-11 flex items-center justify-center transition-all"
+            className="w-11 h-11 flex items-center justify-center transition-colors"
             aria-label="View profile"
           >
             <span

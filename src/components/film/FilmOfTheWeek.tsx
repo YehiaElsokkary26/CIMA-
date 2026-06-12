@@ -165,11 +165,13 @@ export default function FilmOfTheWeek({ film }: FilmOfTheWeekProps) {
         )}
 
         {/* Watch Now */}
-        <Link to={`/film/${film.id}`} className="w-fit">
-          <button className="btn-cima flex items-center gap-2" style={{ letterSpacing: '0.15em' }}>
-            <Play size={11} fill="currentColor" />
-            Watch Now
-          </button>
+        <Link
+          to={`/film/${film.id}`}
+          className="btn-cima inline-flex items-center gap-2 w-fit"
+          style={{ letterSpacing: '0.15em' }}
+        >
+          <Play size={11} fill="currentColor" />
+          Watch Now
         </Link>
       </div>
 
