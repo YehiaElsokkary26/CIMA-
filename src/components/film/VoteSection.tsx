@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Film as FilmIcon, ArrowUp } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Button from '@/components/ui/Button'
 import { getUserVoteThisWeek, setUserVote, getCurrentWeekKey } from '@/lib/votingUtils'
 import { getUserVoteFromDB, castVote } from '@/lib/supabaseApi'
 import { useAuthStore } from '@/store/authStore'
@@ -66,64 +66,50 @@ export default function VoteSection({ film }: VoteSectionProps) {
 
   return (
     <div
-      className="card-grain relative overflow-hidden"
+      className="film-card card-grain relative overflow-hidden"
       style={{ background: '#161413', border: '1px solid rgba(139,107,92,0.25)' }}
     >
       {/* Info row */}
       <div className="flex items-start justify-between p-4 pb-3">
         <div className="flex items-start gap-3">
-          <FilmIcon size={18} className="shrink-0 mt-0.5" style={{ color: '#B28A52' }} />
+          <FilmIcon size={18} className="shrink-0 mt-0.5 text-accent" />
           <div>
-            <p
-              className="font-mono text-xs uppercase tracking-[0.2em]"
-              style={{ color: '#4E4A46' }}
-            >
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Vote Film of the Week
             </p>
-            <p className="font-sans text-xs mt-0.5" style={{ color: 'rgba(78,74,70,0.9)' }}>
+            <p className="font-sans text-xs mt-0.5 text-muted-foreground/90">
               Cast your vote. Top film wins Friday.
             </p>
           </div>
         </div>
 
         <div className="text-right shrink-0 ml-4">
-          <span className="font-display text-4xl leading-none" style={{ color: '#E8DDCB' }}>
+          <span className="font-display text-4xl leading-none text-foreground">
             {votes.toLocaleString()}
           </span>
-          <p className="font-mono text-[10px] mt-0.5" style={{ color: '#4E4A46' }}>
+          <p className="font-mono text-[10px] mt-0.5 text-muted-foreground">
             votes this week
           </p>
         </div>
       </div>
 
       {votedOtherFilm && (
-        <p className="font-mono text-xs px-4 pb-2" style={{ color: '#4E4A46' }}>
+        <p className="font-mono text-xs px-4 pb-2 text-muted-foreground">
           You voted for another film this week.
         </p>
       )}
 
-      <button
-        onClick={handleVote}
+      <Button
+        variant={votedThisFilm ? 'destructive' : 'primary'}
+        size="lg"
+        pulse={canVote}
         disabled={!canVote}
-        className={cn(
-          'w-full flex items-center justify-center gap-2 py-3',
-          'font-mono text-xs uppercase tracking-widest',
-          'transition-all duration-200',
-          votedThisFilm
-            ? 'cursor-default'
-            : votedOtherFilm || !user || isCheckingVote
-              ? 'cursor-not-allowed opacity-50'
-              : 'hover:opacity-90 active:opacity-75',
-        )}
-        style={{
-          background: votedThisFilm ? '#4A1E24' : '#A32626',
-          color: '#E8DDCB',
-          boxShadow: votedThisFilm ? '0 0 0 1px rgba(163,38,38,0.5) inset' : 'none',
-        }}
+        onClick={handleVote}
+        className="w-full"
       >
         <ArrowUp size={13} strokeWidth={2.5} />
         {votedThisFilm ? 'Voted ✓ This Week' : 'Vote for This Film'}
-      </button>
+      </Button>
     </div>
   )
 }

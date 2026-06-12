@@ -5,6 +5,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useAuth } from '@/hooks/useAuth'
 import RoleBadge from '@/components/profile/RoleBadge'
 import Avatar from '@/components/ui/Avatar'
+import Button from '@/components/ui/Button'
 
 export default function SettingsPage() {
   const { isDarkMode, toggleDarkMode } = useUIStore()
@@ -49,7 +50,13 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="min-h-full px-4 py-6 space-y-8">
+    <motion.div
+      className="min-h-full px-4 py-6 space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">Settings</h1>
 
       {/* Profile card */}
@@ -57,7 +64,8 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4"
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className="film-card card-grain bg-card border border-border p-4 flex items-center gap-4"
         >
           <Avatar name={user.name} size="lg" />
           <div>
@@ -73,12 +81,12 @@ export default function SettingsPage() {
           key={section.title}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: si * 0.1 }}
+          transition={{ duration: 0.4, delay: si * 0.1, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-3">
             {section.title}
           </h2>
-          <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
+          <div className="film-card card-grain bg-card border border-border divide-y divide-border overflow-hidden">
             {section.items.map(({ label, desc, icon: Icon, action }) => (
               <div key={label} className="flex items-center gap-3 px-4 py-3.5">
                 <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0">
@@ -95,16 +103,11 @@ export default function SettingsPage() {
         </motion.section>
       ))}
 
-      {/* Logout — Rule 3: min 44px touch target via py-3.5 (14×2 + ~20px text = 48px ✓) */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-        <button
-          onClick={logout}
-          style={{ minHeight: 48 }}
-          className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-2xl py-3.5 font-sans font-semibold text-sm hover:bg-destructive/20 active:scale-[0.98] transition-all"
-        >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}>
+        <Button variant="destructive" size="lg" onClick={logout} className="w-full">
           <LogOut size={16} />
           Sign Out
-        </button>
+        </Button>
       </motion.div>
 
       <div className="text-center pb-4">
@@ -112,6 +115,6 @@ export default function SettingsPage() {
           Cima v0.1.0 — Your film, your scene.
         </p>
       </div>
-    </div>
+    </motion.div>
   )
 }

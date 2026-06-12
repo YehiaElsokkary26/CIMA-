@@ -6,6 +6,7 @@ import { Plus, TrendingUp, Sparkles, Layers } from 'lucide-react'
 import Masonry from 'react-masonry-css'
 import { useFilms, useFeaturedFilm } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
+import Button from '@/components/ui/Button'
 import FilmOfTheWeek from '@/components/film/FilmOfTheWeek'
 import FilterBar from '@/components/film/FilterBar'
 import EmptyState from '@/components/ui/EmptyState'
@@ -90,7 +91,13 @@ export default function HomePage() {
   const hasMore = visibleCount < filteredFilms.length
 
   return (
-    <div className="min-h-full relative">
+    <motion.div
+      className="min-h-full relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
       <FilterBar
         activeGenre={activeGenre}
         onGenreChange={setActiveGenre}
@@ -193,19 +200,14 @@ export default function HomePage() {
               </Masonry>
 
               {hasMore && (
-                <button
+                <Button
+                  variant="secondary"
+                  size="md"
                   onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                  className="w-full mt-8 py-3 font-mono text-xs uppercase tracking-widest transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0"
-                  style={{
-                    border: '1px solid rgba(163,38,38,0.4)',
-                    color: '#A32626',
-                    background: 'rgba(163,38,38,0.05)',
-                    borderRadius: 10,
-                    boxShadow: '0 2px 12px rgba(163,38,38,0.1)',
-                  }}
+                  className="w-full mt-8"
                 >
                   Load More Films
-                </button>
+                </Button>
               )}
             </>
           )}
@@ -218,7 +220,6 @@ export default function HomePage() {
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 340, damping: 22, delay: 0.4 }}
-          whileTap={{ scale: 0.9 }}
           onClick={() => navigate('/upload')}
           className="fixed bottom-24 right-4 z-30 flex items-center justify-center cta-pulse lg:hidden"
           style={{
@@ -232,6 +233,6 @@ export default function HomePage() {
           <Plus size={24} color="#E8DDCB" strokeWidth={2.5} />
         </motion.button>
       )}
-    </div>
+    </motion.div>
   )
 }
