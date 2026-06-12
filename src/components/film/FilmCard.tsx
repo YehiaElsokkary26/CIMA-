@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useState, useMemo } from 'react'
-import { Pencil, Play, ArrowUp, Trophy } from 'lucide-react'
+import { Pencil, Play, ArrowUp, Trophy, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Film } from '@/types'
 import VideoPreviewCard from './VideoPreviewCard'
@@ -105,6 +105,19 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
             >
               <Pencil size={11} style={{ color: '#E8DDCB' }} />
             </button>
+          )}
+
+          {/* Average rating — bottom left, above badge row */}
+          {(film.rating ?? 0) > 0 && (
+            <div className="absolute bottom-9 left-2.5 z-10">
+              <span
+                className="genre-pill flex items-center gap-1"
+                style={{ background: 'rgba(178,138,82,0.92)', color: '#161413', fontWeight: 700, backdropFilter: 'blur(4px)' }}
+              >
+                <Star size={8} fill="currentColor" />
+                {(film.rating as number).toFixed(1)}
+              </span>
+            </div>
           )}
 
           {/* FOTW badge — bottom left */}

@@ -1,11 +1,11 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { NavLink, useLocation } from 'react-router-dom'
-import { Zap, Search, Plus, Film, User } from 'lucide-react'
+import { House, Search, Plus, Film, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
 const baseLinks = [
-  { to: '/home', icon: Zap, label: 'Home' },
+  { to: '/home', icon: House, label: 'Home' },
   { to: '/discover', icon: Search, label: 'Discover' },
   { to: '/cima', icon: Film, label: 'Cima' },
   { to: '/profile/me', icon: User, label: 'Profile' },

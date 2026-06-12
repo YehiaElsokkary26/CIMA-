@@ -10,6 +10,9 @@ export interface User {
   school?: string
   city?: string
   lookingForCollaborators?: boolean
+  openToCollab?: boolean
+  favoriteGenres?: string[]
+  crewRoles?: string[]
   filmsCount?: number
   cimaCount?: number
   reviewsCount?: number

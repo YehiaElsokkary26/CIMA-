@@ -1,7 +1,7 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Edit2, MapPin, GraduationCap, Film } from 'lucide-react'
+import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake, Users2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import RoleBadge from '@/components/profile/RoleBadge'
 import FilmCard from '@/components/film/FilmCard'
@@ -25,6 +25,9 @@ const MOCK_PROFILE = {
   cimaCount: 7,
   reviewsCount: 23,
   lookingForCollaborators: true,
+  openToCollab: true,
+  favoriteGenres: ['Experimental', 'Documentary'],
+  crewRoles: ['Director', 'Sound Designer'],
   createdAt: '2023-06-01',
 }
 
@@ -43,29 +46,57 @@ export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
+  const updateUser = useAuthStore((s) => s.updateUser)
+  const logout = useAuthStore((s) => s.logout)
   const isOwn = id === 'me' || id === currentUser?.id
   const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const profile = isOwn && currentUser ? currentUser : MOCK_PROFILE
   const films = MOCK_FILMS
   const cimaMembers = MOCK_CIMA_MEMBERS
 
+  const isFilmmaker = profile.role === 'filmmaker'
+  const openToCollab = (profile as typeof MOCK_PROFILE).openToCollab ?? false
+
+  const handleToggleCollab = () => {
+    if (!isOwn) return
+    updateUser({ openToCollab: !openToCollab, lookingForCollaborators: !openToCollab })
+  }
+
+  const handleBecomeFilmmaker = () => {
+    updateUser({ role: 'filmmaker' })
+  }
+
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+  }
+
   return (
     <div className="min-h-full">
       {/* Profile header */}
       <div className="relative">
-        {/* Background */}
         <div className="h-32 bg-gradient-to-br from-secondary via-accent/40 to-background" />
 
-        {/* Avatar + name */}
         <div className="px-4 pb-4">
           <div className="flex items-end justify-between -mt-8 mb-4">
             <Avatar name={profile.name} size="xl" className="border-4 border-background shadow-film" />
             {isOwn ? (
-              <Button variant="outline" size="sm">
-                <Edit2 size={13} />
-                Edit Profile
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate('/profile/me/edit')}>
+                  <Edit2 size={13} />
+                  Edit Profile
+                </Button>
+                <button
+                  onClick={() => setShowLogoutConfirm(true)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl border transition-colors text-muted-foreground hover:text-foreground"
+                  style={{ borderColor: 'rgba(139,107,92,0.3)' }}
+                  aria-label="Log out"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
             ) : (
               <CimaButton status={cimaStatus} onClick={() => setCimaStatus('pending')} />
             )}
@@ -77,6 +108,15 @@ export default function ProfilePage() {
                 {profile.name}
               </h1>
               <RoleBadge role={profile.role} />
+              {openToCollab && (
+                <span
+                  className="genre-pill flex items-center gap-1"
+                  style={{ background: 'rgba(178,138,82,0.15)', color: '#B28A52', border: '1px solid rgba(178,138,82,0.4)' }}
+                >
+                  <Handshake size={9} />
+                  Open to Collab
+                </span>
+              )}
             </div>
 
             {profile.bio && (
@@ -95,9 +135,72 @@ export default function ProfilePage() {
                 </span>
               )}
             </div>
+
+            {/* Crew roles */}
+            {((profile as typeof MOCK_PROFILE).crewRoles ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {((profile as typeof MOCK_PROFILE).crewRoles ?? []).map((r) => (
+                  <span
+                    key={r}
+                    className="genre-pill"
+                    style={{ background: 'rgba(178,138,82,0.12)', color: '#B28A52', border: '1px solid rgba(178,138,82,0.25)' }}
+                  >
+                    {r}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Own-profile actions */}
+      {isOwn && (
+        <div className="px-4 mb-4 space-y-2">
+          {/* Open to Collab toggle — filmmakers only */}
+          {isFilmmaker && (
+            <button
+              onClick={handleToggleCollab}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors"
+              style={
+                openToCollab
+                  ? { background: 'rgba(178,138,82,0.12)', borderColor: 'rgba(178,138,82,0.4)', color: '#B28A52' }
+                  : { background: 'transparent', borderColor: 'rgba(139,107,92,0.25)', color: '#8B6B5C' }
+              }
+            >
+              <div className="flex items-center gap-2">
+                <Handshake size={15} />
+                <span className="font-mono text-xs uppercase tracking-wider">Open to Collab</span>
+              </div>
+              {/* Toggle pill */}
+              <div
+                className="w-10 h-5 rounded-full relative transition-colors"
+                style={{ background: openToCollab ? '#B28A52' : 'rgba(139,107,92,0.3)' }}
+              >
+                <div
+                  className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                  style={{ transform: openToCollab ? 'translateX(22px)' : 'translateX(2px)' }}
+                />
+              </div>
+            </button>
+          )}
+
+          {/* Become a Filmmaker — viewers only */}
+          {!isFilmmaker && (
+            <button
+              onClick={handleBecomeFilmmaker}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border transition-colors"
+              style={{ background: 'rgba(163,38,38,0.08)', borderColor: 'rgba(163,38,38,0.35)', color: '#A32626' }}
+            >
+              <Film size={15} />
+              <div className="text-left">
+                <p className="font-mono text-xs uppercase tracking-wider">Become a Filmmaker</p>
+                <p className="font-sans text-[10px] text-muted-foreground mt-0.5">Upload films and join the creative community</p>
+              </div>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-0 border-y border-border mx-4 mb-6 rounded-2xl overflow-hidden bg-card">
@@ -144,17 +247,13 @@ export default function ProfilePage() {
           <section>
             <h2 className="font-display text-xl uppercase tracking-widest text-foreground mb-4">Films</h2>
             {films.length === 0 ? (
-              /* Rule 6: own filmmaker profile gets a CTA to upload their first film */
               <EmptyState
                 icon={Film}
                 title="No films uploaded yet."
                 subtitle="Your audience is waiting — roll camera."
                 action={
                   isOwn ? (
-                    <button
-                      onClick={() => navigate('/upload')}
-                      className="btn-cima"
-                    >
+                    <button onClick={() => navigate('/upload')} className="btn-cima">
                       Upload Your Film
                     </button>
                   ) : undefined
@@ -170,6 +269,46 @@ export default function ProfilePage() {
           </section>
         )}
       </div>
+
+      {/* Logout confirmation sheet */}
+      {showLogoutConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          style={{ background: 'rgba(22,20,19,0.7)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <motion.div
+            initial={{ y: 80 }}
+            animate={{ y: 0 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 260 }}
+            className="w-full max-w-sm rounded-t-2xl border-t border-x p-6 space-y-4"
+            style={{ background: 'hsl(var(--card))', borderColor: 'rgba(139,107,92,0.25)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(163,38,38,0.12)' }}>
+                <LogOut size={16} style={{ color: '#A32626' }} />
+              </div>
+              <div>
+                <p className="font-display text-lg uppercase tracking-widest text-foreground">Log Out</p>
+                <p className="font-sans text-xs text-muted-foreground">You'll need to sign in again.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowLogoutConfirm(false)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                onClick={handleLogout}
+                style={{ background: '#A32626', color: '#E8DDCB' }}
+              >
+                <LogOut size={13} /> Log Out
+              </Button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   )
 }

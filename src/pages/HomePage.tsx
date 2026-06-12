@@ -104,7 +104,7 @@ export default function HomePage() {
       {isLoading ? (
         /* Rule 5: skeleton cards match exact masonry layout — no layout shift on load */
         <div className="px-4 pb-28 lg:pb-8">
-          <SectionLabel icon={TrendingUp}>Trending This Week</SectionLabel>
+          <SectionLabel icon={TrendingUp}>Top Projects released this week</SectionLabel>
           <Masonry
             breakpointCols={MASONRY_COLS}
             className="cima-masonry-grid"
@@ -133,7 +133,7 @@ export default function HomePage() {
       ) : (
         <div className="px-4 pb-28 lg:pb-8">
           {/* Trending */}
-          <SectionLabel icon={TrendingUp}>Trending This Week</SectionLabel>
+          <SectionLabel icon={TrendingUp}>Top Projects released this week</SectionLabel>
           <Masonry
             breakpointCols={MASONRY_COLS}
             className="cima-masonry-grid"

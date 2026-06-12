@@ -18,6 +18,7 @@ import CimaHubPage from '@/pages/CimaHubPage'
 import DiscoverPage from '@/pages/DiscoverPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import SettingsPage from '@/pages/SettingsPage'
+import EditProfilePage from '@/pages/EditProfilePage'
 
 // ─── Route guards ────────────────────────────────────────────────────────────
 
@@ -148,6 +149,7 @@ export default function App() {
             }
           />
           <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/profile/me/edit" element={<EditProfilePage />} />
           <Route path="/cima" element={<CimaHubPage />} />
           <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
