@@ -23,7 +23,7 @@ export function useAuth() {
     onSuccess: ({ token, user }) => setAuth(token, user),
   })
 
-  // Register via Supabase Auth, then fetch the auto-created profile.
+  // Register via the Express API (avoids Supabase email confirmation issues).
   const registerMutation = useMutation({
     mutationFn: async ({
       name,
@@ -36,22 +36,8 @@ export function useAuth() {
       password: string
       role: string
     }) => {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name, role } },
-      })
-      if (error) throw new Error(error.message)
-      if (!data.session) {
-        // Supabase email confirmation is enabled — the user must confirm first
-        throw new Error('Check your email to confirm your account before logging in.')
-      }
-
-      // Small delay for the DB trigger to create the profile row
-      await new Promise((r) => setTimeout(r, 400))
-
-      const profileRes = await authApi.me()
-      return { token: data.session.access_token, user: profileRes.data }
+      const res = await authApi.register({ name, email, password, role })
+      return { token: res.data.token, user: res.data.user }
     },
     onSuccess: ({ token, user }) => setAuth(token, user),
   })

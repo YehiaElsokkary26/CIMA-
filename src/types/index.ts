@@ -5,7 +5,8 @@ export interface User {
   name: string
   email: string
   role: UserRole
-  avatar?: string
+  avatar?:    string   // used by mock data
+  avatarUrl?: string   // returned by Express API
   bio?: string
   school?: string
   city?: string
@@ -14,6 +15,9 @@ export interface User {
   cimaCount?: number
   reviewsCount?: number
   topGenre?: string
+  favoriteGenres?: string[]
+  bannerUrl?: string
+  crewRoles?: string[]
   createdAt: string
 }
 

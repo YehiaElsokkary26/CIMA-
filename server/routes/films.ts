@@ -62,6 +62,10 @@ function mapFilm(f: any) {
     year:        f.release_year,
     rating:      f.avg_rating    ?? undefined,
     ratingCount: f.rating_count  ?? 0,
+    trailerUrl:      f.trailer_url      ?? undefined,
+    votes:           f.votes            ?? 0,
+    aspectRatio:     f.aspect_ratio     ?? '4:5',
+    isFilmOfTheWeek: !!f.is_film_of_week,
     uploaderId:  f.uploader_id,
     uploader: f.uploader_name ? {
       id:        f.uploader_id,
@@ -153,6 +157,7 @@ router.post(
   upload.fields([
     { name: 'video',     maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 },
+    { name: 'trailer',   maxCount: 1 },
   ]),
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     const { title, description, year, runtime } = req.body
@@ -166,12 +171,13 @@ router.post(
       const files = req.files as { [k: string]: Express.Multer.File[] }
       const videoUrl     = files.video?.[0]     ? `/uploads/${files.video[0].filename}`     : null
       const thumbnailUrl = files.thumbnail?.[0] ? `/uploads/${files.thumbnail[0].filename}` : null
+      const trailerUrl   = files.trailer?.[0]   ? `/uploads/${files.trailer[0].filename}`   : null
 
       const result = await query(
-        `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, video_url, thumbnail_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, video_url, thumbnail_url, trailer_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          RETURNING id`,
-        [title, description, genre, runtime ? parseInt(runtime) : null, year ? parseInt(year) : null, req.userId, videoUrl, thumbnailUrl]
+        [title, description, genre, runtime ? parseInt(runtime) : null, year ? parseInt(year) : null, req.userId, videoUrl, thumbnailUrl, trailerUrl]
       )
       const film = await filmWithMeta(result.rows[0].id)
       res.status(201).json(mapFilm(film))
@@ -204,6 +210,46 @@ router.post('/:id/rate', authMiddleware, validate(rateFilmSchema), async (req: A
     }
 
     res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// ---- POST /api/films/:id/vote -----------------------------------------------
+router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const weekRes = await query(`SELECT date_trunc('week', CURRENT_DATE)::date AS week_start`)
+    const weekStart = weekRes.rows[0].week_start
+
+    const insertRes = await query(
+      `INSERT INTO film_votes (film_id, user_id, week_start)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, week_start) DO NOTHING`,
+      [req.params.id, req.userId, weekStart]
+    )
+
+    if ((insertRes.rowCount ?? 0) === 0) {
+      res.status(409).json({ message: 'You have already voted this week' })
+      return
+    }
+
+    const updateRes = await query(
+      `UPDATE films SET votes = votes + 1 WHERE id = $1 RETURNING votes`,
+      [req.params.id]
+    )
+    res.json({ ok: true, votes: updateRes.rows[0]?.votes ?? 0 })
+  } catch (err) { next(err) }
+})
+
+// ---- GET /api/films/:id/vote ------------------------------------------------
+router.get('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const weekRes = await query(`SELECT date_trunc('week', CURRENT_DATE)::date AS week_start`)
+    const weekStart = weekRes.rows[0].week_start
+
+    const voteRes = await query(
+      `SELECT id FROM film_votes WHERE film_id = $1 AND user_id = $2 AND week_start = $3`,
+      [req.params.id, req.userId, weekStart]
+    )
+    res.json({ voted: voteRes.rows.length > 0 })
   } catch (err) { next(err) }
 })
 

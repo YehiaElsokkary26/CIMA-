@@ -1,19 +1,14 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Bell, Star, Film, UserPlus, MessageSquare, CheckCheck } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import RecordLED from '@/components/layout/RecordLED'
 import EmptyState from '@/components/ui/EmptyState'
+import { NotificationSkeleton } from '@/components/ui/Skeleton'
 import { formatTimeAgo } from '@/lib/utils'
+import { notificationsApi } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 import type { Notification } from '@/types'
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 'n1', userId: 'me', type: 'review', message: 'Hana Bakkali left a review on STATIC', fromUser: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'viewer', createdAt: '' }, filmId: '4', read: false, createdAt: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'n2', userId: 'me', type: 'cima_request', message: 'Yasmine Korbi wants to join your Cima', fromUser: { id: 'u20', name: 'Yasmine Korbi', email: '', role: 'filmmaker', createdAt: '' }, read: false, createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'n3', userId: 'me', type: 'rating', message: 'Mehdi Laroui rated STATIC 5 stars', fromUser: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker', createdAt: '' }, filmId: '4', read: true, createdAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'n4', userId: 'me', type: 'cima_accepted', message: 'Omar Hadid accepted your Cima request', fromUser: { id: 'u4', name: 'Omar Hadid', email: '', role: 'filmmaker', createdAt: '' }, read: true, createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'n5', userId: 'me', type: 'follower', message: 'Sofia Tazi is now following your work', fromUser: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker', createdAt: '' }, read: true, createdAt: new Date(Date.now() - 172800000).toISOString() },
-]
 
 const notifIcon: Record<string, React.ElementType> = {
   review: MessageSquare,
@@ -24,11 +19,23 @@ const notifIcon: Record<string, React.ElementType> = {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const queryClient = useQueryClient()
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  const { data, isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn:  () => notificationsApi.list().then((r) => r.data),
+    enabled:  isLoggedIn,
+    staleTime: 30_000,
+  })
+
+  const markAllMutation = useMutation({
+    mutationFn: () => notificationsApi.markAllRead(),
+    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+
+  const notifications: Notification[] = data ?? []
+  const unreadCount = notifications.filter((n) => !n.read).length
 
   return (
     <div className="min-h-full px-4 py-6">
@@ -40,7 +47,8 @@ export default function NotificationsPage() {
         {unreadCount > 0 && (
           /* Rule 3: min 44px tap area via py-2.5 */
           <button
-            onClick={markAllRead}
+            onClick={() => markAllMutation.mutate()}
+            disabled={markAllMutation.isPending}
             className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors py-2.5 px-2"
             style={{ minHeight: 44 }}
             aria-label="Mark all notifications as read"
@@ -51,7 +59,11 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => <NotificationSkeleton key={i} />)}
+        </div>
+      ) : notifications.length === 0 ? (
         <EmptyState icon={Bell} title="Quiet on Set." subtitle="No notifications yet." />
       ) : (
         <div className="space-y-2">

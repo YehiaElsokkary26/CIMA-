@@ -43,7 +43,7 @@ api.interceptors.response.use(
 
       // Couldn't refresh — clear everything and redirect to login
       localStorage.removeItem('cima_token')
-      window.location.href = '/onboarding'
+      window.location.href = '/login'
     }
     return Promise.reject(err)
   }
@@ -67,6 +67,8 @@ export const filmsApi = {
   upload: (formData: FormData) =>
     api.post<Film>('/films', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   rate: (id: string, rating: number) => api.post(`/films/${id}/rate`, { rating }),
+  vote:      (id: string)              => api.post(`/films/${id}/vote`),
+  getMyVote: (id: string)              => api.get<{ voted: boolean }>(`/films/${id}/vote`),
   reviews: (id: string) => api.get<Review[]>(`/films/${id}/reviews`),
   addReview: (id: string, data: { rating: number; body: string }) =>
     api.post<Review>(`/films/${id}/review`, data),

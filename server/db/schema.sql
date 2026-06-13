@@ -223,3 +223,30 @@ CREATE POLICY "Users can update own notifications" ON public.notifications FOR U
 
 -- Featured films: publicly readable
 CREATE POLICY "Featured films are public"          ON public.featured_films FOR SELECT USING (true);
+
+-- -----------------------------------------------
+-- FILM EXTRA COLUMNS (idempotent additions)
+-- -----------------------------------------------
+ALTER TABLE public.films
+  ADD COLUMN IF NOT EXISTS trailer_url      TEXT,
+  ADD COLUMN IF NOT EXISTS votes            INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS aspect_ratio     TEXT    NOT NULL DEFAULT '4:5',
+  ADD COLUMN IF NOT EXISTS is_film_of_week  BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- -----------------------------------------------
+-- FILM VOTES  (one vote per user per week)
+-- -----------------------------------------------
+CREATE TABLE IF NOT EXISTS public.film_votes (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  film_id    UUID        NOT NULL REFERENCES public.films(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  week_start DATE        NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, week_start)
+);
+CREATE INDEX IF NOT EXISTS idx_film_votes_film ON public.film_votes(film_id);
+CREATE INDEX IF NOT EXISTS idx_film_votes_user ON public.film_votes(user_id);
+
+ALTER TABLE public.film_votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can see own votes"    ON public.film_votes FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Auth users can vote"        ON public.film_votes FOR INSERT WITH CHECK (auth.uid() = user_id);

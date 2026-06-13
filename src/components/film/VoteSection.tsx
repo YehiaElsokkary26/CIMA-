@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Film as FilmIcon, ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { voteForFilm } from '@/lib/mockData'
-import { getUserVoteThisWeek } from '@/lib/votingUtils'
+import { filmsApi } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import type { Film } from '@/types'
@@ -17,20 +16,28 @@ export default function VoteSection({ film }: VoteSectionProps) {
   const [votedFilmId, setVotedFilmId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user) setVotedFilmId(getUserVoteThisWeek(user.id))
-  }, [user])
+    if (!user) return
+    filmsApi.getMyVote(film.id)
+      .then((res) => { if (res.data.voted) setVotedFilmId(film.id) })
+      .catch(() => { /* ignore — offline or not logged in */ })
+  }, [user, film.id])
 
-  const votedThisFilm = votedFilmId === film.id
+  const votedThisFilm  = votedFilmId === film.id
   const votedOtherFilm = votedFilmId !== null && votedFilmId !== film.id
-  const canVote = !votedFilmId && !!user
+  const canVote        = !votedFilmId && !!user
 
-  const handleVote = () => {
+  const handleVote = async () => {
     if (!user || !canVote) return
-    const result = voteForFilm(film.id, user.id)
-    if (result.success) {
-      setVotes((v) => v + 1)
+    try {
+      const res = await filmsApi.vote(film.id)
+      setVotes((res.data as any).votes ?? votes + 1)
       setVotedFilmId(film.id)
       toast.success('Your vote is in. Check back Friday. 🎬')
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        toast.error('You already voted this week')
+        setVotedFilmId(film.id)
+      }
     }
   }
 

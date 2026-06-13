@@ -6,7 +6,7 @@ import { getCurrentWeekKey, getUserVoteThisWeek, setUserVote } from './votingUti
 export const ALEX: User = {
   id: 'u_alex',
   name: 'Alex Reyes',
-  email: 'alex@cimafilms.com',
+  email: 'demo@cima.film',
   role: 'filmmaker',
   avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=alexreyes',
   bio: 'Final year film student. I shoot on 16mm when I can.',
@@ -69,10 +69,10 @@ const RAMZI: User = {
 }
 
 const PASSWORDS: Record<string, string> = {
+  'demo@cima.film':    'password',
+  'viewer@cima.film':  'password',
   'alex@cimafilms.com': 'cima2024',
   'sara@cimafilms.com': 'cima2024',
-  'demo@cima.film': 'password',
-  'viewer@cima.film': 'password',
 }
 
 const LEGACY_USERS: Record<string, User> = {
@@ -467,6 +467,8 @@ export function getUserById(id: string): User | undefined {
 
 export function authenticateUser(email: string, password: string): User | null {
   const normalised = email.toLowerCase().trim()
+  if (normalised === 'demo@cima.film'    && password === PASSWORDS[normalised]) return ALEX
+  if (normalised === 'viewer@cima.film'  && password === PASSWORDS[normalised]) return LEGACY_USERS['viewer@cima.film'] ?? null
   if (normalised === 'alex@cimafilms.com' && password === PASSWORDS[normalised]) return ALEX
   if (normalised === 'sara@cimafilms.com' && password === PASSWORDS[normalised]) return SARA
   const legacyPw = PASSWORDS[normalised]

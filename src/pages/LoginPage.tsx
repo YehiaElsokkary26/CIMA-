@@ -13,16 +13,16 @@ import { toast } from '@/store/toastStore'
 const DEMO_ACCOUNTS = [
   {
     label: 'Filmmaker',
-    email: 'alex@cimafilms.com',
-    password: 'cima2024',
+    email: 'demo@cima.film',
+    password: 'password',
     icon: Camera,
     // Rule 3: min 44px touch target — handled by py-3 in button
     color: 'border-primary/60 bg-primary/10 hover:bg-primary/20 text-primary',
   },
   {
     label: 'Viewer',
-    email: 'sara@cimafilms.com',
-    password: 'cima2024',
+    email: 'viewer@cima.film',
+    password: 'password',
     icon: Play,
     color: 'border-secondary/60 bg-secondary/10 hover:bg-secondary/20 text-secondary',
   },
