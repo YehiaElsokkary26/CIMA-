@@ -1,5 +1,5 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Filter, MapPin, GraduationCap, Users, Film as FilmIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -10,19 +10,11 @@ import RoleBadge from '@/components/profile/RoleBadge'
 import CimaButton from '@/components/cima/CimaButton'
 import FilmCard from '@/components/film/FilmCard'
 import EmptyState from '@/components/ui/EmptyState'
-import { getFilms as getMockFilms } from '@/lib/mockData'
 import { useAuthStore } from '@/store/authStore'
-
-const FILMMAKERS = [
-  { id: 'u1', name: 'Fatima El-Riad', role: 'filmmaker' as const, email: '', bio: 'Drama and short fiction. Tangier-based.', school: 'ESAV Marrakech', city: 'Tangier', topGenre: 'Drama', lookingForCollaborators: true, filmsCount: 6, createdAt: '', crewRoles: ['Director', 'Screenwriter'] },
-  { id: 'u2', name: 'Karim Nassar', role: 'filmmaker' as const, email: '', bio: 'Neo-noir and thriller. Nocturnal filmmaker.', school: 'ALBA Beirut', city: 'Beirut', topGenre: 'Neo-Noir', lookingForCollaborators: true, filmsCount: 3, createdAt: '', crewRoles: ['Director', 'Producer', 'Cinematographer'] },
-  { id: 'u3', name: 'Sana Younis', role: 'filmmaker' as const, email: '', bio: 'Romance, pastoral shorts.', school: 'Higher Institute of Cinema, Cairo', city: 'Cairo', topGenre: 'Romance', lookingForCollaborators: false, filmsCount: 2, createdAt: '', crewRoles: ['Assistant Director', 'Production Designer'] },
-  { id: 'u4', name: 'Omar Hadid', role: 'filmmaker' as const, email: '', bio: 'Experimental and documentary. Sound-obsessed.', school: 'ESAV Marrakech', city: 'Casablanca', topGenre: 'Experimental', lookingForCollaborators: true, filmsCount: 4, createdAt: '', crewRoles: ['Director', 'Sound Designer'] },
-  { id: 'u5', name: 'Leila Bouri', role: 'filmmaker' as const, email: '', bio: 'Observational documentary. Real people, real moments.', school: 'EDAC Tunis', city: 'Tunis', topGenre: 'Documentary', lookingForCollaborators: false, filmsCount: 5, createdAt: '', crewRoles: ['Producer', 'Editor'] },
-  { id: 'u6', name: 'Yusuf Al-Amin', role: 'filmmaker' as const, email: '', bio: 'Drama shorts. Urban stories.', school: 'HFF München', city: 'Munich', topGenre: 'Drama', lookingForCollaborators: true, filmsCount: 7, createdAt: '', crewRoles: ['Director', 'Assistant Director', 'Screenwriter'] },
-  { id: 'u7', name: 'Nadia Benali', role: 'filmmaker' as const, email: '', bio: 'Cinematographer by trade, director by heart.', school: 'ESAV Marrakech', city: 'Rabat', topGenre: 'Experimental', lookingForCollaborators: true, filmsCount: 3, createdAt: '', crewRoles: ['Cinematographer', 'Producer'] },
-  { id: 'u8', name: 'Hassan Mourad', role: 'filmmaker' as const, email: '', bio: 'Post-production specialist and colorist.', school: 'Cairo Film Institute', city: 'Cairo', topGenre: 'Drama', lookingForCollaborators: false, filmsCount: 1, createdAt: '', crewRoles: ['Editor', 'Assistant Director'] },
-]
+import { useFilms } from '@/hooks/useFilms'
+import { useFilmmakers } from '@/hooks/useFilmmakers'
+import { useSendCimaRequest } from '@/hooks/useCima'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 const GENRE_FILTERS = ['All', 'Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi']
 const CREW_ROLE_FILTERS = ['All Roles', 'Director', 'Producer', 'Assistant Director', 'Cinematographer', 'Editor', 'Sound Designer', 'Screenwriter', 'Production Designer']
@@ -42,33 +34,36 @@ export default function DiscoverPage() {
   const [activeCrewRole, setActiveCrewRole] = useState('All Roles')
   const [cimaStates, setCimaStates] = useState<Record<string, 'none' | 'pending' | 'member'>>({})
 
-  const allFilms = useMemo(() => getMockFilms(), [])
+  const { data: filmsPage, isLoading: filmsLoading } = useFilms({
+    page: 1,
+    limit: 50,
+    genre: activeGenre === 'All' ? undefined : activeGenre,
+    q: tab === 'films' && query ? query : undefined,
+  })
+  const { data: filmmakers, isLoading: filmmakersLoading } = useFilmmakers({
+    genre: activeGenre === 'All' ? undefined : activeGenre,
+  })
+  const sendCimaRequest = useSendCimaRequest()
 
-  const filteredFilmmakers = FILMMAKERS.filter((f) => {
+  const allFilms = filmsPage?.data ?? []
+
+  const filteredFilmmakers = (filmmakers ?? []).filter((f) => {
     const q = query.toLowerCase()
     const matchQuery = !query || f.name.toLowerCase().includes(q) || f.city?.toLowerCase().includes(q) || f.school?.toLowerCase().includes(q)
-    const matchGenre = activeGenre === 'All' || f.topGenre === activeGenre
     const matchRole = activeCrewRole === 'All Roles' || (f.crewRoles ?? []).includes(activeCrewRole)
-    return matchQuery && matchGenre && matchRole
+    return matchQuery && matchRole
   })
 
-  const filteredFilms = useMemo(() => {
-    if (!query && activeGenre === 'All') return allFilms
-    return allFilms.filter((f) => {
-      const q = query.toLowerCase()
-      const matchQuery = !query ||
-        f.title.toLowerCase().includes(q) ||
-        (f.uploader?.name ?? '').toLowerCase().includes(q) ||
-        (f.description ?? '').toLowerCase().includes(q)
-      const matchGenre = activeGenre === 'All' || f.genre.some((g) => g.toLowerCase() === activeGenre.toLowerCase())
-      return matchQuery && matchGenre
-    })
-  }, [allFilms, query, activeGenre])
+  const filteredFilms = allFilms
 
-  const featured = FILMMAKERS.filter((f) => f.lookingForCollaborators)
+  const featured = (filmmakers ?? []).filter((f) => f.lookingForCollaborators)
 
   const handleCima = (userId: string) => {
-    setCimaStates((prev) => ({ ...prev, [userId]: prev[userId] === 'none' || !prev[userId] ? 'pending' : prev[userId] }))
+    if (cimaStates[userId] && cimaStates[userId] !== 'none') return
+    setCimaStates((prev) => ({ ...prev, [userId]: 'pending' }))
+    sendCimaRequest.mutate(userId, {
+      onError: () => setCimaStates((prev) => ({ ...prev, [userId]: 'none' })),
+    })
   }
 
   const placeholder = tab === 'films'
@@ -175,7 +170,11 @@ export default function DiscoverPage() {
               <div className="section-label-rule" />
             </div>
 
-            {filteredFilms.length === 0 ? (
+            {filmsLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-hidden="true">
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="aspect-[4/5] rounded-2xl" />)}
+              </div>
+            ) : filteredFilms.length === 0 ? (
               <EmptyState
                 icon={FilmIcon}
                 title="No films found."
@@ -256,7 +255,11 @@ export default function DiscoverPage() {
                 <div className="section-label-rule" />
               </div>
 
-              {filteredFilmmakers.length === 0 ? (
+              {filmmakersLoading ? (
+                <div className="space-y-3" aria-hidden="true">
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
+                </div>
+              ) : filteredFilmmakers.length === 0 ? (
                 <EmptyState icon={Users} title="No Results" subtitle="Try a different search or filter." />
               ) : (
                 <div className="space-y-3">

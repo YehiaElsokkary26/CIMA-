@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Camera, Play } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
 
 const ROLES = [
   {
@@ -27,11 +28,17 @@ const ROLES = [
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const setRole  = useAuthStore((s) => s.setRole)
+  const setRole = useAuthStore((s) => s.setRole)
+  const { updateRole } = useAuth()
 
-  const handleSelect = (role: 'filmmaker' | 'viewer') => {
+  const handleSelect = async (role: 'filmmaker' | 'viewer') => {
+    // Optimistic local update so the guard route unblocks immediately —
+    // the mutation persists it server-side (the only place role is trusted from).
     setRole(role)
     navigate('/home', { replace: true })
+    if (role === 'filmmaker') {
+      updateRole.mutate(role)
+    }
   }
 
   return (
@@ -48,7 +55,7 @@ export default function OnboardingPage() {
           </h2>
           {/* Rule 1: muted-foreground on cream ≥ 4.5:1 ✓ */}
           <p className="font-mono text-xs text-muted-foreground">
-            Choose your role. You can't change this later.
+            Choose your role. You can change this later from your profile.
           </p>
         </div>
 

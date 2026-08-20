@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import type { Film, User } from '@/types'
 import { getUserVoteThisWeek } from '@/lib/votingUtils'
-import { getFilmById } from '@/lib/mockData'
 
 interface RecommendationResult {
   films: Film[]
@@ -74,7 +73,7 @@ export function useRecommendations(
 
     // Voted film this week reveals a real preference signal
     const votedFilmId = getUserVoteThisWeek(user.id)
-    const votedFilm = votedFilmId ? getFilmById(votedFilmId) : undefined
+    const votedFilm = votedFilmId ? allFilms.find((f) => f.id === votedFilmId) : undefined
     const votedFilmGenres = votedFilm?.genre ?? []
 
     const favoriteGenres = user.favoriteGenres ?? []

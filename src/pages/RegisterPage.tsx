@@ -28,7 +28,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await register.mutateAsync({ name, email, password, role: 'viewer' })
+      await register.mutateAsync({ name, email, password })
       navigate('/onboarding', { replace: true })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed.'

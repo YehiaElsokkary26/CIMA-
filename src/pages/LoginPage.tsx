@@ -2,56 +2,24 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Loader2, Camera, Play, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 import { CimaIconMark } from '@/components/layout/CimaLogo'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
-import { toast } from '@/store/toastStore'
-
-const DEMO_ACCOUNTS = [
-  {
-    label: 'Filmmaker',
-    email: 'alex@cimafilms.com',
-    password: 'cima2024',
-    icon: Camera,
-    // Rule 3: min 44px touch target — handled by py-3 in button
-    color: 'border-primary/60 bg-primary/10 hover:bg-primary/20 text-primary',
-  },
-  {
-    label: 'Viewer',
-    email: 'sara@cimafilms.com',
-    password: 'cima2024',
-    icon: Play,
-    color: 'border-secondary/60 bg-secondary/10 hover:bg-secondary/20 text-secondary',
-  },
-]
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const loginWithMock = useAuthStore((s) => s.loginWithMock)
   const { login } = useAuth()
 
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
 
-    // Try mock first (works offline/no Supabase needed)
-    const ok = loginWithMock(email, password)
-    if (ok) {
-      setLoading(false)
-      navigate('/home', { replace: true })
-      return
-    }
-
-    // Fall back to Supabase
     try {
       await login.mutateAsync({ email, password })
       navigate('/home', { replace: true })
@@ -59,19 +27,9 @@ export default function LoginPage() {
       const msg = err instanceof Error ? err.message : 'Login failed.'
       setError(
         msg.includes('credentials') || msg.includes('Invalid')
-          ? 'Wrong email or password. Try a demo account below.'
+          ? 'Wrong email or password.'
           : msg
       )
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loginAsDemo = (acc: (typeof DEMO_ACCOUNTS)[0]) => {
-    const ok = loginWithMock(acc.email, acc.password)
-    if (ok) {
-      toast.success(`Logged in as ${acc.label}`)
-      navigate('/home', { replace: true })
     }
   }
 
@@ -144,10 +102,10 @@ export default function LoginPage() {
             type="submit"
             size="lg"
             className="w-full"
-            disabled={loading || login.isPending}
+            disabled={login.isPending}
             pulse
           >
-            {loading || login.isPending ? (
+            {login.isPending ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               'Sign In'
@@ -165,38 +123,6 @@ export default function LoginPage() {
             Register
           </Link>
         </p>
-
-        {/* Demo accounts */}
-        <div className="space-y-3">
-          {/* Rule 1: label min contrast — muted-foreground on cream ✓ */}
-          <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-widest text-center">
-            Try a demo account →
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {DEMO_ACCOUNTS.map((acc) => {
-              const Icon = acc.icon
-              return (
-                <button
-                  key={acc.label}
-                  type="button"
-                  onClick={() => loginAsDemo(acc)}
-                  // Rule 3: min 44px — py-3 = 12px×2 + content ≈ 50px ✓
-                  className={`flex flex-col items-center gap-1.5 border rounded-xl px-3 py-3 transition-colors duration-150 interactive-lift ${acc.color}`}
-                  style={{ minHeight: 44 }}
-                >
-                  <Icon size={18} />
-                  <span className="font-mono text-[11px] uppercase tracking-wider font-medium">
-                    {acc.label}
-                  </span>
-                  {/* Rule 2: min 11px — text-[11px] ✓ */}
-                  <span className="font-mono text-[11px] text-muted-foreground leading-tight text-center">
-                    {acc.email}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
       </motion.div>
     </motion.div>
   )

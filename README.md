@@ -10,11 +10,13 @@ A mobile-first PWA for film students — built with React, Express, TypeScript, 
 |-------------|------------------------------------------------|
 | Frontend    | React 18 + TypeScript + Vite                  |
 | Styling     | Tailwind CSS (custom HSL tokens) + Framer Motion |
-| State       | Zustand (auth) + TanStack Query (server state) |
+| State       | Zustand (auth/ui) + TanStack Query (server state) |
 | Backend     | Node.js + Express + TypeScript                 |
-| Auth        | Supabase Auth (email/password)                 |
+| Auth        | Supabase Auth (email/password), verified server-side on every request |
 | Database    | Supabase PostgreSQL (via `pg` pooler)          |
-| File uploads| Multer → local `/uploads` folder              |
+| File uploads| Browser → Supabase Storage directly (films/thumbnails/trailers/avatars/banners buckets); Express only stores the resulting URL |
+
+**Data flow:** `React → React Query → Axios → Express → PostgreSQL`. The Supabase client in the browser is used for exactly two things: Auth and Storage uploads — every other read/write goes through the Express API, which enforces authentication, role checks, and resource ownership before touching the database.
 
 ---
 
@@ -36,9 +38,13 @@ In your Supabase dashboard:
 
 This creates:
 - `profiles` table (linked to `auth.users` via FK + trigger)
-- `films`, `ratings`, `reviews`, `cima_requests`, `cima_members`, `notifications`, `featured_films`
-- Auto-create-profile trigger on every new Supabase Auth user
-- Row Level Security policies
+- `films`, `votes`, `ratings`, `reviews`, `review_likes`, `review_comments`, `film_credits`,
+  `watchlist`, `follows`, `lists`, `list_items`, `activity_events`,
+  `cima_requests`, `cima_members`, `notifications`, `featured_films`
+- Auto-create-profile trigger on every new Supabase Auth user (always role `'viewer'` — role changes only ever happen through the server)
+- Row Level Security policies — every table is publicly readable where appropriate, but has **no client-side write policy**. All writes go through Express using the service-role key, so RLS here is defense-in-depth, not the primary authorization layer.
+
+You'll also want to create the five Storage buckets used for uploads — `films`, `thumbnails`, `trailers`, `avatars`, `banners` — from Dashboard → Storage, with reasonable per-bucket file-size limits and allowed MIME types (video/* for films & trailers, image/* for the rest).
 
 ### 3. Configure Environment Variables
 
@@ -138,50 +144,70 @@ Open [http://localhost:5173](http://localhost:5173)
 
 All endpoints are prefixed with `/api`.
 
+Note: Auth registration/login happen client-side via `supabase.auth.signUp` / `signInWithPassword` directly (Supabase Auth is the identity source of truth) — `/auth/*` below exists mainly for `GET /auth/me` and API parity.
+
 ### Auth
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/auth/register` | — | Create account |
-| POST | `/auth/login` | — | Sign in, receive JWT |
+| POST | `/auth/register` | — | Create account (server-side path) |
+| POST | `/auth/login` | — | Sign in, receive JWT (server-side path) |
 | GET | `/auth/me` | ✓ | Get own profile |
 
 ### Films
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/films` | — | List all films |
+| GET | `/films` | — | Paginated, filter by `genre`/`q`, sort `newest`\|`top`\|`trending` |
 | GET | `/films/featured/week` | — | Film of the week |
 | GET | `/films/:id` | — | Film detail |
-| POST | `/films` | ✓ filmmaker | Upload film |
-| POST | `/films/:id/rate` | ✓ | Rate 1–5 |
-| GET | `/films/:id/reviews` | — | Film reviews |
-| POST | `/films/:id/review` | ✓ | Add review |
+| POST | `/films` | ✓ filmmaker | Create film (metadata only — media already in Supabase Storage) |
+| PATCH | `/films/:id` | ✓ owner | Update film |
+| DELETE | `/films/:id` | ✓ owner | Delete film |
+| POST | `/films/:id/vote` | ✓ | Weekly "film of the week" vote |
+| GET | `/films/votes/mine` | ✓ | This week's vote, if any |
+| POST | `/films/:id/rating` | ✓ | Rate 1–5 |
+| GET | `/films/:id/reviews` | — | Paginated reviews |
+| POST | `/films/:id/reviews` | ✓ | Add/update review |
 
-### Users
+### Profiles
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/users/:id` | — | User profile |
-| GET | `/users/:id/films` | — | User's films |
-| PATCH | `/users/me` | ✓ | Update own profile |
+| GET | `/profiles/:id` | — | Profile |
+| GET | `/profiles/:id/films` | — | Their published films (paginated) |
+| PATCH | `/profiles/:id` | ✓ owner | Update profile (role is never accepted here) |
+| POST | `/profiles/:id/role` | ✓ owner | The only way to change `role` — validated server-side |
 
 ### Cima (creative circles)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/cima/mine` | ✓ | My circle + pending requests |
-| POST | `/cima/request/:userId` | ✓ | Send join request |
-| POST | `/cima/accept/:requestId` | ✓ | Accept request |
-| POST | `/cima/decline/:requestId` | ✓ | Decline request |
+| GET | `/cima` | ✓ | My circle + pending requests |
+| GET | `/cima/:userId` | — | Another user's crew (public) |
+| POST | `/cima/requests` | ✓ | Send join request — `{ toUserId }` |
+| POST | `/cima/requests/:id/accept` | ✓ | Accept request |
+| POST | `/cima/requests/:id/decline` | ✓ | Decline request |
+| POST | `/cima/requests/:id/cancel` | ✓ | Sender withdraws request |
 
-### Discover
+### Discover / Search
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/discover/filmmakers` | — | Search filmmakers |
+| GET | `/discover/filmmakers` | — | Paginated, filter by genre/city/school |
+| GET | `/search?q=&type=films\|filmmakers` | — | ILIKE search |
+
+### Watchlist / Follows
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/watchlist` | ✓ | My watchlist |
+| POST/DELETE | `/watchlist/:filmId` | ✓ | Add/remove |
+| GET | `/follows/:userId` | — | Followers/following |
+| POST/DELETE | `/follows/:userId` | ✓ | Follow/unfollow |
 
 ### Notifications
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/notifications` | ✓ | List notifications |
+| GET | `/notifications` | ✓ | Paginated; the frontend also subscribes to Supabase Realtime for live updates |
 | PATCH | `/notifications/:id/read` | ✓ | Mark one read |
 | PATCH | `/notifications/read-all` | ✓ | Mark all read |
+
+All error responses share the shape `{ error: { code, message } }`.
 
 ---
 
@@ -193,30 +219,37 @@ CIMA/
 │   ├── components/
 │   │   ├── layout/             # AppShell, TabBar, CimaLogo
 │   │   └── ui/                 # Reusable UI components
-│   ├── hooks/                  # useAuth, useFilms, useCima, etc.
+│   ├── hooks/                  # useAuth, useFilms, useProfile, useCima,
+│   │                           # useFilmmakers, useSearch, useWatchlist,
+│   │                           # useFollows, useNotifications, etc.
 │   ├── lib/
-│   │   ├── api.ts              # Axios client (auto-attaches Supabase token)
-│   │   └── supabase.ts         # Supabase frontend client (anon key)
-│   ├── pages/                  # All 9 app screens
-│   ├── store/                  # Zustand stores (auth, ui)
-│   └── types/                  # TypeScript types
+│   │   ├── api.ts              # THE canonical data-access layer (axios → Express)
+│   │   ├── storage.ts          # Supabase Storage uploads (client-side validated)
+│   │   └── supabase.ts         # Supabase client — Auth + Storage ONLY
+│   ├── pages/                  # App screens — real data + empty states, no mocks
+│   ├── store/                  # Zustand stores (auth, ui, search, toast)
+│   ├── types/                  # TypeScript types (DB row → API DTO → frontend model)
+│   └── __tests__/fixtures/     # mockData.ts — test fixtures only, never imported by pages
 ├── server/                     # Express backend
 │   ├── db/
-│   │   ├── index.ts            # pg Pool + supabaseAdmin client
-│   │   ├── schema.sql          # All tables, triggers, RLS policies
+│   │   ├── index.ts            # pg Pool + supabaseAdmin client (service role)
+│   │   ├── schema.sql          # All tables, indexes, constraints, RLS policies
 │   │   ├── migrate.ts          # Runs schema.sql against Supabase
 │   │   └── seed.ts             # Demo data seeder
 │   ├── middleware/
-│   │   ├── auth.ts             # JWT verification via supabaseAdmin.auth.getUser()
-│   │   └── role.ts             # Filmmaker-only guard
-│   ├── routes/                 # auth, films, users, cima, discover, notifications
+│   │   ├── auth.ts             # requireAuth / optionalAuth (JWT verification)
+│   │   ├── role.ts             # requireRole('filmmaker' | 'viewer')
+│   │   └── ownership.ts        # requireOwner(table, ownerColumn)
+│   ├── routes/                 # auth, films, profiles, cima, discover, search,
+│   │                           # watchlist, follows, notifications
 │   ├── lib/
-│   │   ├── errors.ts           # AppError + typed error helpers
+│   │   ├── errors.ts           # AppError + { error: { code, message } } responses
 │   │   ├── notify.ts           # createNotification() helper
-│   │   └── validators.ts       # Zod schemas
+│   │   ├── validators.ts       # Zod schemas for every route input
+│   │   └── week.ts             # ISO week key (weekly voting)
 │   └── index.ts                # Express app entry point
-├── .env.example                # Frontend env template
-└── server/.env.example         # Backend env template
+├── .env.example                # Frontend env template (VITE_ vars only — public)
+└── server/.env.example         # Backend env template (includes the service role key)
 ```
 
 ---

@@ -19,18 +19,6 @@ import { Film, MessageSquare } from 'lucide-react'
 import { formatRuntime, formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 
-const MOCK_FILM = {
-  id: '4', title: 'STATIC', description: 'A radio technician picks up a signal from 1986. What begins as a technical glitch spirals into a haunting encounter with a voice that knows too much. Shot entirely on location in a decommissioned broadcasting tower in rural Morocco, STATIC is a lo-fi meditation on memory, loss, and the frequencies we leave behind.', genre: ['Sci-Fi', 'Experimental'], runtime: 31, year: 2023, rating: 4.8, ratingCount: 67, thumbnailUrl: 'https://images.unsplash.com/photo-1585676623595-e7cb4792a3e0?w=900&q=80', uploaderId: 'u4',
-  uploader: { id: 'u4', name: 'Omar Hadid', role: 'filmmaker' as const, email: '', bio: 'Documentary and experimental filmmaker based in Casablanca. Obsessed with sound design and found footage.', school: 'ESAV Marrakech', createdAt: '' },
-  createdAt: '2023-12-20',
-}
-
-const MOCK_REVIEWS = [
-  { id: 'r1', filmId: '4', userId: 'u10', rating: 5, body: 'One of the most atmospheric short films I\'ve seen this year. The sound design is extraordinary — every crackle and hiss feels intentional. The ending left me genuinely unsettled.', createdAt: '2024-01-15', user: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'viewer' as const, createdAt: '' } },
-  { id: 'r2', filmId: '4', userId: 'u11', rating: 4, body: 'The visual language is confident and assured. Hadid knows exactly when to hold a shot. My only critique is the pacing in the middle act drags slightly — but the final ten minutes are worth every second.', createdAt: '2024-02-03', user: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker' as const, createdAt: '' } },
-  { id: 'r3', filmId: '4', userId: 'u12', rating: 5, body: 'Shot on 16mm if I\'m not mistaken. The grain alone makes this worth watching. A genuinely original voice emerging from North African cinema.', createdAt: '2024-03-08', user: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker' as const, createdAt: '' } },
-]
-
 export default function FilmDetailPage() {
   const { id } = useParams<{ id: string }>()
   const user = useAuthStore((s) => s.user)
@@ -38,15 +26,32 @@ export default function FilmDetailPage() {
   const [reviewBody, setReviewBody] = useState('')
   const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
 
-  const { data: film } = useFilm(id ?? '')
-  const { data: reviews } = useFilmReviews(id ?? '')
+  const { data: film, isLoading: filmLoading } = useFilm(id ?? '')
+  const { data: reviewsPage } = useFilmReviews(id ?? '')
   const addReview = useAddReview(id ?? '')
   const sendCimaRequest = useSendCimaRequest()
 
-  const displayFilm = film ?? MOCK_FILM
-  const displayReviews = reviews ?? MOCK_REVIEWS
+  const displayReviews = reviewsPage?.data ?? []
 
-  const rating = useRating(id ?? '', displayFilm.rating)
+  const rating = useRating(id ?? '', film?.rating)
+
+  if (filmLoading) {
+    return (
+      <div className="min-h-full flex items-center justify-center py-24">
+        <LoadingDots />
+      </div>
+    )
+  }
+
+  if (!film) {
+    return (
+      <div className="min-h-full">
+        <EmptyState icon={Film} title="Film Not Found" subtitle="This film may have been removed or never existed." />
+      </div>
+    )
+  }
+
+  const displayFilm = film
 
   const handleAddToRating = (val: number) => {
     rating.setHovered(null)

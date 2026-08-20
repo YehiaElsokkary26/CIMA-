@@ -9,30 +9,12 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Link } from 'react-router-dom'
 import Avatar from '@/components/ui/Avatar'
 
-const MOCK_DATA = {
-  members: [
-    { id: 'c1', user: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'filmmaker' as const, bio: 'Cinematographer, Cairo.', school: 'Cairo Film Institute', createdAt: '' }, joinedAt: '2024-01-01' },
-    { id: 'c2', user: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker' as const, bio: 'Editor & colorist.', school: 'ISAC Rabat', createdAt: '' }, joinedAt: '2024-02-01' },
-    { id: 'c3', user: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker' as const, bio: 'Sound designer.', school: 'ESAV Marrakech', createdAt: '' }, joinedAt: '2024-03-01' },
-  ],
-  requests: [
-    {
-      id: 'req1', fromUserId: 'u20', toUserId: 'me', status: 'pending' as const, createdAt: new Date(Date.now() - 3600000).toISOString(),
-      from: { id: 'u20', name: 'Yasmine Korbi', email: '', role: 'filmmaker' as const, bio: 'Documentary filmmaker, Tunis. Looking to collaborate on North African narratives.', school: 'EDAC Tunis', createdAt: '' },
-    },
-    {
-      id: 'req2', fromUserId: 'u21', toUserId: 'me', status: 'pending' as const, createdAt: new Date(Date.now() - 7200000).toISOString(),
-      from: { id: 'u21', name: 'Tariq Amrani', email: '', role: 'filmmaker' as const, bio: 'Experimental video artist. Berlin-based.', school: 'HFF München', createdAt: '' },
-    },
-  ],
-}
-
 export default function CimaHubPage() {
   const { data, isLoading } = useCima()
   const accept = useAcceptCimaRequest()
   const decline = useDeclineCimaRequest()
 
-  const displayData = data ?? MOCK_DATA
+  const displayData = data ?? { members: [], requests: [] }
 
   return (
     <div className="min-h-full px-4 py-6 space-y-8">

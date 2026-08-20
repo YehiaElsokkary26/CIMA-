@@ -11,7 +11,7 @@ export interface AuthRequest extends Request {
  * Verifies the Supabase JWT sent in the Authorization header.
  * Attaches req.userId (Supabase Auth UID) and req.userRole (from profiles table).
  */
-export async function authMiddleware(
+export async function requireAuth(
   req: AuthRequest,
   _res: Response,
   next: NextFunction
@@ -46,7 +46,7 @@ export async function authMiddleware(
 }
 
 /**
- * Same as authMiddleware but never rejects — simply leaves req.userId undefined
+ * Same as requireAuth but never rejects — simply leaves req.userId undefined
  * when no valid token is present.
  */
 export async function optionalAuth(
@@ -70,3 +70,6 @@ export async function optionalAuth(
   }
   next()
 }
+
+// Back-compat alias for older route files
+export const authMiddleware = requireAuth

@@ -1,13 +1,24 @@
 import { Router, Response, NextFunction } from 'express'
+import { z } from 'zod'
 import { query, transaction } from '../db'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { requireAuth, AuthRequest } from '../middleware/auth'
 import { notFound, conflict, AppError } from '../lib/errors'
 import { createNotification } from '../lib/notify'
+import { validateBody } from '../lib/validators'
 
 const router = Router()
 
-// ---- GET /api/cima/mine -----------------------------------------------------
-router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+const sendRequestSchema = z.object({ toUserId: z.string().uuid() })
+
+function mapMember(m: any) {
+  return {
+    id: m.id, joinedAt: m.joined_at,
+    user: { id: m.uid, name: m.name, email: m.email, role: m.role, bio: m.bio, school: m.school, city: m.city, avatarUrl: m.avatar_url, topGenre: m.top_genre, createdAt: m.created_at },
+  }
+}
+
+// ---- GET /api/cima  (my crew + my incoming requests) -------------------------
+router.get('/', requireAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const [membersRes, requestsRes] = await Promise.all([
       query(
@@ -33,10 +44,7 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
     ])
 
     res.json({
-      members: membersRes.rows.map((m) => ({
-        id: m.id, joinedAt: m.joined_at,
-        user: { id: m.uid, name: m.name, email: m.email, role: m.role, bio: m.bio, school: m.school, city: m.city, avatarUrl: m.avatar_url, topGenre: m.top_genre, createdAt: m.created_at },
-      })),
+      members: membersRes.rows.map(mapMember),
       requests: requestsRes.rows.map((r) => ({
         id: r.id, fromUserId: r.uid, toUserId: req.userId, status: r.status, createdAt: r.created_at,
         from: { id: r.uid, name: r.name, email: r.email, role: r.role, bio: r.bio, school: r.school, avatarUrl: r.avatar_url, createdAt: r.ucreated },
@@ -45,31 +53,50 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
   } catch (err) { next(err) }
 })
 
-// ---- POST /api/cima/request/:targetUserId -----------------------------------
-router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { targetUserId } = req.params
-  if (targetUserId === req.userId) {
-    next(new AppError('You cannot send a Cima request to yourself', 400)); return
+// ---- GET /api/cima/:userId  (public: another user's crew) --------------------
+router.get('/:userId', async (req, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `SELECT cm.id, cm.joined_at,
+              p.id AS uid, p.name, p.email, p.role, p.bio, p.school,
+              p.city, p.avatar_url, p.top_genre, p.created_at
+       FROM   cima_members cm
+       JOIN   profiles p ON p.id = cm.member_id
+       WHERE  cm.owner_id = $1
+       ORDER  BY cm.joined_at DESC`,
+      [req.params.userId]
+    )
+    res.json({ members: result.rows.map(mapMember) })
+  } catch (err) { next(err) }
+})
+
+// ---- POST /api/cima/requests  (body: { toUserId }) ----------------------------
+router.post('/requests', requireAuth, validateBody(sendRequestSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { toUserId } = req.body
+  if (toUserId === req.userId) {
+    next(new AppError('You cannot send a Cima request to yourself', 400, 'SELF_REQUEST')); return
   }
   try {
-    const targetRes = await query('SELECT id, name FROM profiles WHERE id = $1', [targetUserId])
+    const targetRes = await query('SELECT id, name FROM profiles WHERE id = $1', [toUserId])
     if (!targetRes.rowCount) throw notFound('User')
 
     const existing = await query(
-      'SELECT id FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2',
-      [req.userId, targetUserId]
+      `SELECT id, status FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2`,
+      [req.userId, toUserId]
     )
-    if (existing.rowCount! > 0) throw conflict('Cima request already sent')
+    if (existing.rowCount! > 0 && existing.rows[0].status === 'pending') throw conflict('Cima request already sent')
 
     const result = await query(
-      `INSERT INTO cima_requests (from_user_id, to_user_id)
-       VALUES ($1,$2) RETURNING id`,
-      [req.userId, targetUserId]
+      `INSERT INTO cima_requests (from_user_id, to_user_id, status)
+       VALUES ($1,$2,'pending')
+       ON CONFLICT (from_user_id, to_user_id) DO UPDATE SET status = 'pending', updated_at = NOW()
+       RETURNING id`,
+      [req.userId, toUserId]
     )
 
     const fromRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
     await createNotification({
-      userId:     targetUserId,
+      userId:     toUserId,
       type:       'cima_request',
       message:    `${fromRes.rows[0]?.name ?? 'Someone'} wants to join your Cima`,
       fromUserId: req.userId,
@@ -79,25 +106,20 @@ router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, r
   } catch (err) { next(err) }
 })
 
-// ---- POST /api/cima/accept/:requestId ---------------------------------------
-router.post('/accept/:requestId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// ---- POST /api/cima/requests/:id/accept ---------------------------------------
+router.post('/requests/:id/accept', requireAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const reqRes = await query(
-      'SELECT * FROM cima_requests WHERE id = $1 AND to_user_id = $2',
-      [req.params.requestId, req.userId]
+      `SELECT * FROM cima_requests WHERE id = $1 AND to_user_id = $2 AND status = 'pending'`,
+      [req.params.id, req.userId]
     )
     if (!reqRes.rowCount) throw notFound('Cima request')
     const cimaReq = reqRes.rows[0]
 
     await transaction(async (client) => {
+      await client.query(`UPDATE cima_requests SET status = 'accepted', updated_at = NOW() WHERE id = $1`, [cimaReq.id])
       await client.query(
-        `UPDATE cima_requests SET status = 'accepted', updated_at = NOW() WHERE id = $1`,
-        [cimaReq.id]
-      )
-      await client.query(
-        `INSERT INTO cima_members (owner_id, member_id)
-         VALUES ($1,$2)
-         ON CONFLICT DO NOTHING`,
+        `INSERT INTO cima_members (owner_id, member_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
         [req.userId, cimaReq.from_user_id]
       )
     })
@@ -114,14 +136,28 @@ router.post('/accept/:requestId', authMiddleware, async (req: AuthRequest, res: 
   } catch (err) { next(err) }
 })
 
-// ---- POST /api/cima/decline/:requestId --------------------------------------
-router.post('/decline/:requestId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// ---- POST /api/cima/requests/:id/decline ---------------------------------------
+router.post('/requests/:id/decline', requireAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query(
       `UPDATE cima_requests SET status = 'declined', updated_at = NOW()
-       WHERE id = $1 AND to_user_id = $2
+       WHERE id = $1 AND to_user_id = $2 AND status = 'pending'
        RETURNING id`,
-      [req.params.requestId, req.userId]
+      [req.params.id, req.userId]
+    )
+    if (!result.rowCount) throw notFound('Cima request')
+    res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// ---- POST /api/cima/requests/:id/cancel  (sender withdraws) -------------------
+router.post('/requests/:id/cancel', requireAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `UPDATE cima_requests SET status = 'cancelled', updated_at = NOW()
+       WHERE id = $1 AND from_user_id = $2 AND status = 'pending'
+       RETURNING id`,
+      [req.params.id, req.userId]
     )
     if (!result.rowCount) throw notFound('Cima request')
     res.json({ ok: true })
