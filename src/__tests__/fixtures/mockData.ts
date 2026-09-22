@@ -1,5 +1,4 @@
 import type { User, Film } from '@/types'
-import { getCurrentWeekKey, getUserVoteThisWeek, setUserVote } from './votingUtils'
 
 // ─── Demo users ────────────────────────────────────────────────────────────
 
@@ -68,35 +67,9 @@ const RAMZI: User = {
   createdAt: '2023-11-01T00:00:00Z',
 }
 
-const PASSWORDS: Record<string, string> = {
-  'alex@cimafilms.com': 'cima2024',
-  'sara@cimafilms.com': 'cima2024',
-  'demo@cima.film': 'password',
-  'viewer@cima.film': 'password',
-}
-
-const LEGACY_USERS: Record<string, User> = {
-  'demo@cima.film': {
-    id: 'u_demo',
-    name: 'Demo Filmmaker',
-    email: 'demo@cima.film',
-    role: 'filmmaker',
-    createdAt: new Date().toISOString(),
-  },
-  'viewer@cima.film': {
-    id: 'u_demo_viewer',
-    name: 'Demo Viewer',
-    email: 'viewer@cima.film',
-    role: 'viewer',
-    createdAt: new Date().toISOString(),
-  },
-}
-
 const ALL_USERS: User[] = [ALEX, SARA, OMAR, LAYLA, NOUR, RAMZI]
 
 // ─── Seed films ─────────────────────────────────────────────────────────────
-
-const W = getCurrentWeekKey()
 
 // Sample video URLs reused across films (mock — no real server)
 const V = {
@@ -123,11 +96,10 @@ let films: Film[] = [
     year: 2023,
     rating: 4.2,
     ratingCount: 31,
-    uploaderId: ALEX.id,
+    filmmakerId: ALEX.id,
     uploader: ALEX,
     isFilmOfTheWeek: true,
     votes: 847,
-    weekKey: W,
     createdAt: '2023-06-15T00:00:00Z',
   },
   {
@@ -142,10 +114,9 @@ let films: Film[] = [
     year: 2022,
     rating: 3.8,
     ratingCount: 19,
-    uploaderId: ALEX.id,
+    filmmakerId: ALEX.id,
     uploader: ALEX,
     votes: 312,
-    weekKey: W,
     createdAt: '2022-11-20T00:00:00Z',
   },
   {
@@ -161,10 +132,9 @@ let films: Film[] = [
     year: 2024,
     rating: 4.6,
     ratingCount: 54,
-    uploaderId: OMAR.id,
+    filmmakerId: OMAR.id,
     uploader: OMAR,
     votes: 523,
-    weekKey: W,
     createdAt: '2024-03-10T00:00:00Z',
   },
   {
@@ -179,10 +149,9 @@ let films: Film[] = [
     year: 2024,
     rating: 4.1,
     ratingCount: 27,
-    uploaderId: LAYLA.id,
+    filmmakerId: LAYLA.id,
     uploader: LAYLA,
     votes: 198,
-    weekKey: W,
     createdAt: '2024-02-14T00:00:00Z',
   },
   {
@@ -198,10 +167,9 @@ let films: Film[] = [
     year: 2024,
     rating: 3.9,
     ratingCount: 38,
-    uploaderId: NOUR.id,
+    filmmakerId: NOUR.id,
     uploader: NOUR,
     votes: 445,
-    weekKey: W,
     createdAt: '2024-01-28T00:00:00Z',
   },
   {
@@ -216,10 +184,9 @@ let films: Film[] = [
     year: 2023,
     rating: 4.4,
     ratingCount: 62,
-    uploaderId: RAMZI.id,
+    filmmakerId: RAMZI.id,
     uploader: RAMZI,
     votes: 621,
-    weekKey: W,
     createdAt: '2023-12-05T00:00:00Z',
   },
 
@@ -237,10 +204,9 @@ let films: Film[] = [
     year: 2024,
     rating: 3.7,
     ratingCount: 23,
-    uploaderId: ALEX.id,
+    filmmakerId: ALEX.id,
     uploader: ALEX,
     votes: 287,
-    weekKey: W,
     createdAt: '2024-05-01T00:00:00Z',
   },
   {
@@ -255,10 +221,9 @@ let films: Film[] = [
     year: 2023,
     rating: 4.0,
     ratingCount: 18,
-    uploaderId: OMAR.id,
+    filmmakerId: OMAR.id,
     uploader: OMAR,
     votes: 156,
-    weekKey: W,
     createdAt: '2023-09-12T00:00:00Z',
   },
   {
@@ -274,10 +239,9 @@ let films: Film[] = [
     year: 2024,
     rating: 4.3,
     ratingCount: 41,
-    uploaderId: LAYLA.id,
+    filmmakerId: LAYLA.id,
     uploader: LAYLA,
     votes: 398,
-    weekKey: W,
     createdAt: '2024-04-20T00:00:00Z',
   },
   {
@@ -292,10 +256,9 @@ let films: Film[] = [
     year: 2023,
     rating: 3.5,
     ratingCount: 12,
-    uploaderId: NOUR.id,
+    filmmakerId: NOUR.id,
     uploader: NOUR,
     votes: 72,
-    weekKey: W,
     createdAt: '2023-07-08T00:00:00Z',
   },
   {
@@ -311,10 +274,9 @@ let films: Film[] = [
     year: 2024,
     rating: 4.1,
     ratingCount: 29,
-    uploaderId: RAMZI.id,
+    filmmakerId: RAMZI.id,
     uploader: RAMZI,
     votes: 341,
-    weekKey: W,
     createdAt: '2024-03-05T00:00:00Z',
   },
   {
@@ -329,10 +291,9 @@ let films: Film[] = [
     year: 2022,
     rating: 3.6,
     ratingCount: 15,
-    uploaderId: ALEX.id,
+    filmmakerId: ALEX.id,
     uploader: ALEX,
     votes: 89,
-    weekKey: W,
     createdAt: '2022-08-17T00:00:00Z',
   },
   {
@@ -348,10 +309,9 @@ let films: Film[] = [
     year: 2024,
     rating: 4.5,
     ratingCount: 47,
-    uploaderId: OMAR.id,
+    filmmakerId: OMAR.id,
     uploader: OMAR,
     votes: 264,
-    weekKey: W,
     createdAt: '2024-01-12T00:00:00Z',
   },
   {
@@ -366,36 +326,17 @@ let films: Film[] = [
     year: 2023,
     rating: 4.0,
     ratingCount: 22,
-    uploaderId: LAYLA.id,
+    filmmakerId: LAYLA.id,
     uploader: LAYLA,
     votes: 133,
-    weekKey: W,
     createdAt: '2023-10-30T00:00:00Z',
   },
 ]
 
-// ─── Internal helpers ────────────────────────────────────────────────────────
-
-function _refreshFotw(): void {
-  const weekKey = getCurrentWeekKey()
-  let prevWinner: string | null = null
-  try {
-    prevWinner = localStorage.getItem('cima_fotw_prev_winner')
-  } catch { /* ignore */ }
-
-  const eligible = films.filter((f) => f.weekKey === weekKey && f.id !== prevWinner)
-  if (eligible.length === 0) return
-
-  const sorted = [...eligible].sort((a, b) => {
-    const vd = (b.votes ?? 0) - (a.votes ?? 0)
-    return vd !== 0 ? vd : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
-
-  films.forEach((f) => { f.isFilmOfTheWeek = false })
-  sorted[0].isFilmOfTheWeek = true
-}
-
-// ─── Public helpers ────────────────────────────────────────────────────────
+// ─── Test fixture helpers ──────────────────────────────────────────────────
+// This module is a fixture for tests only — it is never imported by
+// production code. The old client-side voting/film-of-the-week simulation
+// was removed; that logic now lives server-side (see server/routes/films.ts).
 
 export function getFilms(): Film[] {
   return films
@@ -405,71 +346,7 @@ export function getFilmById(id: string): Film | undefined {
   return films.find((f) => f.id === id)
 }
 
-export function getFilmOfTheWeek(): Film {
-  const weekKey = getCurrentWeekKey()
-  let prevWinner: string | null = null
-  try {
-    prevWinner = localStorage.getItem('cima_fotw_prev_winner')
-  } catch { /* ignore */ }
-
-  const eligible = films.filter((f) => f.weekKey === weekKey && f.id !== prevWinner)
-  if (eligible.length === 0) return films.find((f) => f.isFilmOfTheWeek) ?? films[0]
-
-  const sorted = [...eligible].sort((a, b) => {
-    const vd = (b.votes ?? 0) - (a.votes ?? 0)
-    return vd !== 0 ? vd : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  })
-  return sorted[0]
-}
-
-export function getWeeklyVoteLeaderboard(): Film[] {
-  const weekKey = getCurrentWeekKey()
-  return [...films]
-    .filter((f) => f.weekKey === weekKey)
-    .sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
-}
-
-export function voteForFilm(
-  filmId: string,
-  userId: string,
-): { success: boolean; film?: Film; error?: 'already_voted_this_film' | 'already_voted_other_film' | 'film_not_found' } {
-  const existing = getUserVoteThisWeek(userId)
-  if (existing === filmId) return { success: false, error: 'already_voted_this_film' }
-  if (existing !== null) return { success: false, error: 'already_voted_other_film' }
-
-  const film = films.find((f) => f.id === filmId)
-  if (!film) return { success: false, error: 'film_not_found' }
-
-  film.votes = (film.votes ?? 0) + 1
-  setUserVote(userId, filmId)
-  _refreshFotw()
-
-  return { success: true, film: { ...film } }
-}
-
-export function addFilm(film: Omit<Film, 'id' | 'createdAt'>): Film {
-  const newFilm: Film = {
-    votes: 0,
-    weekKey: getCurrentWeekKey(),
-    isFilmOfTheWeek: false,
-    ...film,
-    id: `f${Date.now()}`,
-    createdAt: new Date().toISOString(),
-  }
-  films = [newFilm, ...films]
-  return newFilm
-}
-
 export function getUserById(id: string): User | undefined {
   if (id === 'me') return ALL_USERS[0]
   return ALL_USERS.find((u) => u.id === id)
-}
-
-export function authenticateUser(email: string, password: string): User | null {
-  const normalised = email.toLowerCase().trim()
-  if (normalised === 'alex@cimafilms.com' && password === PASSWORDS[normalised]) return ALEX
-  if (normalised === 'sara@cimafilms.com' && password === PASSWORDS[normalised]) return SARA
-  const legacyPw = PASSWORDS[normalised]
-  if (legacyPw && legacyPw === password) return LEGACY_USERS[normalised] ?? null
-  return null
 }

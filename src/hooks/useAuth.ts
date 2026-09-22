@@ -1,10 +1,26 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
-import { getProfile, createProfile, updateProfileRole } from '@/lib/supabaseApi'
+import { profilesApi, apiErrorMessage } from '@/lib/api'
 import { useNavigate } from 'react-router-dom'
 import type { User, UserRole } from '@/types'
 import { toast } from '@/store/toastStore'
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Fetches the profile row via Express, retrying once — the DB trigger that
+ * creates it runs in the same transaction as the Supabase Auth signup, but
+ * we allow one bounded retry rather than assuming zero replication lag. */
+async function fetchProfileWithRetry(userId: string): Promise<User> {
+  try {
+    const { data } = await profilesApi.get(userId)
+    return data
+  } catch {
+    await sleep(400)
+    const { data } = await profilesApi.get(userId)
+    return data
+  }
+}
 
 export function useAuth() {
   const { token, user, isLoggedIn, setAuth, setUser, logout } = useAuthStore()
@@ -16,14 +32,12 @@ export function useAuth() {
       if (error) throw new Error(error.message)
       if (!data.session) throw new Error('No session returned — please try again')
 
-      const profile = await getProfile(data.user.id, data.user.email)
-      if (!profile) throw new Error('Profile not found. Please contact support.')
-
+      const profile = await fetchProfileWithRetry(data.user.id)
       return { token: data.session.access_token, user: profile }
     },
     onSuccess: ({ token, user }) => setAuth(token, user),
     onError: (err) => {
-      const msg = err instanceof Error ? err.message : 'Login failed'
+      const msg = apiErrorMessage(err, 'Login failed')
       if (!msg.includes('credentials') && !msg.includes('Invalid')) {
         toast.error(msg)
       }
@@ -31,17 +45,8 @@ export function useAuth() {
   })
 
   const registerMutation = useMutation({
-    mutationFn: async ({
-      name,
-      email,
-      password,
-    }: {
-      name: string
-      email: string
-      password: string
-      role?: string
-    }) => {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+    mutationFn: async ({ name, email, password }: { name: string; email: string; password: string }) => {
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } })
       if (error) throw new Error(error.message)
       if (!data.user) throw new Error('Signup failed — please try again')
 
@@ -49,20 +54,12 @@ export function useAuth() {
         throw new Error('Check your email to confirm your account before logging in.')
       }
 
-      // Insert profile without role so onboarding is triggered
-      await createProfile({ id: data.user.id, name })
-
-      const newUser: User = {
-        id: data.user.id,
-        email: data.user.email ?? email,
-        name,
-        role: undefined as unknown as UserRole,
-        createdAt: new Date().toISOString(),
-      }
-      return { token: data.session.access_token, user: newUser }
+      const profile = await fetchProfileWithRetry(data.user.id)
+      return { token: data.session.access_token, user: profile }
     },
     onSuccess: ({ token, user }) => {
-      // Force hasSelectedRole: false for new registrations so onboarding shows
+      // New registrations always land on 'viewer' — force onboarding to run
+      // so the person explicitly picks their role via the safe role endpoint.
       useAuthStore.setState({
         token,
         user,
@@ -70,14 +67,8 @@ export function useAuth() {
         isLoggedIn: true,
         hasSelectedRole: false,
       })
-      localStorage.setItem('cima_token', token)
     },
-    onError: (err) => {
-      const msg = err instanceof Error ? err.message : 'Registration failed'
-      if (!msg.includes('fetch') && !msg.includes('network') && !msg.includes('Failed')) {
-        toast.error(msg)
-      }
-    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Registration failed')),
   })
 
   const handleLogout = async () => {
@@ -86,12 +77,14 @@ export function useAuth() {
     navigate('/login')
   }
 
-  // Sync role selection to Supabase profiles table
   const updateRoleMutation = useMutation({
     mutationFn: async (role: UserRole) => {
-      if (!user?.id) return
-      await updateProfileRole(user.id, role)
+      if (!user?.id) throw new Error('Not signed in')
+      const { data } = await profilesApi.changeRole(user.id, role)
+      return data
     },
+    onSuccess: (updated) => setUser(updated),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Could not update role')),
   })
 
   return {
@@ -114,8 +107,8 @@ export function useMe() {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) return null
-      const profile = await getProfile(session.user.id, session.user.email)
-      if (profile) setUser(profile)
+      const profile = await fetchProfileWithRetry(session.user.id)
+      setUser(profile)
       return profile
     },
     enabled: !!token,

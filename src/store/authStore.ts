@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, UserRole } from '@/types'
-import { authenticateUser } from '@/lib/mockData'
 
 interface AuthStore {
   token: string | null
@@ -10,17 +9,14 @@ interface AuthStore {
   isLoggedIn: boolean
   hasSelectedRole: boolean
 
-  // Supabase / server path (keeps legacy callers working)
   setAuth: (token: string, user: User) => void
   setUser: (user: User) => void
 
-  // Mock / offline path
-  loginWithMock: (email: string, password: string) => boolean
-
-  // Role selection (shown after first login when role is not yet set)
+  // Role selection (shown after first login when role is not yet set).
+  // Persists to the server via useSetRole — this only mirrors the result locally.
   setRole: (role: UserRole) => void
 
-  // Update profile fields
+  // Mirrors a server-confirmed profile update into local state.
   updateUser: (patch: Partial<User>) => void
 
   logout: () => void
@@ -36,7 +32,6 @@ export const useAuthStore = create<AuthStore>()(
       hasSelectedRole: false,
 
       setAuth: (token, user) => {
-        localStorage.setItem('cima_token', token)
         const hasRole = !!user.role
         set({
           token,
@@ -49,20 +44,6 @@ export const useAuthStore = create<AuthStore>()(
 
       setUser: (user) => {
         set({ user, role: user.role ?? get().role })
-      },
-
-      loginWithMock: (email, password) => {
-        const user = authenticateUser(email, password)
-        if (!user) return false
-        localStorage.setItem('cima_token', 'mock_token')
-        set({
-          token: 'mock_token',
-          user,
-          role: user.role,
-          isLoggedIn: true,
-          hasSelectedRole: !!user.role,
-        })
-        return true
       },
 
       setRole: (role) => {
@@ -80,7 +61,6 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
-        localStorage.removeItem('cima_token')
         set({ token: null, user: null, role: null, isLoggedIn: false, hasSelectedRole: false })
       },
     }),

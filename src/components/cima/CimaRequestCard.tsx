@@ -29,7 +29,7 @@ export default function CimaRequestCard({
       className="bg-card rounded-2xl border border-border p-4 space-y-3"
     >
       <div className="flex items-start gap-3">
-        <Avatar name={user?.name ?? '?'} src={user?.avatar} size="md" />
+        <Avatar name={user?.name ?? '?'} src={user?.avatarUrl} size="md" />
         <div className="flex-1 min-w-0">
           <p className="font-sans font-semibold text-sm text-foreground">{user?.name ?? 'Unknown'}</p>
           {user?.school && (

@@ -15,7 +15,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
         <div className="flex items-center gap-2.5">
           <Avatar
             name={review.user?.name ?? 'Anonymous'}
-            src={review.user?.avatar}
+            src={review.user?.avatarUrl}
             size="sm"
           />
           <div>

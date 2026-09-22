@@ -152,8 +152,8 @@ async function seed() {
     if (!uploaderId) { console.warn(`  ✗ Uploader ${f.uploaderEmail} not found, skipping "${f.title}"`); continue }
 
     const res = await pool.query<{ id: string }>(
-      `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, thumbnail_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO films (title, description, genre, runtime, year, filmmaker_id, thumbnail_url, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'published')
        ON CONFLICT DO NOTHING
        RETURNING id`,
       [f.title, f.description, f.genre, f.runtime_min, f.release_year, uploaderId, f.thumbnail_url]
@@ -165,7 +165,7 @@ async function seed() {
       if ((f as any).featured) featuredFilmId = id
     } else {
       // Already exists — fetch its id
-      const existing = await pool.query<{ id: string }>('SELECT id FROM films WHERE title=$1 AND uploader_id=$2', [f.title, uploaderId])
+      const existing = await pool.query<{ id: string }>('SELECT id FROM films WHERE title=$1 AND filmmaker_id=$2', [f.title, uploaderId])
       if (existing.rows[0]) {
         filmIds[f.title] = existing.rows[0].id
         if ((f as any).featured) featuredFilmId = existing.rows[0].id

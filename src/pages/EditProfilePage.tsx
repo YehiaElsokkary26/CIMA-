@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Check, Camera } from 'lucide-react'
+import { ArrowLeft, Check, Camera, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
+import { useUpdateProfile } from '@/hooks/useProfile'
+import { uploadToBucket, StorageValidationError } from '@/lib/storage'
+import { toast } from '@/store/toastStore'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
-import type { UserRole } from '@/types'
 
 const ALL_GENRES = ['Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi', 'Thriller', 'Horror', 'Comedy', 'Animation']
 const ALL_CREW_ROLES = ['Director', 'Producer', 'Assistant Director', 'Cinematographer', 'Editor', 'Sound Designer', 'Production Designer', 'Screenwriter']
@@ -14,36 +17,49 @@ const ALL_CREW_ROLES = ['Director', 'Producer', 'Assistant Director', 'Cinematog
 export default function EditProfilePage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const updateUser = useAuthStore((s) => s.updateUser)
+  const { updateRole } = useAuth()
+  const updateProfile = useUpdateProfile(user?.id ?? '')
 
   const [name, setName] = useState(user?.name ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
   const [school, setSchool] = useState(user?.school ?? '')
   const [city, setCity] = useState(user?.city ?? '')
-  const [role, setRole] = useState<UserRole>(user?.role ?? 'viewer')
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(user?.favoriteGenres ?? [])
   const [crewRoles, setCrewRoles] = useState<string[]>(user?.crewRoles ?? [])
-  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar)
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatarUrl ?? user?.avatar)
   const [bannerPreview, setBannerPreview] = useState<string | undefined>(user?.bannerUrl)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [bannerUploading, setBannerUploading] = useState(false)
 
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
 
-  const readFile = (file: File): Promise<string> =>
-    new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = (e) => resolve(e.target?.result as string)
-      reader.readAsDataURL(file)
-    })
-
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setAvatarPreview(await readFile(file))
+    if (!file || !user) return
+    setAvatarUploading(true)
+    try {
+      const url = await uploadToBucket('avatars', file, user.id)
+      setAvatarPreview(url)
+    } catch (err) {
+      toast.error(err instanceof StorageValidationError ? err.message : 'Could not upload photo')
+    } finally {
+      setAvatarUploading(false)
+    }
   }
 
   const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setBannerPreview(await readFile(file))
+    if (!file || !user) return
+    setBannerUploading(true)
+    try {
+      const url = await uploadToBucket('banners', file, user.id)
+      setBannerPreview(url)
+    } catch (err) {
+      toast.error(err instanceof StorageValidationError ? err.message : 'Could not upload banner')
+    } finally {
+      setBannerUploading(false)
+    }
   }
 
   const toggleGenre = (g: string) =>
@@ -52,19 +68,24 @@ export default function EditProfilePage() {
   const toggleCrewRole = (r: string) =>
     setCrewRoles((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
 
-  const handleSave = () => {
-    updateUser({
-      name: name.trim() || user?.name,
+  const handleSave = async () => {
+    if (!user) return
+    await updateProfile.mutateAsync({
+      name: name.trim() || user.name,
       bio,
       school,
       city,
-      role,
       favoriteGenres,
       crewRoles,
-      avatar: avatarPreview,
+      avatarUrl: avatarPreview,
       bannerUrl: bannerPreview,
     })
     navigate('/profile/me')
+  }
+
+  const handleRoleChange = (role: 'viewer' | 'filmmaker') => {
+    if (role === user?.role) return
+    updateRole.mutate(role)
   }
 
   return (
@@ -88,8 +109,8 @@ export default function EditProfilePage() {
           <ArrowLeft size={18} />
         </button>
         <h1 className="font-display text-xl uppercase tracking-widest text-foreground flex-1">Edit Profile</h1>
-        <Button size="sm" onClick={handleSave}>
-          <Check size={13} /> Save
+        <Button size="sm" onClick={handleSave} disabled={updateProfile.isPending}>
+          {updateProfile.isPending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
         </Button>
       </div>
 
@@ -103,11 +124,14 @@ export default function EditProfilePage() {
           <button
             type="button"
             onClick={() => bannerInputRef.current?.click()}
+            disabled={bannerUploading}
             className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/30 hover:bg-black/45 transition-colors cursor-pointer"
             aria-label="Change banner photo"
           >
-            <Camera size={20} className="text-white/80" />
-            <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">Change Banner</span>
+            {bannerUploading ? <Loader2 size={20} className="text-white/80 animate-spin" /> : <Camera size={20} className="text-white/80" />}
+            <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">
+              {bannerUploading ? 'Uploading…' : 'Change Banner'}
+            </span>
           </button>
           <input
             ref={bannerInputRef}
@@ -131,10 +155,11 @@ export default function EditProfilePage() {
             <button
               type="button"
               onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
               className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/55 transition-colors cursor-pointer"
               aria-label="Change profile photo"
             >
-              <Camera size={16} className="text-white" />
+              {avatarUploading ? <Loader2 size={16} className="text-white animate-spin" /> : <Camera size={16} className="text-white" />}
             </button>
             <input
               ref={avatarInputRef}
@@ -193,12 +218,13 @@ export default function EditProfilePage() {
         <div className="space-y-2">
           <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Role</label>
           <div className="flex gap-3">
-            {(['viewer', 'filmmaker'] as UserRole[]).map((r) => (
+            {(['viewer', 'filmmaker'] as const).map((r) => (
               <button
                 key={r}
-                onClick={() => setRole(r)}
+                onClick={() => handleRoleChange(r)}
+                disabled={updateRole.isPending}
                 className={`flex-1 py-3 rounded-xl border font-mono text-xs uppercase tracking-wider transition-colors ${
-                  role === r
+                  user?.role === r
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-transparent text-secondary border-secondary/30'
                 }`}

@@ -1,4 +1,8 @@
 export type UserRole = 'filmmaker' | 'viewer'
+export type FilmStatus = 'draft' | 'uploading' | 'processing' | 'ready' | 'published' | 'failed' | 'archived'
+export type NotificationType = 'review' | 'cima_request' | 'cima_accepted' | 'rating' | 'follower'
+export type CimaRequestStatus = 'pending' | 'accepted' | 'declined' | 'cancelled'
+export type AspectRatio = '16:9' | '4:5' | '2:3'
 
 export interface User {
   id: string
@@ -6,6 +10,7 @@ export interface User {
   email: string
   role: UserRole
   avatar?: string
+  avatarUrl?: string
   bannerUrl?: string
   bio?: string
   school?: string
@@ -14,12 +19,14 @@ export interface User {
   openToCollab?: boolean
   favoriteGenres?: string[]
   crewRoles?: string[]
+  topGenre?: string
   filmsCount?: number
   cimaCount?: number
   reviewsCount?: number
-  topGenre?: string
   createdAt: string
 }
+
+export type Profile = User
 
 export interface Film {
   id: string
@@ -28,17 +35,38 @@ export interface Film {
   thumbnailUrl?: string
   videoUrl?: string
   trailerUrl?: string
-  aspectRatio?: '16:9' | '4:5' | '2:3'
+  aspectRatio?: AspectRatio
   genre: string[]
   runtime?: number
   year: number
+  status?: FilmStatus
   rating?: number
   ratingCount?: number
-  uploaderId: string
-  uploader?: User
-  isFilmOfTheWeek?: boolean
   votes?: number
-  weekKey?: string
+  isFilmOfTheWeek?: boolean
+  filmmakerId: string
+  /** @deprecated use filmmakerId — kept for older component props during the migration */
+  uploaderId?: string
+  filmmaker?: User
+  /** @deprecated use filmmaker — kept for older component props during the migration */
+  uploader?: User
+  createdAt: string
+}
+
+export interface FilmCredit {
+  id: string
+  filmId: string
+  userId: string
+  user?: User
+  role: string
+  createdAt: string
+}
+
+export interface Rating {
+  id: string
+  filmId: string
+  userId: string
+  rating: number
   createdAt: string
 }
 
@@ -52,30 +80,78 @@ export interface Review {
   createdAt: string
 }
 
+export interface FeaturedFilm {
+  filmId: string
+  weekStart: string
+  film?: Film
+}
+
 export interface CimaRequest {
   id: string
   fromUserId: string
   toUserId: string
   from?: User
   to?: User
-  status: 'pending' | 'accepted' | 'declined'
+  status: CimaRequestStatus
   createdAt: string
 }
 
-export interface CimaMember {
+export interface CimaConnection {
   id: string
   user: User
   joinedAt: string
 }
 
+export type CimaMember = CimaConnection
+
 export interface Notification {
   id: string
   userId: string
-  type: 'review' | 'cima_request' | 'cima_accepted' | 'rating' | 'follower'
+  type: NotificationType
   message: string
   fromUser?: User
   filmId?: string
   read: boolean
+  createdAt: string
+}
+
+export interface WatchlistItem {
+  id: string
+  addedAt: string
+  film: Pick<Film, 'id' | 'title' | 'thumbnailUrl' | 'genre' | 'runtime' | 'year'>
+}
+
+export interface Follow {
+  id: string
+  name: string
+  avatarUrl?: string
+  role: UserRole
+}
+
+export interface List {
+  id: string
+  userId: string
+  name: string
+  description?: string
+  isPublic: boolean
+  createdAt: string
+}
+
+export interface ListItem {
+  id: string
+  listId: string
+  filmId: string
+  position: number
+  createdAt: string
+}
+
+export interface ActivityEvent {
+  id: string
+  userId: string
+  type: string
+  filmId?: string
+  targetUserId?: string
+  metadata: Record<string, unknown>
   createdAt: string
 }
 
@@ -86,13 +162,18 @@ export interface AuthState {
 }
 
 export interface ApiError {
+  code: string
   message: string
-  status?: number
+  details?: Record<string, string[] | undefined>
+}
+
+export interface Pagination {
+  page: number
+  hasMore: boolean
+  total: number
 }
 
 export interface PaginatedResponse<T> {
   data: T[]
-  total: number
-  page: number
-  pageSize: number
+  pagination: Pagination
 }

@@ -1,11 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Pencil, Play, ArrowUp, Trophy, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Film } from '@/types'
 import VideoPreviewCard from './VideoPreviewCard'
-import { getWeeklyVoteLeaderboard } from '@/lib/mockData'
 
 interface FilmCardProps {
   film: Film
@@ -18,11 +17,6 @@ interface FilmCardProps {
 export default function FilmCard({ film, index = 0, className, isOwner = false }: FilmCardProps) {
   const navigate = useNavigate()
   const [isHovered, setIsHovered] = useState(false)
-
-  const isLeading = useMemo(() => {
-    const leader = getWeeklyVoteLeaderboard()[0]
-    return leader?.id === film.id
-  }, [film.id])
 
   const hasVideo = !!(film.trailerUrl ?? film.videoUrl)
   const uploaderName = film.uploader?.name ?? 'Unknown'
@@ -138,11 +132,7 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
             <div className="absolute bottom-2.5 right-2.5 z-10">
               <span
                 className="genre-pill flex items-center gap-1"
-                style={
-                  isLeading
-                    ? { background: '#B28A52', color: '#161413', fontWeight: 700 }
-                    : { background: 'rgba(22,20,19,0.75)', color: '#B28A52', backdropFilter: 'blur(4px)' }
-                }
+                style={{ background: 'rgba(22,20,19,0.75)', color: '#B28A52', backdropFilter: 'blur(4px)' }}
               >
                 <ArrowUp size={8} strokeWidth={2.5} />
                 {(film.votes ?? 0).toLocaleString()}

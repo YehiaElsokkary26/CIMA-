@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Plus, TrendingUp, Sparkles, Layers, Search, X, Star } from 'lucide-react'
 import Masonry from 'react-masonry-css'
-import { useFilms, useFeaturedFilm } from '@/hooks/useFilms'
+import { useFilms, useFeaturedFilm, useMyVoteThisWeek } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
 import Button from '@/components/ui/Button'
 import FilmOfTheWeek from '@/components/film/FilmOfTheWeek'
@@ -13,7 +13,6 @@ import EmptyState from '@/components/ui/EmptyState'
 import { FilmCardSkeleton, HeroSkeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '@/store/authStore'
 import { useSearchStore } from '@/store/searchStore'
-import { getFilms as getMockFilms, getFilmOfTheWeek as getMockFOTW } from '@/lib/mockData'
 import { useRecommendations } from '@/hooks/useRecommendations'
 import type { Film } from '@/types'
 import type { SortOption } from '@/components/film/FilterBar'
@@ -53,11 +52,10 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<SortOption>('Latest')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  const { data: serverFilms, isLoading } = useFilms()
-  const { data: serverFeatured } = useFeaturedFilm()
+  const { data: filmsPage, isLoading } = useFilms({ page: 1, limit: 50 })
+  const { data: displayFeatured } = useFeaturedFilm()
 
-  const allFilms: Film[] = (serverFilms && serverFilms.length > 0) ? serverFilms : getMockFilms()
-  const displayFeatured: Film = serverFeatured ?? getMockFOTW()
+  const allFilms: Film[] = filmsPage?.data ?? []
 
   // Relevance-ranked search: exact title match → starts with → other field match
   const searchResults = useMemo(() => {
@@ -100,7 +98,8 @@ export default function HomePage() {
     }
   }, [allFilms, activeGenre, sortBy])
 
-  const recommendations = useRecommendations(user, allFilms, 6)
+  const { data: myVote } = useMyVoteThisWeek()
+  const recommendations = useRecommendations(user, allFilms, 6, myVote?.filmId)
 
   const trending = useMemo(
     () => [...allFilms].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0)).slice(0, 4),
