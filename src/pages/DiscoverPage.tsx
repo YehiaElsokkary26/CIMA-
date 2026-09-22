@@ -13,7 +13,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { useAuthStore } from '@/store/authStore'
 import { useFilms } from '@/hooks/useFilms'
 import { useFilmmakers } from '@/hooks/useFilmmakers'
-import { useSendCimaRequest } from '@/hooks/useCima'
+import { useSendCimaRequest, useCimaStatuses, EMPTY_CIMA_STATUSES } from '@/hooks/useCima'
 import { Skeleton } from '@/components/ui/Skeleton'
 
 const GENRE_FILTERS = ['All', 'Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi']
@@ -32,7 +32,6 @@ export default function DiscoverPage() {
   const [query, setQuery] = useState('')
   const [activeGenre, setActiveGenre] = useState('All')
   const [activeCrewRole, setActiveCrewRole] = useState('All Roles')
-  const [cimaStates, setCimaStates] = useState<Record<string, 'none' | 'pending' | 'member'>>({})
 
   const { data: filmsPage, isLoading: filmsLoading } = useFilms({
     page: 1,
@@ -44,6 +43,8 @@ export default function DiscoverPage() {
     genre: activeGenre === 'All' ? undefined : activeGenre,
   })
   const sendCimaRequest = useSendCimaRequest()
+  const filmmakerIds = (filmmakers ?? []).map((f) => f.id)
+  const { data: cimaStates = EMPTY_CIMA_STATUSES } = useCimaStatuses(filmmakerIds)
 
   const allFilms = filmsPage?.data ?? []
 
@@ -59,11 +60,8 @@ export default function DiscoverPage() {
   const featured = (filmmakers ?? []).filter((f) => f.lookingForCollaborators)
 
   const handleCima = (userId: string) => {
-    if (cimaStates[userId] && cimaStates[userId] !== 'none') return
-    setCimaStates((prev) => ({ ...prev, [userId]: 'pending' }))
-    sendCimaRequest.mutate(userId, {
-      onError: () => setCimaStates((prev) => ({ ...prev, [userId]: 'none' })),
-    })
+    if ((cimaStates[userId] ?? 'none') !== 'none' || sendCimaRequest.isPending) return
+    sendCimaRequest.mutate(userId)
   }
 
   const placeholder = tab === 'films'

@@ -108,6 +108,8 @@ export const profilesApi = {
 }
 
 // ---- Cima -------------------------------------------------------------------
+export type CimaStatus = 'none' | 'pending' | 'member'
+
 export const cimaApi = {
   mine: () => api.get<{ members: CimaConnection[]; requests: CimaRequest[] }>('/cima'),
   crewOf: (userId: string) => api.get<{ members: CimaConnection[] }>(`/cima/${userId}`),
@@ -115,6 +117,9 @@ export const cimaApi = {
   acceptRequest: (requestId: string) => api.post(`/cima/requests/${requestId}/accept`),
   declineRequest: (requestId: string) => api.post(`/cima/requests/${requestId}/decline`),
   cancelRequest: (requestId: string) => api.post(`/cima/requests/${requestId}/cancel`),
+  status: (userId: string) => api.get<{ status: CimaStatus; requestId?: string }>(`/cima/status/${userId}`),
+  statuses: (userIds: string[]) =>
+    api.get<{ statuses: Record<string, CimaStatus> }>('/cima/statuses', { params: { userIds: userIds.join(',') } }),
 }
 
 // ---- Discover ---------------------------------------------------------------

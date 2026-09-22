@@ -1,17 +1,17 @@
 import { Router, Response, NextFunction } from 'express'
 import { query } from '../db'
-import { requireAuth, AuthRequest } from '../middleware/auth'
+import { requireAuth, optionalAuth, AuthRequest } from '../middleware/auth'
 import { requireOwner } from '../middleware/ownership'
 import { validateBody, validateQuery, updateProfileSchema, roleChangeSchema, paginationSchema } from '../lib/validators'
 import { notFound } from '../lib/errors'
 
 const router = Router()
 
-function mapProfile(u: any, counts?: { films: number; cima: number; reviews: number }) {
+function mapProfile(u: any, counts?: { films: number; cima: number; reviews: number }, includeEmail = false) {
   return {
     id:                      u.id,
     name:                    u.name,
-    email:                   u.email,
+    ...(includeEmail ? { email: u.email } : {}),
     role:                    u.role,
     bio:                     u.bio         ?? undefined,
     school:                  u.school      ?? undefined,
@@ -43,12 +43,12 @@ async function getProfileCounts(userId: string) {
 }
 
 // ---- GET /api/profiles/:id ---------------------------------------------------
-router.get('/:id', async (req, res: Response, next: NextFunction) => {
+router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query('SELECT * FROM profiles WHERE id = $1', [req.params.id])
     if (!result.rowCount) throw notFound('Profile')
     const counts = await getProfileCounts(req.params.id)
-    res.json(mapProfile(result.rows[0], counts))
+    res.json(mapProfile(result.rows[0], counts, req.userId === req.params.id))
   } catch (err) { next(err) }
 })
 
@@ -115,7 +115,7 @@ router.patch('/:id', requireAuth, requireOwner('profiles', 'id'), validateBody(u
     )
     if (!result.rowCount) throw notFound('Profile')
     const counts = await getProfileCounts(req.params.id)
-    res.json(mapProfile(result.rows[0], counts))
+    res.json(mapProfile(result.rows[0], counts, true))
   } catch (err) { next(err) }
 })
 
@@ -128,7 +128,7 @@ router.post('/:id/role', requireAuth, requireOwner('profiles', 'id'), validateBo
     )
     if (!result.rowCount) throw notFound('Profile')
     const counts = await getProfileCounts(req.params.id)
-    res.json(mapProfile(result.rows[0], counts))
+    res.json(mapProfile(result.rows[0], counts, true))
   } catch (err) { next(err) }
 })
 

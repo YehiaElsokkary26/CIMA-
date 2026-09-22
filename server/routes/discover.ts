@@ -48,7 +48,6 @@ router.get('/filmmakers', validateQuery(discoverFilmmakersQuerySchema), async (r
       data: result.rows.map((p) => ({
         id:                      p.id,
         name:                    p.name,
-        email:                   p.email,
         role:                    p.role,
         bio:                     p.bio,
         school:                  p.school,

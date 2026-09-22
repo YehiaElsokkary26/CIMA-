@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Play, ArrowLeft, Clock, Calendar, ChevronDown, Send, Loader2 } from 'lucide-react'
 import { useFilm, useFilmReviews, useAddReview } from '@/hooks/useFilms'
 import { useRating } from '@/hooks/useRating'
-import { useSendCimaRequest } from '@/hooks/useCima'
+import { useSendCimaRequest, useCimaStatus } from '@/hooks/useCima'
 import ReviewCard from '@/components/film/ReviewCard'
 import VoteSection from '@/components/film/VoteSection'
 import StarRating from '@/components/ui/StarRating'
@@ -24,12 +24,12 @@ export default function FilmDetailPage() {
   const user = useAuthStore((s) => s.user)
   const [showReviewForm, setShowReviewForm] = useState(false)
   const [reviewBody, setReviewBody] = useState('')
-  const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
 
   const { data: film, isLoading: filmLoading } = useFilm(id ?? '')
   const { data: reviewsPage } = useFilmReviews(id ?? '')
   const addReview = useAddReview(id ?? '')
   const sendCimaRequest = useSendCimaRequest()
+  const { data: cimaStatus = 'none' } = useCimaStatus(film?.uploader?.id)
 
   const displayReviews = reviewsPage?.data ?? []
 
@@ -59,9 +59,8 @@ export default function FilmDetailPage() {
   }
 
   const handleCima = () => {
-    if (cimaStatus === 'none' && displayFilm.uploader?.id) {
+    if (cimaStatus === 'none' && !sendCimaRequest.isPending && displayFilm.uploader?.id) {
       sendCimaRequest.mutate(displayFilm.uploader.id)
-      setCimaStatus('pending')
     }
   }
 
@@ -191,7 +190,7 @@ export default function FilmDetailPage() {
         {/* Actions */}
         <div className="flex gap-3 flex-wrap">
           {user?.id !== displayFilm.uploaderId && (
-            <CimaButton status={cimaStatus} onClick={handleCima} />
+            <CimaButton status={cimaStatus} onClick={handleCima} disabled={sendCimaRequest.isPending} />
           )}
           <Button
             variant="outline"

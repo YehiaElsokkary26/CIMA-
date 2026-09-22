@@ -10,10 +10,14 @@ const router = Router()
 
 const sendRequestSchema = z.object({ toUserId: z.string().uuid() })
 
-function mapMember(m: any) {
+function mapMember(m: any, includeEmail = true) {
   return {
     id: m.id, joinedAt: m.joined_at,
-    user: { id: m.uid, name: m.name, email: m.email, role: m.role, bio: m.bio, school: m.school, city: m.city, avatarUrl: m.avatar_url, topGenre: m.top_genre, createdAt: m.created_at },
+    user: {
+      id: m.uid, name: m.name, ...(includeEmail ? { email: m.email } : {}),
+      role: m.role, bio: m.bio, school: m.school, city: m.city,
+      avatarUrl: m.avatar_url, topGenre: m.top_genre, createdAt: m.created_at,
+    },
   }
 }
 
@@ -44,7 +48,7 @@ router.get('/', requireAuth, async (req: AuthRequest, res: Response, next: NextF
     ])
 
     res.json({
-      members: membersRes.rows.map(mapMember),
+      members: membersRes.rows.map((m) => mapMember(m)),
       requests: requestsRes.rows.map((r) => ({
         id: r.id, fromUserId: r.uid, toUserId: req.userId, status: r.status, createdAt: r.created_at,
         from: { id: r.uid, name: r.name, email: r.email, role: r.role, bio: r.bio, school: r.school, avatarUrl: r.avatar_url, createdAt: r.ucreated },
@@ -66,7 +70,52 @@ router.get('/:userId', async (req, res: Response, next: NextFunction) => {
        ORDER  BY cm.joined_at DESC`,
       [req.params.userId]
     )
-    res.json({ members: result.rows.map(mapMember) })
+    res.json({ members: result.rows.map((m) => mapMember(m, false)) })
+  } catch (err) { next(err) }
+})
+
+// ---- GET /api/cima/status/:userId  (my relationship with :userId) -------------
+router.get('/status/:userId', requireAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const targetId = req.params.userId
+    if (targetId === req.userId) { res.json({ status: 'none' }); return }
+
+    const memberRes = await query(
+      `SELECT 1 FROM cima_members WHERE owner_id = $1 AND member_id = $2`,
+      [targetId, req.userId]
+    )
+    if (memberRes.rowCount) { res.json({ status: 'member' }); return }
+
+    const reqRes = await query(
+      `SELECT id FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2 AND status = 'pending'`,
+      [req.userId, targetId]
+    )
+    if (reqRes.rowCount) { res.json({ status: 'pending', requestId: reqRes.rows[0].id }); return }
+
+    res.json({ status: 'none' })
+  } catch (err) { next(err) }
+})
+
+// ---- GET /api/cima/statuses?userIds=a,b,c  (bulk relationship lookup) ---------
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+router.get('/statuses', requireAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const raw = typeof req.query.userIds === 'string' ? req.query.userIds : ''
+    const ids = [...new Set(raw.split(',').map((s) => s.trim()).filter((s) => UUID_RE.test(s) && s !== req.userId))]
+
+    const statuses: Record<string, 'none' | 'pending' | 'member'> = {}
+    for (const id of ids) statuses[id] = 'none'
+    if (ids.length === 0) { res.json({ statuses }); return }
+
+    const [membersRes, requestsRes] = await Promise.all([
+      query(`SELECT owner_id AS uid FROM cima_members WHERE owner_id = ANY($1) AND member_id = $2`, [ids, req.userId]),
+      query(`SELECT to_user_id AS uid FROM cima_requests WHERE from_user_id = $1 AND to_user_id = ANY($2) AND status = 'pending'`, [req.userId, ids]),
+    ])
+    for (const row of requestsRes.rows) statuses[row.uid] = 'pending'
+    for (const row of membersRes.rows) statuses[row.uid] = 'member'
+
+    res.json({ statuses })
   } catch (err) { next(err) }
 })
 

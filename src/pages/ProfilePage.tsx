@@ -5,7 +5,7 @@ import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake } from 'lucide-re
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfile, useProfileFilms, useUpdateProfile } from '@/hooks/useProfile'
-import { useCimaCrewOf } from '@/hooks/useCima'
+import { useCimaCrewOf, useCimaStatus } from '@/hooks/useCima'
 import RoleBadge from '@/components/profile/RoleBadge'
 import FilmCard from '@/components/film/FilmCard'
 import CimaMemberChip from '@/components/cima/CimaMemberChip'
@@ -25,7 +25,6 @@ export default function ProfilePage() {
   const isOwn = id === 'me' || id === currentUser?.id
   const profileId = isOwn ? currentUser?.id : id
 
-  const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const { data: fetchedProfile, isLoading: profileLoading } = useProfile(profileId ?? '')
@@ -33,6 +32,7 @@ export default function ProfilePage() {
   const { data: crew } = useCimaCrewOf(profileId ?? '')
   const updateProfile = useUpdateProfile(profileId ?? '')
   const sendCimaRequest = useSendCimaRequest()
+  const { data: cimaStatus = 'none' } = useCimaStatus(isOwn ? undefined : profileId)
 
   const profile = isOwn && currentUser ? currentUser : fetchedProfile
 
@@ -72,11 +72,8 @@ export default function ProfilePage() {
   }
 
   const handleCima = () => {
-    if (cimaStatus === 'none') {
-      sendCimaRequest.mutate(profile.id, {
-        onError: () => setCimaStatus('none'),
-      })
-      setCimaStatus('pending')
+    if (cimaStatus === 'none' && !sendCimaRequest.isPending) {
+      sendCimaRequest.mutate(profile.id)
     }
   }
 

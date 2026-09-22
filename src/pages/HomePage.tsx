@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Plus, TrendingUp, Sparkles, Layers, Search, X, Star } from 'lucide-react'
 import Masonry from 'react-masonry-css'
-import { useFilms, useFeaturedFilm } from '@/hooks/useFilms'
+import { useFilms, useFeaturedFilm, useMyVoteThisWeek } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
 import Button from '@/components/ui/Button'
 import FilmOfTheWeek from '@/components/film/FilmOfTheWeek'
@@ -98,7 +98,8 @@ export default function HomePage() {
     }
   }, [allFilms, activeGenre, sortBy])
 
-  const recommendations = useRecommendations(user, allFilms, 6)
+  const { data: myVote } = useMyVoteThisWeek()
+  const recommendations = useRecommendations(user, allFilms, 6, myVote?.filmId)
 
   const trending = useMemo(
     () => [...allFilms].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0)).slice(0, 4),
