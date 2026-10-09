@@ -28,48 +28,64 @@ export default function TabBar() {
 
   return (
     <nav
-      className="tab-bar fixed bottom-0 left-0 right-0 z-40 safe-area-bottom"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}
+      className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom), 8px)',
+        background: 'hsl(var(--card))',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+      }}
     >
-      <div className="flex items-center justify-around px-2 pt-2 pb-1">
+      <div className="flex items-center justify-around px-4 py-3">
         {links.map((link) => {
           const isActive = location.pathname.startsWith(link.to)
           const Icon = link.icon
           const isUpload = 'isUpload' in link && link.isUpload
 
+          if (isUpload) {
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                aria-label={link.label}
+                className="flex items-center justify-center rounded-full transition-transform duration-150 hover:scale-105"
+                style={{
+                  width: 52,
+                  height: 52,
+                  background: '#A32626',
+                  transform: 'translateY(-8px)',
+                  boxShadow: '0 4px 16px rgba(163,38,38,0.45)',
+                }}
+              >
+                <Icon size={24} color="#E8DDCB" strokeWidth={2.5} />
+              </NavLink>
+            )
+          }
+
           return (
             <NavLink
               key={link.to}
               to={link.to}
-              className={cn(
-                'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all duration-150',
-                isUpload
-                  ? 'bg-primary shadow-glow-orange -translate-y-2 px-4 py-2'
-                  : isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
-              )}
+              aria-label={link.label}
+              className="flex flex-col items-center gap-1 transition-all duration-150"
             >
-              <Icon
-                size={isUpload ? 22 : 20}
-                className={cn(isUpload && 'text-primary-foreground')}
-                strokeWidth={isActive && !isUpload ? 2.5 : 2}
-              />
               <span
                 className={cn(
-                  'font-mono text-[10px] uppercase tracking-wider',
-                  isUpload ? 'text-primary-foreground' : ''
+                  'flex items-center justify-center rounded-full transition-all duration-150',
+                  isActive ? 'px-4 py-2' : 'w-10 h-10',
                 )}
+                style={isActive ? { background: '#B28A52' } : undefined}
               >
-                {link.label}
-              </span>
-              {/* Rule 9: active indicator dot — cinema-red pip below label */}
-              {isActive && !isUpload && (
-                <span
-                  className="w-1 h-1 rounded-full"
-                  style={{ background: '#A32626' }}
-                  aria-hidden="true"
+                <Icon
+                  size={22}
+                  color={isActive ? '#161413' : '#6B6560'}
+                  strokeWidth={isActive ? 2.5 : 2}
                 />
+              </span>
+              {isActive && (
+                <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: '#B28A52' }}>
+                  {link.label}
+                </span>
               )}
             </NavLink>
           )

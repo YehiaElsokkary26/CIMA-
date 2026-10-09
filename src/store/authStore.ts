@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, UserRole } from '@/types'
-import { authenticateUser } from '@/lib/mockData'
 
 interface AuthStore {
   token: string | null
@@ -10,12 +9,9 @@ interface AuthStore {
   isLoggedIn: boolean
   hasSelectedRole: boolean
 
-  // Supabase / server path (keeps legacy callers working)
+  // Supabase / server path
   setAuth: (token: string, user: User) => void
   setUser: (user: User) => void
-
-  // Mock / offline path
-  loginWithMock: (email: string, password: string) => boolean
 
   // Role selection (shown after first login when role is not yet set)
   setRole: (role: UserRole) => void
@@ -49,20 +45,6 @@ export const useAuthStore = create<AuthStore>()(
 
       setUser: (user) => {
         set({ user, role: user.role ?? get().role })
-      },
-
-      loginWithMock: (email, password) => {
-        const user = authenticateUser(email, password)
-        if (!user) return false
-        localStorage.setItem('cima_token', 'mock_token')
-        set({
-          token: 'mock_token',
-          user,
-          role: user.role,
-          isLoggedIn: true,
-          hasSelectedRole: !!user.role,
-        })
-        return true
       },
 
       setRole: (role) => {

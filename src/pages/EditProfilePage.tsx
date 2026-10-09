@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Check, Camera } from 'lucide-react'
+import { ArrowLeft, Check, Camera, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
+import { uploadFile } from '@/lib/supabaseApi'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
-import type { UserRole } from '@/types'
+import { toast } from '@/store/toastStore'
 
 const ALL_GENRES = ['Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi', 'Thriller', 'Horror', 'Comedy', 'Animation']
 const ALL_CREW_ROLES = ['Director', 'Producer', 'Assistant Director', 'Cinematographer', 'Editor', 'Sound Designer', 'Production Designer', 'Screenwriter']
@@ -14,17 +16,19 @@ const ALL_CREW_ROLES = ['Director', 'Producer', 'Assistant Director', 'Cinematog
 export default function EditProfilePage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const updateUser = useAuthStore((s) => s.updateUser)
+  const { updateProfile } = useAuth()
 
   const [name, setName] = useState(user?.name ?? '')
   const [bio, setBio] = useState(user?.bio ?? '')
   const [school, setSchool] = useState(user?.school ?? '')
   const [city, setCity] = useState(user?.city ?? '')
-  const [role, setRole] = useState<UserRole>(user?.role ?? 'viewer')
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(user?.favoriteGenres ?? [])
   const [crewRoles, setCrewRoles] = useState<string[]>(user?.crewRoles ?? [])
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar)
   const [bannerPreview, setBannerPreview] = useState<string | undefined>(user?.bannerUrl)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [bannerFile, setBannerFile] = useState<File | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
@@ -38,12 +42,18 @@ export default function EditProfilePage() {
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setAvatarPreview(await readFile(file))
+    if (file) {
+      setAvatarFile(file)
+      setAvatarPreview(await readFile(file))
+    }
   }
 
   const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) setBannerPreview(await readFile(file))
+    if (file) {
+      setBannerFile(file)
+      setBannerPreview(await readFile(file))
+    }
   }
 
   const toggleGenre = (g: string) =>
@@ -52,19 +62,34 @@ export default function EditProfilePage() {
   const toggleCrewRole = (r: string) =>
     setCrewRoles((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
 
-  const handleSave = () => {
-    updateUser({
-      name: name.trim() || user?.name,
-      bio,
-      school,
-      city,
-      role,
-      favoriteGenres,
-      crewRoles,
-      avatar: avatarPreview,
-      bannerUrl: bannerPreview,
-    })
-    navigate('/profile/me')
+  const handleSave = async () => {
+    if (!user?.id) return
+    setSaving(true)
+    try {
+      let avatarUrl = user.avatar
+      let bannerUrl = user.bannerUrl
+      if (avatarFile) {
+        avatarUrl = await uploadFile('avatars', avatarFile, `${user.id}/${Date.now()}-${avatarFile.name}`)
+      }
+      if (bannerFile) {
+        bannerUrl = await uploadFile('banners', bannerFile, `${user.id}/${Date.now()}-${bannerFile.name}`)
+      }
+      await updateProfile.mutateAsync({
+        name: name.trim() || user.name,
+        bio,
+        school,
+        city,
+        favoriteGenres,
+        crewRoles,
+        avatarUrl,
+        bannerUrl,
+      })
+      navigate('/profile/me')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save profile')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -88,8 +113,8 @@ export default function EditProfilePage() {
           <ArrowLeft size={18} />
         </button>
         <h1 className="font-display text-xl uppercase tracking-widest text-foreground flex-1">Edit Profile</h1>
-        <Button size="sm" onClick={handleSave}>
-          <Check size={13} /> Save
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
         </Button>
       </div>
 
@@ -187,26 +212,6 @@ export default function EditProfilePage() {
             value={city}
             onChange={(e) => setCity(e.target.value)}
           />
-        </div>
-
-        {/* Role */}
-        <div className="space-y-2">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Role</label>
-          <div className="flex gap-3">
-            {(['viewer', 'filmmaker'] as UserRole[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRole(r)}
-                className={`flex-1 py-3 rounded-xl border font-mono text-xs uppercase tracking-wider transition-colors ${
-                  role === r
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-transparent text-secondary border-secondary/30'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Favourite Genres */}

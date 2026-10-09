@@ -28,14 +28,12 @@ export default function FilterBar({
               onClick={() => onGenreChange(genre)}
               className={cn(
                 'shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] px-3.5 py-1.5 rounded-full transition-all duration-200',
-                active
-                  ? 'text-primary-foreground shadow-sm'
-                  : 'border border-border/60 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-foreground/5',
+                active ? 'font-bold' : 'text-muted-foreground hover:text-foreground',
               )}
               style={
                 active
-                  ? { background: '#A32626', boxShadow: '0 2px 10px rgba(163,38,38,0.3)' }
-                  : undefined
+                  ? { background: '#B28A52', color: '#161413' }
+                  : { background: 'hsl(var(--muted))' }
               }
             >
               {genre}

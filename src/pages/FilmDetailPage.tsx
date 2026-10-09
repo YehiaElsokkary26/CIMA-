@@ -13,23 +13,11 @@ import Badge from '@/components/ui/Badge'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import CimaButton from '@/components/cima/CimaButton'
-import LoadingDots from '@/components/ui/LoadingDots'
 import EmptyState from '@/components/ui/EmptyState'
-import { Film, MessageSquare } from 'lucide-react'
-import { formatRuntime, formatTimeAgo } from '@/lib/utils'
+import { MessageSquare, AlertCircle } from 'lucide-react'
+import { formatRuntime } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
-
-const MOCK_FILM = {
-  id: '4', title: 'STATIC', description: 'A radio technician picks up a signal from 1986. What begins as a technical glitch spirals into a haunting encounter with a voice that knows too much. Shot entirely on location in a decommissioned broadcasting tower in rural Morocco, STATIC is a lo-fi meditation on memory, loss, and the frequencies we leave behind.', genre: ['Sci-Fi', 'Experimental'], runtime: 31, year: 2023, rating: 4.8, ratingCount: 67, thumbnailUrl: 'https://images.unsplash.com/photo-1585676623595-e7cb4792a3e0?w=900&q=80', uploaderId: 'u4',
-  uploader: { id: 'u4', name: 'Omar Hadid', role: 'filmmaker' as const, email: '', bio: 'Documentary and experimental filmmaker based in Casablanca. Obsessed with sound design and found footage.', school: 'ESAV Marrakech', createdAt: '' },
-  createdAt: '2023-12-20',
-}
-
-const MOCK_REVIEWS = [
-  { id: 'r1', filmId: '4', userId: 'u10', rating: 5, body: 'One of the most atmospheric short films I\'ve seen this year. The sound design is extraordinary — every crackle and hiss feels intentional. The ending left me genuinely unsettled.', createdAt: '2024-01-15', user: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'viewer' as const, createdAt: '' } },
-  { id: 'r2', filmId: '4', userId: 'u11', rating: 4, body: 'The visual language is confident and assured. Hadid knows exactly when to hold a shot. My only critique is the pacing in the middle act drags slightly — but the final ten minutes are worth every second.', createdAt: '2024-02-03', user: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker' as const, createdAt: '' } },
-  { id: 'r3', filmId: '4', userId: 'u12', rating: 5, body: 'Shot on 16mm if I\'m not mistaken. The grain alone makes this worth watching. A genuinely original voice emerging from North African cinema.', createdAt: '2024-03-08', user: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker' as const, createdAt: '' } },
-]
+import { cardColorFor } from '@/lib/cardColors'
 
 export default function FilmDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -38,15 +26,39 @@ export default function FilmDetailPage() {
   const [reviewBody, setReviewBody] = useState('')
   const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
 
-  const { data: film } = useFilm(id ?? '')
+  const { data: film, isLoading, isError, refetch } = useFilm(id ?? '')
   const { data: reviews } = useFilmReviews(id ?? '')
   const addReview = useAddReview(id ?? '')
   const sendCimaRequest = useSendCimaRequest()
 
-  const displayFilm = film ?? MOCK_FILM
-  const displayReviews = reviews ?? MOCK_REVIEWS
+  const displayFilm = film
+  const displayReviews = reviews ?? []
 
-  const rating = useRating(id ?? '', displayFilm.rating)
+  const rating = useRating(id ?? '', displayFilm?.rating)
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 size={22} className="animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (isError || !displayFilm) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Couldn't load this film."
+        subtitle="Something went wrong reaching the server."
+        action={
+          <Button variant="ghost" size="sm" onClick={() => refetch()}>
+            Retry
+          </Button>
+        }
+        className="py-24"
+      />
+    )
+  }
 
   const handleAddToRating = (val: number) => {
     rating.setHovered(null)
@@ -167,16 +179,21 @@ export default function FilmDetailPage() {
         {displayFilm.uploader && (
           <Link
             to={`/profile/${displayFilm.uploader.id}`}
-            className="film-card card-grain flex items-center gap-3 bg-card border border-border p-3 interactive-lift"
+            className="flex items-center gap-3 p-3 interactive-lift"
+            style={{
+              background: cardColorFor(0).bg,
+              color: cardColorFor(0).fg,
+              borderRadius: 20,
+            }}
           >
             <Avatar name={displayFilm.uploader.name} size="sm" />
             <div>
-              <p className="font-sans text-sm font-medium text-foreground">{displayFilm.uploader.name}</p>
+              <p className="font-sans text-sm font-medium">{displayFilm.uploader.name}</p>
               {displayFilm.uploader.school && (
-                <p className="font-mono text-xs text-muted-foreground">{displayFilm.uploader.school}</p>
+                <p className="font-mono text-xs" style={{ opacity: 0.75 }}>{displayFilm.uploader.school}</p>
               )}
             </div>
-            <ChevronDown size={14} className="text-muted-foreground ml-auto -rotate-90" />
+            <ChevronDown size={14} className="ml-auto -rotate-90" style={{ opacity: 0.75 }} />
           </Link>
         )}
 
@@ -200,8 +217,11 @@ export default function FilmDetailPage() {
         </div>
 
         {/* Rate this film */}
-        <div className="film-card card-grain bg-card border border-border p-4 space-y-2">
-          <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Rate this film</p>
+        <div
+          className="p-4 space-y-2"
+          style={{ background: cardColorFor(1).bg, color: cardColorFor(1).fg, borderRadius: 20 }}
+        >
+          <p className="font-mono text-xs uppercase tracking-wider" style={{ opacity: 0.75 }}>Rate this film</p>
           <StarRating
             value={rating.displayRating}
             interactive
@@ -216,10 +236,11 @@ export default function FilmDetailPage() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="film-card card-grain bg-card border border-border p-4 space-y-3"
+            className="p-4 space-y-3"
+            style={{ background: cardColorFor(2).bg, color: cardColorFor(2).fg, borderRadius: 20 }}
           >
             {/* Rule 7: label explicitly associated with textarea for accessibility */}
-            <label htmlFor="review-body" className="font-mono text-xs text-muted-foreground uppercase tracking-wider block">
+            <label htmlFor="review-body" className="font-mono text-xs uppercase tracking-wider block" style={{ opacity: 0.75 }}>
               Your Review
             </label>
             <textarea
@@ -228,8 +249,8 @@ export default function FilmDetailPage() {
               onChange={(e) => setReviewBody(e.target.value)}
               placeholder="Write your review…"
               rows={3}
-              className="input-cima w-full resize-none"
-              style={{ paddingTop: 8, paddingBottom: 8 }}
+              className="w-full resize-none rounded-xl px-3 py-2 font-sans text-sm outline-none"
+              style={{ background: 'rgba(0,0,0,0.18)', color: cardColorFor(2).fg }}
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
@@ -246,15 +267,13 @@ export default function FilmDetailPage() {
 
         {/* Reviews */}
         <div className="space-y-3 pb-8">
-          <div className="section-label mt-4 mb-2">
-            <div className="section-label-bar" />
-            <span className="section-label-text">Reviews</span>
-            <div className="section-label-rule" />
-          </div>
+          <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mt-4 mb-2">
+            Reviews
+          </h2>
           {displayReviews.length === 0 ? (
             <EmptyState icon={MessageSquare} title="No Reviews Yet" subtitle="Be the first critic on set." />
           ) : (
-            displayReviews.map((review) => <ReviewCard key={review.id} review={review} />)
+            displayReviews.map((review, i) => <ReviewCard key={review.id} review={review} index={i} />)
           )}
         </div>
       </motion.div>

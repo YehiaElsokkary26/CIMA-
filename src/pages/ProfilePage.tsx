@@ -1,8 +1,11 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake } from 'lucide-react'
+import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake, Loader2, AlertCircle } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useAuth } from '@/hooks/useAuth'
+import { useProfile, useFilmsByUser } from '@/hooks/useFilms'
+import { useCima, useSendCimaRequest } from '@/hooks/useCima'
 import RoleBadge from '@/components/profile/RoleBadge'
 import FilmCard from '@/components/film/FilmCard'
 import CimaMemberChip from '@/components/cima/CimaMemberChip'
@@ -11,61 +14,77 @@ import Avatar from '@/components/ui/Avatar'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import { useState } from 'react'
-
-const MOCK_PROFILE = {
-  id: 'u4',
-  name: 'Omar Hadid',
-  email: '',
-  role: 'filmmaker' as const,
-  bio: 'Documentary and experimental filmmaker based in Casablanca. Obsessed with sound design and found footage. Graduate of ESAV Marrakech 2023.',
-  school: 'ESAV Marrakech',
-  city: 'Casablanca',
-  topGenre: 'Experimental',
-  filmsCount: 4,
-  cimaCount: 7,
-  reviewsCount: 23,
-  lookingForCollaborators: true,
-  openToCollab: true,
-  favoriteGenres: ['Experimental', 'Documentary'],
-  crewRoles: ['Director', 'Sound Designer'],
-  createdAt: '2023-06-01',
-}
-
-const MOCK_FILMS = [
-  { id: '4', title: 'STATIC', genre: ['Sci-Fi', 'Experimental'], runtime: 31, year: 2023, rating: 4.8, ratingCount: 67, thumbnailUrl: 'https://images.unsplash.com/photo-1585676623595-e7cb4792a3e0?w=600&q=80', uploaderId: 'u4', description: '', createdAt: '' },
-  { id: '7', title: 'DUST AND WIRE', genre: ['Documentary'], runtime: 54, year: 2022, rating: 4.3, ratingCount: 31, thumbnailUrl: 'https://images.unsplash.com/photo-1571847140471-1d7766e825ea?w=600&q=80', uploaderId: 'u4', description: '', createdAt: '' },
-]
-
-const MOCK_CIMA_MEMBERS = [
-  { id: 'c1', user: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'filmmaker' as const, createdAt: '' }, joinedAt: '2024-01-01' },
-  { id: 'c2', user: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker' as const, createdAt: '' }, joinedAt: '2024-02-01' },
-  { id: 'c3', user: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker' as const, createdAt: '' }, joinedAt: '2024-03-01' },
-]
+import { cardColorFor } from '@/lib/cardColors'
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
-  const updateUser = useAuthStore((s) => s.updateUser)
   const logout = useAuthStore((s) => s.logout)
+  const { updateRole, updateProfile } = useAuth()
   const isOwn = id === 'me' || id === currentUser?.id
-  const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
+  const profileId = isOwn ? currentUser?.id : id
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
-  const profile = isOwn && currentUser ? currentUser : MOCK_PROFILE
-  const films = MOCK_FILMS
-  const cimaMembers = MOCK_CIMA_MEMBERS
+  const {
+    data: fetchedProfile,
+    isLoading: profileLoading,
+    isError: profileError,
+    refetch: refetchProfile,
+  } = useProfile(isOwn ? undefined : profileId)
+  const { data: fetchedFilms, isLoading: filmsLoading } = useFilmsByUser(profileId)
+  const { data: cimaData } = useCima()
+  const sendCimaRequest = useSendCimaRequest()
+  const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
+
+  const profile = isOwn ? currentUser : fetchedProfile
+  const films = fetchedFilms ?? []
+  const cimaMembers = isOwn ? (cimaData?.members ?? []) : []
+
+  if (!isOwn && profileLoading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 size={22} className="animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!isOwn && (profileError || !profile)) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Couldn't load this profile."
+        subtitle="Something went wrong reaching the server."
+        action={
+          <Button variant="ghost" size="sm" onClick={() => refetchProfile()}>
+            Retry
+          </Button>
+        }
+        className="py-24"
+      />
+    )
+  }
+
+  if (!profile) return null
 
   const isFilmmaker = profile.role === 'filmmaker'
-  const openToCollab = (profile as typeof MOCK_PROFILE).openToCollab ?? false
+  const openToCollab = profile.openToCollab ?? false
+
+  const handleCimaRequest = () => {
+    if (!profileId) return
+    setCimaStatus('pending')
+    sendCimaRequest.mutate(profileId, {
+      onError: () => setCimaStatus('none'),
+    })
+  }
 
   const handleToggleCollab = () => {
     if (!isOwn) return
-    updateUser({ openToCollab: !openToCollab, lookingForCollaborators: !openToCollab })
+    updateProfile.mutate({ lookingForCollaborators: !openToCollab })
   }
 
   const handleBecomeFilmmaker = () => {
-    updateUser({ role: 'filmmaker' })
+    updateRole.mutate('filmmaker')
   }
 
   const handleLogout = () => {
@@ -84,9 +103,9 @@ export default function ProfilePage() {
       {/* Profile header */}
       <div className="relative">
         <div className="relative h-32 overflow-hidden bg-gradient-to-br from-secondary via-accent/40 to-background">
-          {(profile as typeof MOCK_PROFILE & { bannerUrl?: string }).bannerUrl && (
+          {profile.bannerUrl && (
             <img
-              src={(profile as typeof MOCK_PROFILE & { bannerUrl?: string }).bannerUrl}
+              src={profile.bannerUrl}
               alt="Banner"
               className="w-full h-full object-cover"
             />
@@ -96,10 +115,11 @@ export default function ProfilePage() {
         <div className="px-4 pb-4">
           <div className="flex items-end justify-between -mt-8 mb-4">
             <Avatar
-              src={(profile as typeof MOCK_PROFILE & { avatar?: string }).avatar}
+              src={profile.avatar}
               name={profile.name}
               size="xl"
-              className="border-4 border-background shadow-film"
+              className="shadow-film"
+              style={{ border: '3px solid #C96A3D' }}
             />
             {isOwn ? (
               <div className="flex items-center gap-2">
@@ -117,7 +137,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             ) : (
-              <CimaButton status={cimaStatus} onClick={() => setCimaStatus('pending')} />
+              <CimaButton status={cimaStatus} onClick={handleCimaRequest} />
             )}
           </div>
 
@@ -143,32 +163,17 @@ export default function ProfilePage() {
             )}
 
             <div className="flex flex-wrap gap-3">
-              {(profile as typeof MOCK_PROFILE).city && (
+              {profile.city && (
                 <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
-                  <MapPin size={11} /> {(profile as typeof MOCK_PROFILE).city}
+                  <MapPin size={11} /> {profile.city}
                 </span>
               )}
-              {(profile as typeof MOCK_PROFILE).school && (
+              {profile.school && (
                 <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
-                  <GraduationCap size={11} /> {(profile as typeof MOCK_PROFILE).school}
+                  <GraduationCap size={11} /> {profile.school}
                 </span>
               )}
             </div>
-
-            {/* Crew roles */}
-            {((profile as typeof MOCK_PROFILE).crewRoles ?? []).length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {((profile as typeof MOCK_PROFILE).crewRoles ?? []).map((r) => (
-                  <span
-                    key={r}
-                    className="genre-pill text-accent"
-                    style={{ background: 'rgba(178,138,82,0.12)', border: '1px solid rgba(178,138,82,0.25)' }}
-                  >
-                    {r}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -205,29 +210,34 @@ export default function ProfilePage() {
       )}
 
       {/* Stats row */}
-      <div className="film-card card-grain grid grid-cols-3 gap-0 border border-border mx-4 mb-6 overflow-hidden bg-card">
+      <div className="grid grid-cols-3 gap-2 mx-4 mb-6">
         {[
-          { label: 'Films', value: (profile as typeof MOCK_PROFILE).filmsCount ?? 0 },
-          { label: 'Cima', value: (profile as typeof MOCK_PROFILE).cimaCount ?? 0 },
-          { label: 'Reviews', value: (profile as typeof MOCK_PROFILE).reviewsCount ?? 0 },
-        ].map(({ label, value }, i) => (
-          <div key={label} className={`flex flex-col items-center py-4 ${i < 2 ? 'border-r border-border' : ''}`}>
-            <span className="font-display text-3xl text-primary">{value}</span>
-            <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">{label}</span>
-          </div>
-        ))}
+          { label: 'Films', value: films.length },
+          { label: 'Cima', value: cimaMembers.length },
+          { label: 'Reviews', value: profile.reviewsCount ?? 0 },
+        ].map(({ label, value }, i) => {
+          const color = cardColorFor(i)
+          return (
+            <div
+              key={label}
+              className="flex flex-col items-center py-4 rounded-2xl"
+              style={{ background: color.bg, color: color.fg }}
+            >
+              <span className="font-display text-3xl font-extrabold">{value}</span>
+              <span className="font-mono text-xs uppercase tracking-wider" style={{ opacity: 0.8 }}>{label}</span>
+            </div>
+          )
+        })}
       </div>
 
       <div className="px-4 space-y-8 pb-8">
         {/* Cima section */}
         {cimaMembers.length > 0 && (
           <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
-            <div className="section-label mt-4 mb-2">
-              <div className="section-label-bar" />
-              <span className="section-label-text">Cima</span>
-              <div className="section-label-rule" />
-            </div>
-            <div className="film-card card-grain bg-card border border-cima-tag/20 p-4">
+            <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mt-4 mb-3">
+              Cima
+            </h2>
+            <div className="p-4 rounded-2xl" style={{ background: cardColorFor(2).bg, color: cardColorFor(2).fg }}>
               <div className="flex flex-wrap gap-2">
                 {cimaMembers.map((m) => (
                   <CimaMemberChip key={m.id} user={m.user} />
@@ -235,7 +245,7 @@ export default function ProfilePage() {
               </div>
               {isOwn && (
                 <Link to="/cima" className="interactive-lift block mt-3">
-                  <Button variant="ghost" size="sm" className="text-cima-tag border border-cima-tag/30">
+                  <Button variant="ghost" size="sm">
                     Manage Cima →
                   </Button>
                 </Link>
@@ -247,12 +257,14 @@ export default function ProfilePage() {
         {/* Films grid */}
         {profile.role === 'filmmaker' && (
           <section>
-            <div className="section-label mt-4 mb-2">
-              <div className="section-label-bar" />
-              <span className="section-label-text">Films</span>
-              <div className="section-label-rule" />
-            </div>
-            {films.length === 0 ? (
+            <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mt-4 mb-3">
+              Films
+            </h2>
+            {filmsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 size={18} className="animate-spin text-muted-foreground" />
+              </div>
+            ) : films.length === 0 ? (
               <EmptyState
                 icon={Film}
                 title="No films uploaded yet."

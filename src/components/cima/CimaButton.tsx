@@ -58,7 +58,7 @@ export default function CimaButton({
       )}
     >
       <Film size={14} />
-      Add to Cima
+      Connect on Cima
     </motion.button>
   )
 }

@@ -1,19 +1,16 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
-import { useState } from 'react'
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Bell, Star, Film, UserPlus, MessageSquare, CheckCheck } from 'lucide-react'
+import { Bell, Star, Film, UserPlus, MessageSquare, CheckCheck, Loader2, AlertCircle } from 'lucide-react'
 import RecordLED from '@/components/layout/RecordLED'
 import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 import { formatTimeAgo } from '@/lib/utils'
-import type { Notification } from '@/types'
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 'n1', userId: 'me', type: 'review', message: 'Hana Bakkali left a review on STATIC', fromUser: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'viewer', createdAt: '' }, filmId: '4', read: false, createdAt: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'n2', userId: 'me', type: 'cima_request', message: 'Yasmine Korbi wants to join your Cima', fromUser: { id: 'u20', name: 'Yasmine Korbi', email: '', role: 'filmmaker', createdAt: '' }, read: false, createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'n3', userId: 'me', type: 'rating', message: 'Mehdi Laroui rated STATIC 5 stars', fromUser: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker', createdAt: '' }, filmId: '4', read: true, createdAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'n4', userId: 'me', type: 'cima_accepted', message: 'Omar Hadid accepted your Cima request', fromUser: { id: 'u4', name: 'Omar Hadid', email: '', role: 'filmmaker', createdAt: '' }, read: true, createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'n5', userId: 'me', type: 'follower', message: 'Sofia Tazi is now following your work', fromUser: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker', createdAt: '' }, read: true, createdAt: new Date(Date.now() - 172800000).toISOString() },
-]
+import { useAuthStore } from '@/store/authStore'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getNotifications, markAllNotificationsRead } from '@/lib/supabaseApi'
+import { supabase } from '@/lib/supabase'
+import { cardColorFor } from '@/lib/cardColors'
 
 const notifIcon: Record<string, React.ElementType> = {
   review: MessageSquare,
@@ -24,11 +21,37 @@ const notifIcon: Record<string, React.ElementType> = {
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const user = useAuthStore((s) => s.user)
+  const qc = useQueryClient()
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: () => getNotifications(user!.id),
+    enabled: !!user?.id,
+  })
+
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => qc.invalidateQueries({ queryKey: ['notifications', user.id] }),
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [user?.id, qc])
+
+  const notifications = data ?? []
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  const markAllRead = async () => {
+    if (!user?.id) return
+    await markAllNotificationsRead(user.id)
+    qc.invalidateQueries({ queryKey: ['notifications', user.id] })
+  }
 
   return (
     <div className="min-h-full px-4 py-6">
@@ -51,7 +74,22 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 size={20} className="animate-spin text-muted-foreground" />
+        </div>
+      ) : isError ? (
+        <EmptyState
+          icon={AlertCircle}
+          title="Couldn't load notifications."
+          subtitle="Something went wrong reaching the server."
+          action={
+            <Button variant="ghost" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        />
+      ) : notifications.length === 0 ? (
         <EmptyState icon={Bell} title="Quiet on Set." subtitle="No notifications yet." />
       ) : (
         <div className="space-y-2">
@@ -64,28 +102,20 @@ export default function NotificationsPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
-                className={`flex items-start gap-3 p-4 rounded-2xl border transition-colors ${
+                className="flex items-start gap-3 p-4 rounded-2xl transition-colors"
+                style={
                   !notif.read
-                    ? 'bg-card border-border'
-                    : 'bg-card/50 border-border/50'
-                }`}
+                    ? { background: cardColorFor(i).bg, color: cardColorFor(i).fg }
+                    : { background: '#2A2420', color: 'rgba(232,221,203,0.6)' }
+                }
               >
                 <div className="relative mt-0.5">
                   {/* Rule 3: icon area w-10 h-10 = 40px (row tap area covers full row) */}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    notif.type === 'cima_request' || notif.type === 'cima_accepted'
-                      ? 'bg-cima-tag/20'
-                      : notif.type === 'rating'
-                        ? 'bg-primary/20'
-                        : 'bg-muted'
-                  }`}>
-                    <Icon size={15} className={
-                      notif.type === 'cima_request' || notif.type === 'cima_accepted'
-                        ? 'text-cima-tag'
-                        : notif.type === 'rating'
-                          ? 'text-primary'
-                          : 'text-muted-foreground'
-                    } />
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ background: !notif.read ? cardColorFor(i).chip : 'rgba(232,221,203,0.08)' }}
+                  >
+                    <Icon size={15} />
                   </div>
                   {!notif.read && (
                     <RecordLED size="sm" className="absolute -top-0.5 -right-0.5" />
@@ -93,11 +123,10 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-sans text-sm leading-snug ${!notif.read ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  <p className={`font-sans text-sm leading-snug ${!notif.read ? 'font-medium' : ''}`}>
                     {notif.message}
                   </p>
-                  {/* Rule 1: /60 opacity drops below 4.5:1 — use full muted-foreground */}
-                  <p className="font-mono text-[10px] text-muted-foreground mt-1">
+                  <p className="font-mono text-[10px] mt-1" style={{ opacity: 0.7 }}>
                     {formatTimeAgo(notif.createdAt)}
                   </p>
                 </div>

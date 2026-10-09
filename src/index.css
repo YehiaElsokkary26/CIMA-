@@ -389,6 +389,18 @@
 @layer utilities {
   .text-balance { text-wrap: balance; }
 
+  /* ─── Bold surface — scopes theme tokens to a cream-on-dark palette so
+     existing components (Input, buttons, etc.) read correctly when nested
+     inside a bold brand-color background, with zero component changes. ─── */
+  .bold-surface {
+    --foreground: 37 39% 92%;
+    --muted-foreground: 37 25% 80%;
+    --border: 37 20% 92%;
+  }
+  .bold-surface .input-cima {
+    border-bottom-color: hsl(var(--border) / 0.4);
+  }
+
   .font-display { font-family: 'Bebas Neue', sans-serif; }
 
   /* Legacy CSS-columns masonry (kept for compatibility) */

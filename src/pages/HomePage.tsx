@@ -13,7 +13,6 @@ import EmptyState from '@/components/ui/EmptyState'
 import { FilmCardSkeleton, HeroSkeleton } from '@/components/ui/Skeleton'
 import { useAuthStore } from '@/store/authStore'
 import { useSearchStore } from '@/store/searchStore'
-import { getFilms as getMockFilms, getFilmOfTheWeek as getMockFOTW } from '@/lib/mockData'
 import { useRecommendations } from '@/hooks/useRecommendations'
 import type { Film } from '@/types'
 import type { SortOption } from '@/components/film/FilterBar'
@@ -29,15 +28,27 @@ const MASONRY_COLS = {
 
 const PAGE_SIZE = 8
 
-function SectionLabel({ children, icon: Icon }: { children: string; icon?: React.ElementType }) {
+function SectionLabel({
+  children,
+  onSeeAll,
+}: {
+  children: string
+  icon?: React.ElementType
+  onSeeAll?: () => void
+}) {
   return (
-    <div className="section-label mt-6 mb-2">
-      <div className="section-label-bar" />
-      <div className="flex items-center gap-1.5">
-        {Icon && <Icon size={12} className="text-primary" />}
-        <span className="section-label-text">{children}</span>
-      </div>
-      <div className="section-label-rule" />
+    <div className="flex items-center justify-between mt-8 mb-3">
+      <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground">
+        {children}
+      </h2>
+      {onSeeAll && (
+        <button
+          onClick={onSeeAll}
+          className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          See all →
+        </button>
+      )}
     </div>
   )
 }
@@ -53,11 +64,11 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<SortOption>('Latest')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  const { data: serverFilms, isLoading } = useFilms()
+  const { data: serverFilms, isLoading, isError, refetch } = useFilms()
   const { data: serverFeatured } = useFeaturedFilm()
 
-  const allFilms: Film[] = (serverFilms && serverFilms.length > 0) ? serverFilms : getMockFilms()
-  const displayFeatured: Film = serverFeatured ?? getMockFOTW()
+  const allFilms: Film[] = serverFilms ?? []
+  const displayFeatured: Film | undefined = serverFeatured ?? undefined
 
   // Relevance-ranked search: exact title match → starts with → other field match
   const searchResults = useMemo(() => {
@@ -197,6 +208,19 @@ export default function HomePage() {
             </Masonry>
           )}
         </div>
+      ) : isError ? (
+        <div className="px-4 pb-28 lg:pb-8">
+          <EmptyState
+            icon={FilmIcon}
+            title="Couldn't load films."
+            subtitle="Something went wrong reaching the server."
+            action={
+              <Button variant="ghost" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            }
+          />
+        </div>
       ) : (
         /* ── Normal feed mode ───────────────────────────────────── */
         <>
@@ -285,7 +309,12 @@ export default function HomePage() {
                 </motion.section>
               )}
 
-              <SectionLabel icon={TrendingUp}>Top Projects released this week</SectionLabel>
+              <SectionLabel
+                icon={TrendingUp}
+                onSeeAll={() => document.getElementById('all-films')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Trending Shorts
+              </SectionLabel>
               <Masonry
                 breakpointCols={MASONRY_COLS}
                 className="cima-masonry-grid"
@@ -301,7 +330,12 @@ export default function HomePage() {
                 ))}
               </Masonry>
 
-              <SectionLabel icon={Sparkles}>New Uploads</SectionLabel>
+              <SectionLabel
+                icon={Sparkles}
+                onSeeAll={() => document.getElementById('all-films')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Recently Added
+              </SectionLabel>
               <Masonry
                 breakpointCols={MASONRY_COLS}
                 className="cima-masonry-grid"
@@ -317,9 +351,11 @@ export default function HomePage() {
                 ))}
               </Masonry>
 
-              <SectionLabel icon={Layers}>
-                {activeGenre === 'All' ? 'All Films' : activeGenre}
-              </SectionLabel>
+              <div id="all-films">
+                <SectionLabel icon={Layers}>
+                  {activeGenre === 'All' ? 'All Films' : activeGenre}
+                </SectionLabel>
+              </div>
 
               {filteredFilms.length === 0 ? (
                 <p className="font-mono text-xs text-muted-foreground px-4 py-8 text-center uppercase tracking-widest">

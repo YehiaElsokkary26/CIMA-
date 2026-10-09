@@ -6,6 +6,7 @@ interface AvatarProps {
   name: string
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
+  style?: React.CSSProperties
 }
 
 const sizes = {
@@ -16,7 +17,7 @@ const sizes = {
   xl: 'w-20 h-20 text-xl',
 }
 
-export default function Avatar({ src, name, size = 'md', className }: AvatarProps) {
+export default function Avatar({ src, name, size = 'md', className, style }: AvatarProps) {
   return (
     <div
       className={cn(
@@ -24,6 +25,7 @@ export default function Avatar({ src, name, size = 'md', className }: AvatarProp
         sizes[size],
         className
       )}
+      style={style}
     >
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />

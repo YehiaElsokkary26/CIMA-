@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
-import { getProfile, createProfile, updateProfileRole } from '@/lib/supabaseApi'
+import { getProfile, createProfile, updateProfileRole, updateProfile } from '@/lib/supabaseApi'
 import { useNavigate } from 'react-router-dom'
 import type { User, UserRole } from '@/types'
 import { toast } from '@/store/toastStore'
@@ -92,6 +92,17 @@ export function useAuth() {
       if (!user?.id) return
       await updateProfileRole(user.id, role)
     },
+    onSuccess: (_data, role) => setUser({ ...(user as User), role }),
+  })
+
+  // Persist any profile field to Supabase
+  const updateProfileMutation = useMutation({
+    mutationFn: async (patch: Parameters<typeof updateProfile>[1]) => {
+      if (!user?.id) throw new Error('Not logged in')
+      return updateProfile(user.id, patch)
+    },
+    onSuccess: (updated) => setUser(updated),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update profile'),
   })
 
   return {
@@ -99,10 +110,11 @@ export function useAuth() {
     user,
     isLoggedIn,
     isFilmmaker: user?.role === 'filmmaker',
-    login:      loginMutation,
-    register:   registerMutation,
-    logout:     handleLogout,
-    updateRole: updateRoleMutation,
+    login:         loginMutation,
+    register:      registerMutation,
+    logout:        handleLogout,
+    updateRole:    updateRoleMutation,
+    updateProfile: updateProfileMutation,
     setUser,
   }
 }

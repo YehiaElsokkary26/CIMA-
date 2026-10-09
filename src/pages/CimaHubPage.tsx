@@ -1,38 +1,21 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { motion, AnimatePresence } from 'framer-motion'
-import { Film, Users, Inbox } from 'lucide-react'
+import { Film, Users, Inbox, AlertCircle } from 'lucide-react'
 import { useCima, useAcceptCimaRequest, useDeclineCimaRequest } from '@/hooks/useCima'
 import CimaRequestCard from '@/components/cima/CimaRequestCard'
 import CimaMemberChip from '@/components/cima/CimaMemberChip'
 import EmptyState from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Link } from 'react-router-dom'
-import Avatar from '@/components/ui/Avatar'
-
-const MOCK_DATA = {
-  members: [
-    { id: 'c1', user: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'filmmaker' as const, bio: 'Cinematographer, Cairo.', school: 'Cairo Film Institute', createdAt: '' }, joinedAt: '2024-01-01' },
-    { id: 'c2', user: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker' as const, bio: 'Editor & colorist.', school: 'ISAC Rabat', createdAt: '' }, joinedAt: '2024-02-01' },
-    { id: 'c3', user: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker' as const, bio: 'Sound designer.', school: 'ESAV Marrakech', createdAt: '' }, joinedAt: '2024-03-01' },
-  ],
-  requests: [
-    {
-      id: 'req1', fromUserId: 'u20', toUserId: 'me', status: 'pending' as const, createdAt: new Date(Date.now() - 3600000).toISOString(),
-      from: { id: 'u20', name: 'Yasmine Korbi', email: '', role: 'filmmaker' as const, bio: 'Documentary filmmaker, Tunis. Looking to collaborate on North African narratives.', school: 'EDAC Tunis', createdAt: '' },
-    },
-    {
-      id: 'req2', fromUserId: 'u21', toUserId: 'me', status: 'pending' as const, createdAt: new Date(Date.now() - 7200000).toISOString(),
-      from: { id: 'u21', name: 'Tariq Amrani', email: '', role: 'filmmaker' as const, bio: 'Experimental video artist. Berlin-based.', school: 'HFF München', createdAt: '' },
-    },
-  ],
-}
+import AvatarCluster from '@/components/ui/AvatarCluster'
+import Button from '@/components/ui/Button'
 
 export default function CimaHubPage() {
-  const { data, isLoading } = useCima()
+  const { data, isLoading, isError, refetch } = useCima()
   const accept = useAcceptCimaRequest()
   const decline = useDeclineCimaRequest()
 
-  const displayData = data ?? MOCK_DATA
+  const displayData = data ?? { members: [], requests: [] }
 
   return (
     <div className="min-h-full px-4 py-6 space-y-8">
@@ -64,7 +47,21 @@ export default function CimaHubPage() {
         </div>
       )}
 
+      {isError && (
+        <EmptyState
+          icon={AlertCircle}
+          title="Couldn't load your Cima."
+          subtitle="Something went wrong reaching the server."
+          action={
+            <Button variant="ghost" size="sm" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        />
+      )}
+
       {/* Incoming requests */}
+      {!isError && <>
       <section>
         <div className="flex items-center gap-2 mb-4">
           <Inbox size={15} className="text-muted-foreground" />
@@ -120,15 +117,13 @@ export default function CimaHubPage() {
         ) : (
           <div className="bg-card rounded-2xl border border-cima-tag/20 p-4">
             {/* Avatar strip */}
-            <div className="flex -space-x-2 mb-4">
-              {displayData.members.slice(0, 6).map((m) => (
-                <Avatar key={m.id} name={m.user.name} src={undefined} size="sm" className="border-2 border-background" />
-              ))}
-              {displayData.members.length > 6 && (
-                <div className="w-8 h-8 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                  <span className="font-mono text-[10px] text-muted-foreground">+{displayData.members.length - 6}</span>
-                </div>
-              )}
+            <div className="mb-4">
+              <AvatarCluster
+                people={displayData.members.map((m) => ({ name: m.user.name, avatar: m.user.avatar }))}
+                max={6}
+                size={32}
+                ringColor="hsl(var(--card))"
+              />
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -156,6 +151,7 @@ export default function CimaHubPage() {
           Head to the Discover page to find filmmakers to add to your Cima.
         </p>
       </section>
+      </>}
     </div>
   )
 }

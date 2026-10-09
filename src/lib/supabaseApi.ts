@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Film, User, Review } from '@/types'
+import type { Film, User, Review, Notification } from '@/types'
 import { getCurrentWeekKey } from './votingUtils'
 
 // ─── Row → type mappers ───────────────────────────────────────────────────────
@@ -12,9 +12,15 @@ function mapProfile(row: any, emailOverride?: string): User {
     email: emailOverride ?? row.email ?? '',
     role: row.role ?? 'viewer',
     avatar: row.avatar_url ?? undefined,
+    bannerUrl: row.banner_url ?? undefined,
     bio: row.bio ?? undefined,
     school: row.school ?? undefined,
     city: row.city ?? undefined,
+    lookingForCollaborators: row.looking_for_collaborators ?? false,
+    openToCollab: row.looking_for_collaborators ?? false,
+    topGenre: row.top_genre ?? undefined,
+    favoriteGenres: row.favorite_genres ?? [],
+    crewRoles: row.crew_roles ?? [],
     createdAt: row.created_at ?? new Date().toISOString(),
   }
 }
@@ -216,6 +222,99 @@ export async function createProfile(profile: {
 
 export async function updateProfileRole(userId: string, role: string): Promise<void> {
   await supabase.from('profiles').update({ role }).eq('id', userId)
+}
+
+export async function updateProfile(userId: string, patch: {
+  name?: string
+  bio?: string
+  school?: string
+  city?: string
+  avatarUrl?: string
+  bannerUrl?: string
+  lookingForCollaborators?: boolean
+  topGenre?: string
+  favoriteGenres?: string[]
+  crewRoles?: string[]
+}): Promise<User> {
+  const row: Record<string, unknown> = {}
+  if (patch.name !== undefined) row.name = patch.name
+  if (patch.bio !== undefined) row.bio = patch.bio
+  if (patch.school !== undefined) row.school = patch.school
+  if (patch.city !== undefined) row.city = patch.city
+  if (patch.avatarUrl !== undefined) row.avatar_url = patch.avatarUrl
+  if (patch.bannerUrl !== undefined) row.banner_url = patch.bannerUrl
+  if (patch.lookingForCollaborators !== undefined) row.looking_for_collaborators = patch.lookingForCollaborators
+  if (patch.topGenre !== undefined) row.top_genre = patch.topGenre
+  if (patch.favoriteGenres !== undefined) row.favorite_genres = patch.favoriteGenres
+  if (patch.crewRoles !== undefined) row.crew_roles = patch.crewRoles
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update(row)
+    .eq('id', userId)
+    .select('*')
+    .single()
+  if (error) throw new Error(error.message)
+  return mapProfile(data)
+}
+
+export async function getFilmmakers(): Promise<User[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*, films(count)')
+    .eq('role', 'filmmaker')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => ({
+    ...mapProfile(row),
+    filmsCount: row.films?.[0]?.count ?? 0,
+  }))
+}
+
+export async function getFilmsByUser(userId: string): Promise<Film[]> {
+  const { data, error } = await supabase
+    .from('films')
+    .select(FILM_SELECT)
+    .eq('filmmaker_id', userId)
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(mapFilm)
+}
+
+// ─── Notification functions ───────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapNotification(row: any): Notification {
+  const fromUserRow = row.from_user ?? null
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    message: row.message,
+    fromUser: fromUserRow ? mapProfile(fromUserRow) : undefined,
+    filmId: row.film_id ?? undefined,
+    read: row.is_read,
+    createdAt: row.created_at,
+  }
+}
+
+export async function getNotifications(userId: string): Promise<Notification[]> {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*, from_user:profiles!from_user_id(id, name, role, avatar_url, created_at)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(mapNotification)
+}
+
+export async function markAllNotificationsRead(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('user_id', userId)
+    .eq('is_read', false)
+  if (error) throw new Error(error.message)
 }
 
 // ─── Storage upload ───────────────────────────────────────────────────────────

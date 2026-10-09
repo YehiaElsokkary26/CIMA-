@@ -21,7 +21,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   city        TEXT,
   avatar_url  TEXT,
   looking_for_collaborators BOOLEAN NOT NULL DEFAULT FALSE,
-  top_genre   TEXT,
+  top_genre       TEXT,
+  favorite_genres TEXT[]      NOT NULL DEFAULT '{}',
+  crew_roles      TEXT[]      NOT NULL DEFAULT '{}',
+  banner_url      TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -201,8 +204,8 @@ CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE
 -- Films: public read, authenticated insert (filmmaker check done in Express)
 CREATE POLICY "Films are publicly readable"        ON public.films FOR SELECT USING (true);
 CREATE POLICY "Authenticated users can add films"  ON public.films FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Uploaders can update own films"     ON public.films FOR UPDATE USING (auth.uid() = uploader_id);
-CREATE POLICY "Uploaders can delete own films"     ON public.films FOR DELETE USING (auth.uid() = uploader_id);
+CREATE POLICY "Uploaders can update own films"     ON public.films FOR UPDATE USING (auth.uid() = filmmaker_id);
+CREATE POLICY "Uploaders can delete own films"     ON public.films FOR DELETE USING (auth.uid() = filmmaker_id);
 
 -- Ratings/reviews: public read, authenticated write
 CREATE POLICY "Ratings are publicly readable"      ON public.ratings  FOR SELECT USING (true);

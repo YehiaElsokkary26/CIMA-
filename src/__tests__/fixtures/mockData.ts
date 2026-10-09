@@ -1,5 +1,6 @@
+// TEST FIXTURES ONLY — never import this in production components
 import type { User, Film } from '@/types'
-import { getCurrentWeekKey, getUserVoteThisWeek, setUserVote } from './votingUtils'
+import { getCurrentWeekKey, getUserVoteThisWeek, setUserVote } from '@/lib/votingUtils'
 
 // ─── Demo users ────────────────────────────────────────────────────────────
 

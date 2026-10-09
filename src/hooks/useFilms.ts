@@ -8,6 +8,9 @@ import {
   insertReview,
   uploadFile,
   insertFilm,
+  getFilmmakers,
+  getFilmsByUser,
+  getProfile,
 } from '@/lib/supabaseApi'
 import { getCurrentWeekKey } from '@/lib/votingUtils'
 import { toast } from '@/store/toastStore'
@@ -25,6 +28,30 @@ export function useFeaturedFilm() {
     queryKey: ['films', 'featured'],
     queryFn: getFilmOfTheWeek,
     staleTime: 10 * 60 * 1000,
+  })
+}
+
+export function useFilmmakers() {
+  return useQuery({
+    queryKey: ['filmmakers'],
+    queryFn: getFilmmakers,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useFilmsByUser(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['films', 'by-user', userId],
+    queryFn: () => getFilmsByUser(userId!),
+    enabled: !!userId,
+  })
+}
+
+export function useProfile(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile', userId],
+    queryFn: () => getProfile(userId!),
+    enabled: !!userId,
   })
 }
 
