@@ -254,16 +254,16 @@ export default function DiscoverPage() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className="p-4 rounded-2xl bg-card border border-border"
+                      className="p-4 rounded-2xl bg-card border border-border transition-colors hover:border-primary/30"
                     >
                       <div className="flex items-start gap-3">
-                        <Link to={`/profile/${filmmaker.id}`}>
+                        <Link to={`/profile/${filmmaker.id}`} className="transition-opacity active:opacity-70">
                           <Avatar name={filmmaker.name} size="md" />
                         </Link>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <Link to={`/profile/${filmmaker.id}`}>
-                              <span className="font-semibold text-sm text-foreground hover:underline transition-colors">
+                              <span className="font-semibold text-sm text-foreground hover:underline active:opacity-70 transition-colors">
                                 {filmmaker.name}
                               </span>
                             </Link>

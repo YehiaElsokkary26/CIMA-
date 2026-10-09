@@ -46,9 +46,8 @@ export default function OnboardingPage() {
           <h2 className="font-display text-4xl uppercase tracking-widest text-foreground">
             Who Are You on Cima?
           </h2>
-          {/* Rule 1: muted-foreground on cream ≥ 4.5:1 ✓ */}
-          <p className="font-mono text-xs text-muted-foreground">
-            Choose your role. You can't change this later.
+          <p className="font-sans text-sm text-muted-foreground">
+            Choose your role — you can change this later from your profile.
           </p>
         </div>
 
@@ -59,7 +58,7 @@ export default function OnboardingPage() {
               key={role}
               whileTap={{ scale: 0.97 }}  /* Rule 9: tactile feedback */
               onClick={() => handleSelect(role)}
-              className={`flex-1 border rounded-2xl p-5 text-left flex flex-col gap-4 transition-all duration-200 interactive-lift ${bg}`}
+              className={`flex-1 border rounded-2xl p-5 text-left flex flex-col gap-4 transition-colors duration-200 interactive-lift ${bg}`}
               /* Rule 3: full card is tappable, min-height generous */
               style={{ minHeight: 140 }}
             >

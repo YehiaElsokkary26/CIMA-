@@ -25,9 +25,10 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.02 }}
       transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.45), ease: [0.22, 1, 0.36, 1] }}
-      className={cn('rounded-2xl overflow-hidden bg-card border border-border transition-transform duration-200', className)}
+      whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: 'easeOut' } }}
+      whileTap={{ scale: 0.98, transition: { duration: 0.1, ease: 'easeOut' } }}
+      className={cn('rounded-2xl overflow-hidden bg-card border border-border', className)}
     >
       <Link to={`/film/${film.id}`} className="block" tabIndex={-1}>
         {/* Poster / video area */}

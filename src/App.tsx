@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
-import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { supabase } from '@/lib/supabase'
@@ -62,7 +61,6 @@ function FilmmakerRoute({ children }: { children: React.ReactNode }) {
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const { isDarkMode } = useUIStore()
   const { setAuth, logout } = useAuthStore()
 
   // ─── Supabase session restoration + auth state sync ──────────────────────
@@ -93,11 +91,6 @@ export default function App() {
     return () => subscription.unsubscribe()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // ─── Dark mode ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode)
-  }, [isDarkMode])
 
   return (
     <>

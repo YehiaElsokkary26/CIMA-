@@ -1,36 +1,15 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { motion } from 'framer-motion'
-import { Moon, Sun, Camera, Eye, LogOut, ChevronRight, Shield } from 'lucide-react'
-import { useUIStore } from '@/store/uiStore'
+import { Camera, Eye, LogOut, ChevronRight, Shield } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import RoleBadge from '@/components/profile/RoleBadge'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 
 export default function SettingsPage() {
-  const { isDarkMode, toggleDarkMode } = useUIStore()
   const { user, logout } = useAuth()
 
   const sections = [
-    {
-      title: 'Appearance',
-      items: [
-        {
-          label: 'Dark Mode',
-          desc: 'The cinematic default',
-          icon: isDarkMode ? Moon : Sun,
-          action: (
-            <button
-              onClick={toggleDarkMode}
-              className="relative w-11 h-6 rounded-full transition-colors duration-200"
-              style={{ background: isDarkMode ? 'hsl(var(--primary))' : 'hsl(var(--muted))' }}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform duration-200 ${isDarkMode ? 'translate-x-5' : ''}`} />
-            </button>
-          ),
-        },
-      ],
-    },
     {
       title: 'Account',
       items: [
@@ -95,7 +74,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex-1">
                   <p className="font-sans text-sm font-medium text-foreground">{label}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{desc}</p>
+                  <p className="font-sans text-xs text-muted-foreground">{desc}</p>
                 </div>
                 {action}
               </div>
@@ -112,7 +91,7 @@ export default function SettingsPage() {
       </motion.div>
 
       <div className="text-center pb-4">
-        <p className="font-mono text-[10px] text-muted-foreground/50">
+        <p className="font-mono text-[10px] text-muted-foreground">
           Cima v0.1.0 — Your film, your scene.
         </p>
       </div>

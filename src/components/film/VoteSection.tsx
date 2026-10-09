@@ -33,7 +33,7 @@ export default function VoteSection({ film }: VoteSectionProps) {
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
               Vote Film of the Week
             </p>
-            <p className="font-sans text-xs mt-0.5 text-muted-foreground/90">
+            <p className="font-sans text-xs mt-0.5 text-muted-foreground">
               Cast your vote. Top film wins Friday.
             </p>
           </div>
@@ -50,7 +50,7 @@ export default function VoteSection({ film }: VoteSectionProps) {
       </div>
 
       {votedOtherFilm && (
-        <p className="font-mono text-xs px-4 pb-2 text-muted-foreground">
+        <p className="font-sans text-xs px-4 pb-2 text-muted-foreground">
           You voted for another film this week.
         </p>
       )}
