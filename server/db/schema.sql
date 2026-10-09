@@ -221,9 +221,10 @@ ALTER TABLE public.cima_members  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.featured_films ENABLE ROW LEVEL SECURITY;
 
--- Profiles: public read, self-update
-CREATE POLICY "Profiles are publicly readable"     ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+-- Every CREATE POLICY below is preceded by DROP POLICY IF EXISTS for both
+-- its own name and any name an earlier iteration of this script used, so
+-- the whole file stays safely re-runnable against a database that already
+-- has policies from a previous run (under any of their past names).
 
 -- Drop the old overly-permissive write policies if this script is being
 -- re-run against a database that already has them — "WITH CHECK
@@ -235,6 +236,15 @@ DROP POLICY IF EXISTS "Uploaders can delete own films"    ON public.films;
 DROP POLICY IF EXISTS "Auth users can rate"                ON public.ratings;
 DROP POLICY IF EXISTS "Auth users can update own rating"   ON public.ratings;
 DROP POLICY IF EXISTS "Auth users can review"              ON public.reviews;
+
+-- Profiles: public read, self-update
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile"             ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile"             ON public.profiles;
+DROP POLICY IF EXISTS "Profiles are publicly readable"           ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile"       ON public.profiles;
+CREATE POLICY "Profiles are publicly readable"     ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Films: public read only. All writes go through Express with the
 -- service-role key (which bypasses RLS entirely), so there is deliberately
@@ -259,14 +269,30 @@ ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Votes are publicly readable"        ON public.votes FOR SELECT USING (true);
 
 -- Cima
+DROP POLICY IF EXISTS "Cima requests visible to sender or recipient" ON public.cima_requests;
+DROP POLICY IF EXISTS "Recipient can update request status"          ON public.cima_requests;
+DROP POLICY IF EXISTS "Users can send cima requests"                 ON public.cima_requests;
+DROP POLICY IF EXISTS "Cima requests visible to involved"            ON public.cima_requests;
+DROP POLICY IF EXISTS "Auth users can send cima requests"            ON public.cima_requests;
+DROP POLICY IF EXISTS "Recipients can update cima request"           ON public.cima_requests;
 CREATE POLICY "Cima requests visible to involved"  ON public.cima_requests FOR SELECT USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
 CREATE POLICY "Auth users can send cima requests"  ON public.cima_requests FOR INSERT WITH CHECK (auth.uid() = from_user_id);
 CREATE POLICY "Recipients can update cima request" ON public.cima_requests FOR UPDATE USING (auth.uid() = to_user_id);
+
+DROP POLICY IF EXISTS "Cima members publicly readable" ON public.cima_members;
+DROP POLICY IF EXISTS "Owner manages own cima members" ON public.cima_members;
+DROP POLICY IF EXISTS "Cima members visible to owner"  ON public.cima_members;
 CREATE POLICY "Cima members visible to owner"      ON public.cima_members  FOR SELECT USING (auth.uid() = owner_id OR auth.uid() = member_id);
 
 -- Notifications: private to owner
+DROP POLICY IF EXISTS "System or self can insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users see own notifications"              ON public.notifications;
+DROP POLICY IF EXISTS "Users update own notifications"           ON public.notifications;
+DROP POLICY IF EXISTS "Users can update own notifications"       ON public.notifications;
 CREATE POLICY "Users see own notifications"        ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
 -- Featured films: publicly readable
+DROP POLICY IF EXISTS "Featured films publicly readable" ON public.featured_films;
+DROP POLICY IF EXISTS "Featured films are public"         ON public.featured_films;
 CREATE POLICY "Featured films are public"          ON public.featured_films FOR SELECT USING (true);

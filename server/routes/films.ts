@@ -231,7 +231,7 @@ router.post('/:id/rate', authMiddleware, validate(rateFilmSchema), async (req: A
         type:       'rating',
         message:    `${fromRes.rows[0]?.name ?? 'Someone'} rated "${film.title}" ${rating} star${rating !== 1 ? 's' : ''}`,
         fromUserId: req.userId,
-        filmId:     req.params.id,
+        filmId:     req.params.id as string,
       })
     }
 
@@ -302,7 +302,7 @@ router.post('/:id/review', authMiddleware, validate(addReviewSchema), async (req
         type:       'review',
         message:    `${fromRes.rows[0]?.name ?? 'Someone'} reviewed "${film.title}"`,
         fromUserId: req.userId,
-        filmId:     req.params.id,
+        filmId:     req.params.id as string,
       })
     }
 
