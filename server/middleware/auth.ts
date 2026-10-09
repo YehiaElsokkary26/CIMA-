@@ -1,10 +1,43 @@
 import { Request, Response, NextFunction } from 'express'
+import type { User } from '@supabase/supabase-js'
 import { supabaseAdmin, query } from '../db'
 import { AppError } from '../lib/errors'
 
 export interface AuthRequest extends Request {
   userId?:   string
   userRole?: string
+}
+
+/**
+ * Looks up this verified Supabase user's role from our profiles table.
+ *
+ * Safety net: the handle_new_user DB trigger is supposed to create the
+ * profile row at signup, but if it didn't fire for any reason (timing,
+ * trigger disabled, manually created auth user, etc.), self-heal here so a
+ * verified Supabase Auth user is never stuck without a profile row.
+ * Bootstraps from the same auth metadata the trigger itself reads.
+ */
+async function getOrCreateRole(user: User): Promise<string> {
+  const profileRes = await query<{ role: string }>(
+    'SELECT role FROM profiles WHERE id = $1',
+    [user.id]
+  )
+  if (profileRes.rowCount) return profileRes.rows[0].role
+
+  const meta = (user.user_metadata ?? {}) as { name?: string; role?: string }
+  const name = meta.name || user.email?.split('@')[0] || ''
+  const role = meta.role === 'filmmaker' ? 'filmmaker' : 'viewer'
+  await query(
+    `INSERT INTO profiles (id, name, email, role)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (id) DO NOTHING`,
+    [user.id, name, user.email ?? '', role]
+  )
+  const retry = await query<{ role: string }>(
+    'SELECT role FROM profiles WHERE id = $1',
+    [user.id]
+  )
+  return retry.rows[0]?.role ?? role
 }
 
 /**
@@ -31,14 +64,8 @@ export async function authMiddleware(
       return
     }
 
-    // Pull role from our profiles table (Supabase Auth doesn't store app roles)
-    const profileRes = await query<{ role: string }>(
-      'SELECT role FROM profiles WHERE id = $1',
-      [user.id]
-    )
-
     req.userId   = user.id
-    req.userRole = profileRes.rows[0]?.role ?? 'viewer'
+    req.userRole = await getOrCreateRole(user)
     next()
   } catch {
     next(new AppError('Token is invalid or expired', 401, 'TOKEN_INVALID'))
@@ -59,12 +86,8 @@ export async function optionalAuth(
     try {
       const { data: { user }, error } = await supabaseAdmin.auth.getUser(header.slice(7))
       if (!error && user) {
-        const profileRes = await query<{ role: string }>(
-          'SELECT role FROM profiles WHERE id = $1',
-          [user.id]
-        )
         req.userId   = user.id
-        req.userRole = profileRes.rows[0]?.role ?? 'viewer'
+        req.userRole = await getOrCreateRole(user)
       }
     } catch { /* ignore — token verification failure is fine for optional auth */ }
   }

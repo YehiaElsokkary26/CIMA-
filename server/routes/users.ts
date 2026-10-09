@@ -50,7 +50,7 @@ router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response, next: N
   try {
     const result = await query('SELECT * FROM profiles WHERE id = $1', [req.params.id])
     if (!result.rowCount) throw notFound('User')
-    const counts = await getUserCounts(req.params.id)
+    const counts = await getUserCounts(req.params.id as string)
     res.json(mapUser(result.rows[0], counts, req.userId === req.params.id))
   } catch (err) { next(err) }
 })
