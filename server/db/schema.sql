@@ -126,13 +126,15 @@ CREATE TABLE IF NOT EXISTS public.cima_requests (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   from_user_id UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   to_user_id   UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  status       TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  status       TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (from_user_id <> to_user_id),
   UNIQUE (from_user_id, to_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_cima_req_to ON public.cima_requests(to_user_id);
+CREATE INDEX IF NOT EXISTS idx_cima_req_to ON public.cima_requests(to_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_cima_req_from ON public.cima_requests(from_user_id, status);
 
 -- -----------------------------------------------
 -- CIMA MEMBERS  (accepted creative circles)
@@ -142,10 +144,12 @@ CREATE TABLE IF NOT EXISTS public.cima_members (
   owner_id  UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   member_id UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (owner_id <> member_id),
   UNIQUE (owner_id, member_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_cima_members_owner ON public.cima_members(owner_id);
+CREATE INDEX IF NOT EXISTS idx_cima_members_member ON public.cima_members(member_id);
 
 -- -----------------------------------------------
 -- NOTIFICATIONS

@@ -35,11 +35,12 @@ export function useAuth() {
       name,
       email,
       password,
+      role,
     }: {
       name: string
       email: string
       password: string
-      role?: string
+      role?: UserRole
     }) => {
       const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) throw new Error(error.message)
@@ -49,26 +50,24 @@ export function useAuth() {
         throw new Error('Check your email to confirm your account before logging in.')
       }
 
-      // Insert profile without role so onboarding is triggered
-      await createProfile({ id: data.user.id, name })
+      await createProfile({ id: data.user.id, name, role })
 
       const newUser: User = {
         id: data.user.id,
         email: data.user.email ?? email,
         name,
-        role: undefined as unknown as UserRole,
+        role: role as UserRole,
         createdAt: new Date().toISOString(),
       }
       return { token: data.session.access_token, user: newUser }
     },
     onSuccess: ({ token, user }) => {
-      // Force hasSelectedRole: false for new registrations so onboarding shows
       useAuthStore.setState({
         token,
         user,
-        role: null,
+        role: user.role ?? null,
         isLoggedIn: true,
-        hasSelectedRole: false,
+        hasSelectedRole: !!user.role,
       })
       localStorage.setItem('cima_token', token)
     },

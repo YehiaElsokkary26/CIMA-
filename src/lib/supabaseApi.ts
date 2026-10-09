@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Film, User, Review, Notification } from '@/types'
+import type { Film, User, Review, Notification, CimaMember, CimaRequest } from '@/types'
 import { getCurrentWeekKey } from './votingUtils'
 
 // ─── Row → type mappers ───────────────────────────────────────────────────────
@@ -216,8 +216,11 @@ export async function getProfile(userId: string, emailOverride?: string): Promis
 export async function createProfile(profile: {
   id: string
   name: string
+  role?: string
 }): Promise<void> {
-  await supabase.from('profiles').insert({ id: profile.id, name: profile.name })
+  const row: Record<string, unknown> = { id: profile.id, name: profile.name }
+  if (profile.role) row.role = profile.role
+  await supabase.from('profiles').insert(row)
 }
 
 export async function updateProfileRole(userId: string, role: string): Promise<void> {
@@ -314,6 +317,92 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .update({ is_read: true })
     .eq('user_id', userId)
     .eq('is_read', false)
+  if (error) throw new Error(error.message)
+}
+
+// ─── Cima (connections) ───────────────────────────────────────────────────────
+
+async function requireUserId(): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not logged in')
+  return user.id
+}
+
+export async function getCimaMine(): Promise<{ members: CimaMember[]; requests: CimaRequest[] }> {
+  const userId = await requireUserId()
+
+  const [membersRes, requestsRes] = await Promise.all([
+    supabase
+      .from('cima_members')
+      .select('id, joined_at, member:profiles!member_id(id, name, role, avatar_url, created_at)')
+      .eq('owner_id', userId)
+      .order('joined_at', { ascending: false }),
+    supabase
+      .from('cima_requests')
+      .select('id, from_user_id, to_user_id, status, created_at, from:profiles!from_user_id(id, name, role, avatar_url, bio, school, created_at)')
+      .eq('to_user_id', userId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
+  ])
+
+  if (membersRes.error) throw new Error(membersRes.error.message)
+  if (requestsRes.error) throw new Error(requestsRes.error.message)
+
+  const members: CimaMember[] = (membersRes.data ?? []).map((row) => ({
+    id: row.id,
+    joinedAt: row.joined_at,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    user: mapProfile(row.member as any),
+  }))
+
+  const requests: CimaRequest[] = (requestsRes.data ?? []).map((row) => ({
+    id: row.id,
+    fromUserId: row.from_user_id,
+    toUserId: row.to_user_id,
+    status: row.status,
+    createdAt: row.created_at,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    from: mapProfile(row.from as any),
+  }))
+
+  return { members, requests }
+}
+
+export async function sendCimaRequest(targetUserId: string): Promise<void> {
+  const userId = await requireUserId()
+  if (userId === targetUserId) throw new Error("You can't connect with yourself.")
+  const { error } = await supabase
+    .from('cima_requests')
+    .insert({ from_user_id: userId, to_user_id: targetUserId })
+  if (error) throw new Error(error.message)
+}
+
+export async function acceptCimaRequest(requestId: string): Promise<void> {
+  const userId = await requireUserId()
+  const { data: request, error: fetchError } = await supabase
+    .from('cima_requests')
+    .select('from_user_id, to_user_id')
+    .eq('id', requestId)
+    .single()
+  if (fetchError) throw new Error(fetchError.message)
+
+  const { error: updateError } = await supabase
+    .from('cima_requests')
+    .update({ status: 'accepted' })
+    .eq('id', requestId)
+  if (updateError) throw new Error(updateError.message)
+
+  const { error: memberError } = await supabase
+    .from('cima_members')
+    .insert({ owner_id: userId, member_id: request.from_user_id })
+  if (memberError) throw new Error(memberError.message)
+}
+
+export async function declineCimaRequest(requestId: string): Promise<void> {
+  const { error } = await supabase
+    .from('cima_requests')
+    .update({ status: 'declined' })
+    .eq('id', requestId)
   if (error) throw new Error(error.message)
 }
 

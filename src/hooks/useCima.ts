@@ -1,20 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { cimaApi } from '@/lib/api'
+import { getCimaMine, sendCimaRequest, acceptCimaRequest, declineCimaRequest } from '@/lib/supabaseApi'
 
 export function useCima() {
   return useQuery({
     queryKey: ['cima', 'mine'],
-    queryFn: async () => {
-      const res = await cimaApi.mine()
-      return res.data
-    },
+    queryFn: getCimaMine,
   })
 }
 
 export function useSendCimaRequest() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (targetUserId: string) => cimaApi.sendRequest(targetUserId),
+    mutationFn: (targetUserId: string) => sendCimaRequest(targetUserId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cima'] }),
   })
 }
@@ -22,7 +19,7 @@ export function useSendCimaRequest() {
 export function useAcceptCimaRequest() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (requestId: string) => cimaApi.acceptRequest(requestId),
+    mutationFn: (requestId: string) => acceptCimaRequest(requestId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cima'] }),
   })
 }
@@ -30,7 +27,7 @@ export function useAcceptCimaRequest() {
 export function useDeclineCimaRequest() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (requestId: string) => cimaApi.declineRequest(requestId),
+    mutationFn: (requestId: string) => declineCimaRequest(requestId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cima'] }),
   })
 }
