@@ -1,10 +1,9 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Zap, Search, Plus, Film, User, Settings, LogOut, Sun, Moon } from 'lucide-react'
+import { Zap, Search, Plus, Film, User, Settings, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
-import { useUIStore } from '@/store/uiStore'
 import { CimaIconMark } from './CimaLogo'
 
 const baseLinks = [
@@ -21,7 +20,6 @@ export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
-  const { isDarkMode, toggleDarkMode } = useUIStore()
 
   const links = isFilmmaker
     ? [
@@ -103,18 +101,6 @@ export default function Sidebar() {
               </p>
             </div>
           </div>
-
-          {/* Rule 3: min-h-[44px] for theme toggle */}
-          <button
-            onClick={toggleDarkMode}
-            className="w-full flex items-center gap-2.5 px-1 min-h-[44px] text-muted-foreground hover:text-foreground transition-colors rounded-none"
-            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDarkMode ? <Sun size={15} className="shrink-0" /> : <Moon size={15} className="shrink-0" />}
-            <span className="hidden xl:block font-mono text-[10px] uppercase tracking-wider">
-              {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-            </span>
-          </button>
 
           {/* Rule 3: min-h-[44px] for logout button */}
           <button

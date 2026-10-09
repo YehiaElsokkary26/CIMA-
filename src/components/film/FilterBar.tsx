@@ -27,10 +27,10 @@ export default function FilterBar({
               key={genre}
               onClick={() => onGenreChange(genre)}
               className={cn(
-                'shrink-0 text-xs px-3.5 py-1.5 rounded-full transition-all duration-200',
+                'shrink-0 text-xs px-3.5 py-1.5 rounded-full transition-all duration-200 active:scale-95',
                 active
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'bg-secondary text-secondary-foreground',
+                  ? 'bg-primary text-primary-foreground font-semibold hover:brightness-110'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/70 hover:text-foreground',
               )}
             >
               {genre}
@@ -39,9 +39,9 @@ export default function FilterBar({
         })}
       </div>
 
-      {/* Sort — desktop only */}
-      <div className="hidden md:flex items-center gap-1.5 shrink-0 ml-3 pl-3 border-l border-border/40">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
+      {/* Sort — visible at every breakpoint; label text hides on very narrow screens to save room */}
+      <div className="flex items-center gap-1.5 shrink-0 ml-3 pl-3 border-l border-border/40">
+        <span className="hidden sm:inline font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
           Sort
         </span>
         <div className="relative">
@@ -50,8 +50,8 @@ export default function FilterBar({
             onChange={(e) => onSortChange(e.target.value as SortOption)}
             className={cn(
               'appearance-none bg-transparent font-mono text-[10px] uppercase tracking-wider',
-              'text-foreground cursor-pointer pr-4 py-0.5 outline-none',
-              'border-b border-primary rounded-none'
+              'text-foreground cursor-pointer pr-4 py-0.5 outline-none max-w-[84px] sm:max-w-none',
+              'border-b border-primary rounded-none transition-opacity hover:opacity-80 active:opacity-60'
             )}
           >
             <option value="Latest">Latest</option>

@@ -303,7 +303,7 @@ export default function HomePage() {
                   </Masonry>
 
                   {!recommendations.hasPreferences && (
-                    <p className="font-mono text-[10px] text-muted-foreground text-center mt-3 pb-1 uppercase tracking-wider">
+                    <p className="font-sans text-xs text-muted-foreground text-center mt-3 pb-1">
                       Set favourite genres in your profile for personalised picks →
                     </p>
                   )}

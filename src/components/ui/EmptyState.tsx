@@ -36,7 +36,7 @@ export default function EmptyState({
         </h3>
         {subtitle && (
           /* Rule 2: text-sm = 15px minimum for body text */
-          <p className="font-mono text-sm text-muted-foreground leading-relaxed">
+          <p className="font-sans text-sm text-muted-foreground leading-relaxed">
             {subtitle}
           </p>
         )}

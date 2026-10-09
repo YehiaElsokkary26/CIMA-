@@ -25,7 +25,7 @@ export default function CimaHubPage() {
           <Film size={20} className="text-cima-tag" />
           <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">Cima</h1>
         </div>
-        <p className="font-mono text-xs text-muted-foreground">
+        <p className="font-sans text-sm text-muted-foreground">
           Your creative circle. — Arabic: سيما (cinema)
         </p>
       </div>

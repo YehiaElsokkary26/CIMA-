@@ -40,7 +40,7 @@ export default function TabBar() {
                 key={link.to}
                 to={link.to}
                 aria-label={link.label}
-                className="flex items-center justify-center rounded-2xl bg-primary p-3 -mt-5 shadow-lg shadow-primary/30 transition-transform duration-150 hover:scale-105"
+                className="flex items-center justify-center rounded-2xl bg-primary p-3 -mt-5 shadow-lg shadow-primary/30 transition-transform duration-150 hover:scale-105 active:scale-95"
               >
                 <Icon size={22} className="text-primary-foreground" strokeWidth={2.5} />
               </NavLink>
@@ -53,8 +53,8 @@ export default function TabBar() {
               to={link.to}
               aria-label={link.label}
               className={cn(
-                'flex flex-col items-center gap-0.5 transition-colors duration-150',
-                isActive ? 'text-primary' : 'text-muted-foreground',
+                'flex flex-col items-center gap-0.5 transition-all duration-150 active:scale-90 active:opacity-70',
+                isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />

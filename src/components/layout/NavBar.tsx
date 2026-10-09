@@ -1,17 +1,15 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Search, Bell, X, Sun, Moon } from 'lucide-react'
+import { Search, Bell, X } from 'lucide-react'
 import { CimaIconMark } from './CimaLogo'
 import { useAuthStore } from '@/store/authStore'
-import { useUIStore } from '@/store/uiStore'
 import { useSearchStore } from '@/store/searchStore'
 
 export default function NavBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useAuthStore((s) => s.user)
-  const { isDarkMode, toggleDarkMode } = useUIStore()
   const { query, setQuery, clear } = useSearchStore()
 
   const [searchOpen, setSearchOpen] = useState(false)
@@ -70,7 +68,7 @@ export default function NavBar() {
           <button
             type="button"
             onClick={closeSearch}
-            className="shrink-0 w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="shrink-0 w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
             aria-label="Close search"
           >
             <X size={15} />
@@ -94,7 +92,7 @@ export default function NavBar() {
               <button
                 type="button"
                 onClick={() => handleChange('')}
-                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                className="shrink-0 text-muted-foreground hover:text-foreground active:scale-90 transition-all"
                 aria-label="Clear search"
               >
                 <X size={11} />
@@ -113,23 +111,15 @@ export default function NavBar() {
           {/* Rule 3: all icon buttons min 44×44px — use w-11 h-11 */}
           <button
             onClick={openSearch}
-            className="md:hidden w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="md:hidden w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
             aria-label="Search"
           >
             <Search size={16} />
           </button>
 
           <button
-            onClick={toggleDarkMode}
-            className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-
-          <button
             onClick={() => navigate('/notifications')}
-            className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
             aria-label="Notifications"
           >
             <Bell size={16} />
@@ -138,11 +128,10 @@ export default function NavBar() {
           {/* Rule 3: profile avatar — 44×44px tap area, 32px visual circle */}
           <button
             onClick={() => navigate('/profile/me')}
-            className="w-11 h-11 flex items-center justify-center transition-colors"
+            className="w-11 h-11 flex items-center justify-center active:scale-90 transition-all"
             aria-label="View profile"
           >
             <span className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-secondary-foreground font-bold text-[11px]">
-
               {user?.name?.charAt(0).toUpperCase() ?? '?'}
             </span>
           </button>
