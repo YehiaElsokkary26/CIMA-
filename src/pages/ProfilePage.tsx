@@ -280,14 +280,14 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm"
           onClick={() => setShowLogoutConfirm(false)}
         >
           <motion.div
-            initial={{ y: 80 }}
-            animate={{ y: 0 }}
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-            className="w-full max-w-sm rounded-t-2xl border-t border-x border-border bg-card p-6 space-y-4"
+            className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
