@@ -17,7 +17,6 @@ import EmptyState from '@/components/ui/EmptyState'
 import { MessageSquare, AlertCircle } from 'lucide-react'
 import { formatRuntime } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
-import { cardColorFor } from '@/lib/cardColors'
 
 export default function FilmDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -106,15 +105,15 @@ export default function FilmDetailPage() {
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-secondary to-background" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+          <div className="absolute inset-0 hero-overlay" />
 
           {/* Back button — Rule 3: min 44×44px touch target (w-11 h-11 = 44px) */}
           <Link
             to="/home"
-            className="absolute top-4 left-4 w-11 h-11 bg-background/60 backdrop-blur-sm rounded-full flex items-center justify-center border border-border"
+            className="absolute top-4 left-4 w-11 h-11 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center"
             aria-label="Back to home"
           >
-            <ArrowLeft size={18} className="text-foreground" />
+            <ArrowLeft size={18} className="text-white" />
           </Link>
 
           {/* Play button */}
@@ -123,6 +122,13 @@ export default function FilmDetailPage() {
               <Play size={22} fill="currentColor" className="text-primary-foreground ml-1" />
             </div>
           </button>
+
+          {/* Title overlaid on poster */}
+          <div className="absolute inset-x-0 bottom-0 p-4">
+            <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-white leading-none">
+              {displayFilm.title}
+            </h1>
+          </div>
         </div>
       </motion.div>
 
@@ -132,27 +138,24 @@ export default function FilmDetailPage() {
         transition={{ delay: 0.15, duration: 0.35 }}
         className="px-4 pt-4 space-y-5"
       >
-        {/* Title + genres */}
+        {/* Genres + metadata */}
         <div>
           <div className="flex flex-wrap gap-1.5 mb-2">
             {displayFilm.genre?.map((g) => <Badge key={g} variant="film">{g}</Badge>)}
           </div>
-          <h1 className="font-display text-4xl uppercase tracking-widest text-foreground leading-none">
-            {displayFilm.title}
-          </h1>
 
           {/* Metadata strip */}
           <div className="flex items-center gap-3 mt-2 flex-wrap">
             {displayFilm.runtime && (
-              <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
                 <Clock size={11} /> {formatRuntime(displayFilm.runtime)}
               </span>
             )}
-            <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
+            <span className="text-sm text-muted-foreground flex items-center gap-1">
               <Calendar size={11} /> {displayFilm.year}
             </span>
             {displayFilm.ratingCount && (
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 {displayFilm.ratingCount} ratings
               </span>
             )}
@@ -179,21 +182,16 @@ export default function FilmDetailPage() {
         {displayFilm.uploader && (
           <Link
             to={`/profile/${displayFilm.uploader.id}`}
-            className="flex items-center gap-3 p-3 interactive-lift"
-            style={{
-              background: cardColorFor(0).bg,
-              color: cardColorFor(0).fg,
-              borderRadius: 20,
-            }}
+            className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border interactive-lift"
           >
             <Avatar name={displayFilm.uploader.name} size="sm" />
             <div>
-              <p className="font-sans text-sm font-medium">{displayFilm.uploader.name}</p>
+              <p className="font-sans text-sm font-medium text-foreground">{displayFilm.uploader.name}</p>
               {displayFilm.uploader.school && (
-                <p className="font-mono text-xs" style={{ opacity: 0.75 }}>{displayFilm.uploader.school}</p>
+                <p className="text-xs text-muted-foreground">{displayFilm.uploader.school}</p>
               )}
             </div>
-            <ChevronDown size={14} className="ml-auto -rotate-90" style={{ opacity: 0.75 }} />
+            <ChevronDown size={14} className="ml-auto -rotate-90 text-muted-foreground" />
           </Link>
         )}
 
@@ -217,11 +215,8 @@ export default function FilmDetailPage() {
         </div>
 
         {/* Rate this film */}
-        <div
-          className="p-4 space-y-2"
-          style={{ background: cardColorFor(1).bg, color: cardColorFor(1).fg, borderRadius: 20 }}
-        >
-          <p className="font-mono text-xs uppercase tracking-wider" style={{ opacity: 0.75 }}>Rate this film</p>
+        <div className="p-4 space-y-2 rounded-2xl bg-card border border-border">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Rate this film</p>
           <StarRating
             value={rating.displayRating}
             interactive
@@ -236,11 +231,10 @@ export default function FilmDetailPage() {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="p-4 space-y-3"
-            style={{ background: cardColorFor(2).bg, color: cardColorFor(2).fg, borderRadius: 20 }}
+            className="p-4 space-y-3 rounded-2xl bg-card border border-border"
           >
             {/* Rule 7: label explicitly associated with textarea for accessibility */}
-            <label htmlFor="review-body" className="font-mono text-xs uppercase tracking-wider block" style={{ opacity: 0.75 }}>
+            <label htmlFor="review-body" className="text-xs uppercase tracking-wider text-muted-foreground block">
               Your Review
             </label>
             <textarea
@@ -249,8 +243,7 @@ export default function FilmDetailPage() {
               onChange={(e) => setReviewBody(e.target.value)}
               placeholder="Write your review…"
               rows={3}
-              className="w-full resize-none rounded-xl px-3 py-2 font-sans text-sm outline-none"
-              style={{ background: 'rgba(0,0,0,0.18)', color: cardColorFor(2).fg }}
+              className="w-full resize-none rounded-xl px-4 py-3 text-sm text-foreground bg-input border border-border placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>

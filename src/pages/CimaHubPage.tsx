@@ -34,7 +34,7 @@ export default function CimaHubPage() {
       {isLoading && (
         <div className="space-y-3" aria-hidden="true">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-2xl p-4" style={{ border: '1px solid rgba(139,107,92,0.15)', background: 'var(--card, #1E1A16)' }}>
+            <div key={i} className="rounded-2xl p-4 bg-card border border-border">
               <div className="flex items-center gap-3">
                 <Skeleton className="w-10 h-10 rounded-full shrink-0" />
                 <div className="flex-1 space-y-2">

@@ -10,11 +10,11 @@ interface CimaLogoProps {
 /**
  * CimaLogo — brand wordmark as JSX text.
  *
- * Renders "cima" in Special Elite with the 'i' always in Cinema Red (#A32626).
+ * Renders "cima" in Bebas Neue with the 'i' always in Cinema Red.
  * variant='auto' inherits color from parent via currentColor.
- * variant='dark'  → Paper Cream text (for use on dark/ink-black surfaces).
- * variant='light' → Ink Black text (for use on cream/light surfaces).
- * variant='red'   → Paper Cream text (for use on Cinema Red / Burgundy bg).
+ * variant='dark'  → white text (for use on dark surfaces).
+ * variant='light' → background-colored text (for use on light surfaces).
+ * variant='red'   → white text (for use on a Cinema Red background).
  */
 export default function CimaLogo({
   variant = 'auto',
@@ -24,9 +24,9 @@ export default function CimaLogo({
 }: CimaLogoProps) {
   const letterColor =
     variant === 'dark' || variant === 'red'
-      ? '#E8DDCB'
+      ? 'hsl(var(--primary-foreground))'
       : variant === 'light'
-        ? '#161413'
+        ? 'hsl(var(--background))'
         : 'currentColor'
 
   return (
@@ -37,8 +37,7 @@ export default function CimaLogo({
     >
       <span style={{ color: letterColor }}>c</span>
       <span
-        style={{ color: '#A32626' }}
-        className={cn(animate && 'animate-logo-flicker inline-block')}
+        className={cn('text-primary', animate && 'animate-logo-flicker inline-block')}
       >
         i
       </span>
@@ -67,13 +66,13 @@ export function CimaIconMark({
       style={{
         width: size,
         height: size,
-        border: '1.5px solid #A32626',
+        border: '1.5px solid hsl(var(--primary))',
       }}
       aria-label="cima"
     >
       <span
-        className="font-display leading-none"
-        style={{ fontSize: Math.round(size * 0.55), color: '#A32626' }}
+        className="font-display leading-none text-primary"
+        style={{ fontSize: Math.round(size * 0.55) }}
       >
         i
       </span>

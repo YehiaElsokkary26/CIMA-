@@ -28,7 +28,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
             {/* Rule 7: required asterisk in cinema-red */}
             {(required || showRequired) && (
-              <span className="ml-1" style={{ color: '#A32626' }} aria-hidden="true">*</span>
+              <span className="ml-1 text-primary" aria-hidden="true">*</span>
             )}
           </label>
         )}

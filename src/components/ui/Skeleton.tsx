@@ -2,7 +2,7 @@
 import { cn } from '@/lib/utils'
 
 // Rule 5: skeleton screens that match the exact layout of loaded content
-// Rule 5: skeleton colors — light: bg-[#D4C9B8] / dark: bg-[#2A2420] via CSS variable --skeleton
+// Rule 5: skeleton color driven by the --muted token (see .skeleton in index.css)
 // Rule 13: no layout shift when content loads — skeletons must match real card dimensions
 
 interface SkeletonProps {
@@ -18,14 +18,13 @@ export function Skeleton({ className }: SkeletonProps) {
 export function FilmCardSkeleton() {
   return (
     <div
-      className="overflow-hidden"
-      style={{ border: '1px solid rgba(139,107,92,0.15)', background: '#161413', borderRadius: 16 }}
+      className="overflow-hidden rounded-2xl bg-card border border-border"
       aria-hidden="true"
     >
-      {/* Poster area — 4:5 aspect ratio matches default film card */}
-      <div className="skeleton w-full" style={{ paddingBottom: '125%' }} />
+      {/* Poster area — 2:3 aspect ratio matches default film card */}
+      <div className="skeleton w-full" style={{ paddingBottom: '150%' }} />
       {/* Title strip */}
-      <div style={{ padding: '10px 12px 14px', background: '#161413' }}>
+      <div className="p-3 bg-card">
         <div className="skeleton h-4 w-3/4 mb-2" />
         <div className="skeleton h-2.5 w-1/2 mb-3" />
         <div className="flex items-center justify-between">
@@ -41,8 +40,7 @@ export function FilmCardSkeleton() {
 export function FilmmakerCardSkeleton() {
   return (
     <div
-      className="rounded-2xl p-4"
-      style={{ border: '1px solid rgba(139,107,92,0.15)', background: 'var(--card, #1E1A16)' }}
+      className="rounded-2xl p-4 bg-card border border-border"
       aria-hidden="true"
     >
       <div className="flex items-start gap-3">
@@ -61,8 +59,7 @@ export function FilmmakerCardSkeleton() {
 export function NotificationSkeleton() {
   return (
     <div
-      className="flex items-start gap-3 p-4 rounded-2xl"
-      style={{ border: '1px solid rgba(139,107,92,0.15)' }}
+      className="flex items-start gap-3 p-4 rounded-2xl border border-border"
       aria-hidden="true"
     >
       <div className="skeleton w-9 h-9 rounded-full shrink-0" />

@@ -65,10 +65,7 @@ export default function VoteSection({ film }: VoteSectionProps) {
   }
 
   return (
-    <div
-      className="film-card card-grain relative overflow-hidden"
-      style={{ background: '#161413', border: '1px solid rgba(139,107,92,0.25)' }}
-    >
+    <div className="relative overflow-hidden rounded-2xl bg-card border border-border">
       {/* Info row */}
       <div className="flex items-start justify-between p-4 pb-3">
         <div className="flex items-start gap-3">

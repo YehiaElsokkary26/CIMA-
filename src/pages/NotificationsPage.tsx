@@ -10,7 +10,6 @@ import { useAuthStore } from '@/store/authStore'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getNotifications, markAllNotificationsRead } from '@/lib/supabaseApi'
 import { supabase } from '@/lib/supabase'
-import { cardColorFor } from '@/lib/cardColors'
 
 const notifIcon: Record<string, React.ElementType> = {
   review: MessageSquare,
@@ -18,6 +17,14 @@ const notifIcon: Record<string, React.ElementType> = {
   cima_accepted: Film,
   rating: Star,
   follower: UserPlus,
+}
+
+const notifColor: Record<string, string> = {
+  review: 'bg-yellow-500/20 text-yellow-400',
+  rating: 'bg-yellow-500/20 text-yellow-400',
+  cima_request: 'bg-primary/20 text-primary',
+  cima_accepted: 'bg-primary/20 text-primary',
+  follower: 'bg-secondary text-secondary-foreground',
 }
 
 export default function NotificationsPage() {
@@ -92,7 +99,7 @@ export default function NotificationsPage() {
       ) : notifications.length === 0 ? (
         <EmptyState icon={Bell} title="Quiet on Set." subtitle="No notifications yet." />
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-border rounded-2xl overflow-hidden bg-card border border-border">
           {notifications.map((notif, i) => {
             const Icon = notifIcon[notif.type] ?? Bell
 
@@ -102,19 +109,13 @@ export default function NotificationsPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
-                className="flex items-start gap-3 p-4 rounded-2xl transition-colors"
-                style={
-                  !notif.read
-                    ? { background: cardColorFor(i).bg, color: cardColorFor(i).fg }
-                    : { background: '#2A2420', color: 'rgba(232,221,203,0.6)' }
-                }
+                className={`flex items-start gap-3 px-4 py-4 transition-colors ${
+                  !notif.read ? 'border-l-2 border-primary' : ''
+                }`}
               >
                 <div className="relative mt-0.5">
                   {/* Rule 3: icon area w-10 h-10 = 40px (row tap area covers full row) */}
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: !notif.read ? cardColorFor(i).chip : 'rgba(232,221,203,0.08)' }}
-                  >
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${notifColor[notif.type] ?? 'bg-secondary text-secondary-foreground'}`}>
                     <Icon size={15} />
                   </div>
                   {!notif.read && (
@@ -123,10 +124,10 @@ export default function NotificationsPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className={`font-sans text-sm leading-snug ${!notif.read ? 'font-medium' : ''}`}>
+                  <p className={`text-sm leading-snug text-foreground ${!notif.read ? 'font-medium' : 'text-muted-foreground'}`}>
                     {notif.message}
                   </p>
-                  <p className="font-mono text-[10px] mt-1" style={{ opacity: 0.7 }}>
+                  <p className="text-xs text-muted-foreground mt-1">
                     {formatTimeAgo(notif.createdAt)}
                   </p>
                 </div>

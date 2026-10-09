@@ -48,14 +48,8 @@ export default function NavBar() {
 
   return (
     <header
-      className="sticky top-0 z-40 flex items-center gap-3 px-4 border-b shrink-0 transition-colors duration-300"
-      style={{
-        height: 52,
-        background: isDarkMode ? '#0D0C0B' : '#F0EAE0',
-        borderBottomColor: isDarkMode ? 'rgba(139,107,92,0.18)' : 'rgba(139,107,92,0.25)',
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E")`,
-        backgroundSize: '150px',
-      }}
+      className="sticky top-0 z-40 flex items-center gap-3 px-4 border-b border-border bg-background shrink-0"
+      style={{ height: 52 }}
     >
       {/* Logo — hidden on desktop (Sidebar already shows it) */}
       <div className="lg:hidden shrink-0">
@@ -147,10 +141,8 @@ export default function NavBar() {
             className="w-11 h-11 flex items-center justify-center transition-colors"
             aria-label="View profile"
           >
-            <span
-              className="w-8 h-8 rounded-full flex items-center justify-center font-mono font-bold text-[11px]"
-              style={{ background: '#8B6B5C', color: '#E8DDCB' }}
-            >
+            <span className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-secondary-foreground font-bold text-[11px]">
+
               {user?.name?.charAt(0).toUpperCase() ?? '?'}
             </span>
           </button>

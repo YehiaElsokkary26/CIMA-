@@ -10,7 +10,7 @@ export default function WeeklyCountdown() {
   }, [])
 
   return (
-    <span className="font-mono text-[10px]" style={{ color: '#4E4A46' }}>
+    <span className="text-[10px] text-white/60">
       Next winner in {countdown}
     </span>
   )

@@ -13,7 +13,6 @@ import Button from '@/components/ui/Button'
 import { useFilms, useFilmmakers } from '@/hooks/useFilms'
 import { useSendCimaRequest } from '@/hooks/useCima'
 import { useAuthStore } from '@/store/authStore'
-import { cardColorFor } from '@/lib/cardColors'
 
 const GENRE_FILTERS = ['All', 'Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi']
 
@@ -84,13 +83,16 @@ export default function DiscoverPage() {
         <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">Discover</h1>
 
         {/* Tab toggle — Filmmakers / Films */}
-        <div className="flex gap-1 p-1 bg-muted/30 border border-border/40 rounded-xl">
+        <div className="flex gap-1 p-1 bg-secondary rounded-xl">
           {(['filmmakers', 'films'] as TabMode[]).map((t) => (
             <button
               key={t}
               onClick={() => { setTab(t); setQuery(''); setActiveGenre('All') }}
-              className="flex-1 flex items-center justify-center gap-1.5 font-mono text-[10px] uppercase tracking-wider py-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground"
-              style={tab === t ? { background: '#B28A52', color: '#161413', fontWeight: 700 } : undefined}
+              className={`flex-1 flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider py-2 rounded-lg transition-colors ${
+                tab === t
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
               {t === 'filmmakers' ? <Users size={11} /> : <FilmIcon size={11} />}
               {t}
@@ -99,15 +101,14 @@ export default function DiscoverPage() {
         </div>
 
         {/* Search */}
-        <div className="relative">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <div className="relative flex items-center bg-input border border-border rounded-2xl px-4 py-3 gap-2">
+          <Search size={15} className="text-muted-foreground shrink-0" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
             aria-label={placeholder}
-            className="input-cima w-full pl-9 pr-4"
-            style={{ minHeight: 48, paddingTop: 13, paddingBottom: 13 }}
+            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm"
           />
         </div>
 
@@ -117,8 +118,12 @@ export default function DiscoverPage() {
             <button
               key={g}
               onClick={() => setActiveGenre(g)}
-              style={activeGenre === g ? { minHeight: 44, background: '#B28A52', color: '#161413' } : { minHeight: 44, background: 'hsl(var(--muted))' }}
-              className="shrink-0 font-mono text-xs px-3 py-2.5 rounded-full transition-colors text-muted-foreground"
+              style={{ minHeight: 44 }}
+              className={`shrink-0 text-xs px-3 py-2.5 rounded-full transition-colors ${
+                activeGenre === g
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'bg-secondary text-secondary-foreground'
+              }`}
             >
               {g}
             </button>
@@ -132,7 +137,7 @@ export default function DiscoverPage() {
         {/* ── Films tab ───────────────────────────────────────────── */}
         {tab === 'films' && (
           <section>
-            <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mb-4">
+            <h2 className="text-lg font-bold text-foreground mb-4">
               {query
                 ? `${filteredFilms.length} result${filteredFilms.length !== 1 ? 's' : ''}`
                 : activeGenre === 'All' ? 'All Films' : activeGenre}
@@ -184,47 +189,40 @@ export default function DiscoverPage() {
             {/* Featured spotlight — only when no query */}
             {!query && featured.length > 0 && (
               <section>
-                <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mb-4 flex items-center gap-1.5">
+                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-1.5">
                   <Filter size={16} className="text-primary" /> Open to Collab
                 </h2>
                 <div className="scroll-x flex gap-3 pb-2">
-                  {featured.map((f, i) => {
-                    const color = cardColorFor(i)
-                    return (
-                      <motion.div
-                        key={f.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.07 }}
-                        className="creator-card shrink-0 w-48 p-4 space-y-3"
-                        style={{ background: color.bg, color: color.fg }}
-                      >
-                        <Avatar name={f.name} size="md" />
-                        <div>
-                          <p className="font-sans font-semibold text-sm line-clamp-1">{f.name}</p>
-                          <p className="font-mono text-[10px] mt-0.5" style={{ opacity: 0.75 }}>{f.topGenre}</p>
-                        </div>
-                        <span
-                          className="font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full inline-block"
-                          style={{ background: color.chip }}
-                        >
-                          Collab Open
-                        </span>
-                        <CimaButton
-                          status={cimaStates[f.id] ?? 'none'}
-                          onClick={() => handleCima(f.id)}
-                          className="w-full text-xs py-1.5 justify-center !bg-[#161413] !text-[#E8DDCB]"
-                        />
-                      </motion.div>
-                    )
-                  })}
+                  {featured.map((f, i) => (
+                    <motion.div
+                      key={f.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.07 }}
+                      className="shrink-0 w-48 p-4 space-y-3 rounded-2xl bg-card border border-border"
+                    >
+                      <Avatar name={f.name} size="md" />
+                      <div>
+                        <p className="font-semibold text-sm text-foreground line-clamp-1">{f.name}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{f.topGenre}</p>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full inline-block bg-primary/15 text-primary">
+                        Collab Open
+                      </span>
+                      <CimaButton
+                        status={cimaStates[f.id] ?? 'none'}
+                        onClick={() => handleCima(f.id)}
+                        className="w-full text-xs py-1.5 justify-center"
+                      />
+                    </motion.div>
+                  ))}
                 </div>
               </section>
             )}
 
             {/* All filmmakers list */}
             <section>
-              <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mb-4 flex items-center gap-1.5">
+              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-1.5">
                 <Users size={16} className="text-primary" />
                 {query
                   ? `${filteredFilmmakers.length} result${filteredFilmmakers.length !== 1 ? 's' : ''}`
@@ -250,66 +248,58 @@ export default function DiscoverPage() {
                 <EmptyState icon={Users} title="No Results" subtitle="Try a different search or filter." />
               ) : (
                 <div className="space-y-3">
-                  {filteredFilmmakers.map((filmmaker, i) => {
-                    const color = cardColorFor(i)
-                    return (
-                      <motion.div
-                        key={filmmaker.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="creator-card p-4"
-                        style={{ background: color.bg, color: color.fg }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Link to={`/profile/${filmmaker.id}`}>
-                            <Avatar name={filmmaker.name} size="md" />
-                          </Link>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Link to={`/profile/${filmmaker.id}`}>
-                                <span className="font-sans font-semibold text-sm hover:underline transition-colors">
-                                  {filmmaker.name}
-                                </span>
-                              </Link>
-                              <RoleBadge role={filmmaker.role} />
-                              {filmmaker.lookingForCollaborators && (
-                                <span
-                                  className="font-mono text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full"
-                                  style={{ background: color.chip }}
-                                >
-                                  Collab Open
-                                </span>
-                              )}
-                            </div>
-                            {filmmaker.bio && (
-                              <p className="font-sans text-xs mt-1 line-clamp-1" style={{ opacity: 0.8 }}>{filmmaker.bio}</p>
-                            )}
-                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                              {filmmaker.city && (
-                                <span className="font-mono text-[10px] flex items-center gap-0.5" style={{ opacity: 0.75 }}>
-                                  <MapPin size={9} /> {filmmaker.city}
-                                </span>
-                              )}
-                              {filmmaker.school && (
-                                <span className="font-mono text-[10px] flex items-center gap-0.5" style={{ opacity: 0.75 }}>
-                                  <GraduationCap size={9} /> {filmmaker.school}
-                                </span>
-                              )}
-                              <span className="font-mono text-[10px]" style={{ opacity: 0.75 }}>
-                                {filmmaker.filmsCount} films
+                  {filteredFilmmakers.map((filmmaker, i) => (
+                    <motion.div
+                      key={filmmaker.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="p-4 rounded-2xl bg-card border border-border"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Link to={`/profile/${filmmaker.id}`}>
+                          <Avatar name={filmmaker.name} size="md" />
+                        </Link>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link to={`/profile/${filmmaker.id}`}>
+                              <span className="font-semibold text-sm text-foreground hover:underline transition-colors">
+                                {filmmaker.name}
                               </span>
-                            </div>
+                            </Link>
+                            <RoleBadge role={filmmaker.role} />
+                            {filmmaker.lookingForCollaborators && (
+                              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                                Collab Open
+                              </span>
+                            )}
                           </div>
-                          <CimaButton
-                            status={cimaStates[filmmaker.id] ?? 'none'}
-                            onClick={() => handleCima(filmmaker.id)}
-                            className="!bg-[#161413] !text-[#E8DDCB]"
-                          />
+                          {filmmaker.bio && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{filmmaker.bio}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                            {filmmaker.city && (
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                <MapPin size={9} /> {filmmaker.city}
+                              </span>
+                            )}
+                            {filmmaker.school && (
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                <GraduationCap size={9} /> {filmmaker.school}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground">
+                              {filmmaker.filmsCount} films
+                            </span>
+                          </div>
                         </div>
-                      </motion.div>
-                    )
-                  })}
+                        <CimaButton
+                          status={cimaStates[filmmaker.id] ?? 'none'}
+                          onClick={() => handleCima(filmmaker.id)}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </section>

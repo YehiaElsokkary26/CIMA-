@@ -21,9 +21,9 @@ const BORDER_CLASS = {
 }
 
 const ICON_COLOR = {
-  success: '#A32626',   /* cinema-red */
-  error:   '#D94040',   /* brighter red */
-  info:    '#B28A52',   /* muted-gold */
+  success: 'hsl(var(--primary))',
+  error:   'hsl(var(--destructive))',
+  info:    'hsl(var(--secondary-foreground))',
 }
 
 export default function ToastContainer() {
@@ -55,24 +55,23 @@ export default function ToastContainer() {
                 BORDER_CLASS[t.type]
               )}
               style={{
-                background: '#161413',   /* Rule 12: ink-black, never pure black */
-                borderRadius: 0,
-                boxShadow: '0 4px 20px rgba(22,20,19,0.6), 0 1px 4px rgba(22,20,19,0.3)',
+                background: 'hsl(var(--card))',
+                borderRadius: 12,
+                boxShadow: '0 4px 20px hsl(var(--background) / 0.6), 0 1px 4px hsl(var(--background) / 0.3)',
               }}
             >
               {/* Icon in matching accent color */}
               <Icon size={16} className="shrink-0" style={{ color: ICON_COLOR[t.type] }} />
 
-              {/* Rule 1 + Rule 9: paper-cream text, font-mono text-sm */}
-              <p className="font-mono text-sm flex-1 leading-snug" style={{ color: '#E8DDCB' }}>
+              <p className="text-sm flex-1 leading-snug text-foreground">
                 {t.message}
               </p>
 
               {/* Rule 3: close button min 44×44px touch area */}
               <button
                 onClick={() => removeToast(t.id)}
-                className="shrink-0 flex items-center justify-center transition-opacity hover:opacity-70"
-                style={{ width: 44, height: 44, color: '#E8DDCB', opacity: 0.6 }}
+                className="shrink-0 flex items-center justify-center text-foreground/60 transition-opacity hover:opacity-70"
+                style={{ width: 44, height: 44 }}
                 aria-label="Dismiss notification"
               >
                 <X size={13} />

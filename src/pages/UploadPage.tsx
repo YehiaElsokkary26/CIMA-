@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Film, Upload, Image, Check, ArrowLeft, ArrowRight, X, Clapperboard } from 'lucide-react'
+import { Film, Upload, Image, ArrowLeft, ArrowRight, X, Clapperboard } from 'lucide-react'
 import { useUploadFilm } from '@/hooks/useFilms'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -92,8 +92,7 @@ export default function UploadPage() {
 
   return (
     <motion.div
-      className="bold-surface min-h-full px-4 py-6"
-      style={{ background: '#4A1E24' }}
+      className="min-h-full px-4 py-6 bg-background"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -104,33 +103,27 @@ export default function UploadPage() {
         {/* Rule 3: min 44×44px touch target */}
         <button
           onClick={() => navigate(-1)}
-          className="w-11 h-11 flex items-center justify-center rounded-full text-foreground transition-colors"
-          style={{ background: 'rgba(0,0,0,0.2)' }}
+          className="w-11 h-11 flex items-center justify-center rounded-full bg-secondary text-foreground transition-colors"
           aria-label="Go back"
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-display text-3xl font-extrabold uppercase tracking-widest text-foreground">
-          Upload Your Film
+        <h1 className="font-display text-3xl uppercase tracking-widest text-foreground">
+          Share Your Film
         </h1>
       </div>
 
       {/* Step indicator */}
-      <div className="flex items-center gap-1 mb-8 overflow-x-auto p-1 rounded-full w-fit" style={{ background: 'rgba(0,0,0,0.2)' }}>
-        {STEPS.map((s, i) => (
+      <div className="mb-8">
+        <p className="text-sm font-semibold text-primary mb-2">
+          Step {step + 1} of {STEPS.length} — {STEPS[step]}
+        </p>
+        <div className="h-1 w-full rounded-full bg-secondary overflow-hidden">
           <div
-            key={s}
-            className="flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-colors"
-            style={
-              i === step
-                ? { background: '#B28A52', color: '#161413', fontWeight: 700 }
-                : { color: 'rgba(232,221,203,0.55)' }
-            }
-          >
-            {i < step ? <Check size={12} /> : <span>{i + 1}</span>}
-            {s}
-          </div>
-        ))}
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          />
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -145,11 +138,9 @@ export default function UploadPage() {
           >
             <div
               onClick={() => videoInput.current?.click()}
-              className="border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 cursor-pointer transition-colors"
-              style={{
-                background: 'rgba(0,0,0,0.2)',
-                borderColor: videoFile ? '#B28A52' : 'rgba(232,221,203,0.25)',
-              }}
+              className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 cursor-pointer transition-colors ${
+                videoFile ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+              }`}
             >
               <input
                 ref={videoInput}
@@ -196,8 +187,7 @@ export default function UploadPage() {
 
             <div
               onClick={() => thumbInput.current?.click()}
-              className="border border-dashed rounded-2xl p-6 flex items-center gap-4 cursor-pointer transition-colors"
-              style={{ background: 'rgba(0,0,0,0.2)', borderColor: 'rgba(232,221,203,0.25)' }}
+              className="border border-dashed border-border rounded-2xl p-6 flex items-center gap-4 cursor-pointer hover:border-primary/50 transition-colors"
             >
               <input
                 ref={thumbInput}
@@ -366,8 +356,7 @@ export default function UploadPage() {
               /* Upload zone */
               <div
                 onClick={() => trailerInput.current?.click()}
-                className="border-2 border-dashed rounded-2xl p-10 flex flex-col items-center gap-4 cursor-pointer transition-colors hover:border-secondary"
-                style={{ borderColor: 'rgba(163,38,38,0.5)' }}
+                className="border-2 border-dashed border-primary/50 rounded-2xl p-10 flex flex-col items-center gap-4 cursor-pointer transition-colors hover:border-primary"
               >
                 <input
                   ref={trailerInput}
@@ -416,12 +405,12 @@ export default function UploadPage() {
             exit={{ opacity: 0, x: -20 }}
             className="space-y-5"
           >
-            <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.2)' }}>
+            <div className="rounded-2xl overflow-hidden bg-card border border-border">
               {thumbPreview ? (
                 <img src={thumbPreview} alt="" className="w-full aspect-video object-cover" />
               ) : (
-                <div className="w-full aspect-video flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.15)' }}>
-                  <Film size={36} className="text-foreground/30" />
+                <div className="w-full aspect-video flex items-center justify-center bg-secondary">
+                  <Film size={36} className="text-muted-foreground" />
                 </div>
               )}
               <div className="p-4 space-y-2">

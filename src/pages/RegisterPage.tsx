@@ -2,11 +2,18 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, Camera, Eye } from 'lucide-react'
 import { CimaIconMark } from '@/components/layout/CimaLogo'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { useAuth } from '@/hooks/useAuth'
+import { cn } from '@/lib/utils'
+import type { UserRole } from '@/types'
+
+const ROLE_CARDS: { role: UserRole; label: string; desc: string; icon: typeof Camera }[] = [
+  { role: 'filmmaker', label: 'Filmmaker', desc: 'Share your films', icon: Camera },
+  { role: 'viewer', label: 'Viewer', desc: 'Discover and review', icon: Eye },
+]
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -15,6 +22,7 @@ export default function RegisterPage() {
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [selectedRole, setSelectedRole] = useState<UserRole>('viewer')
   const [error, setError]       = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +36,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await register.mutateAsync({ name, email, password, role: 'viewer' })
+      await register.mutateAsync({ name, email, password, role: selectedRole })
       navigate('/onboarding', { replace: true })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed.'
@@ -57,9 +65,8 @@ export default function RegisterPage() {
         {/* Logo + tagline */}
         <div className="flex flex-col items-center">
           <CimaIconMark size={72} />
-          {/* Rule 1: #4E4A46 on cream = 4.5:1 contrast ✓ */}
-          <p className="font-sans text-sm text-center mt-2 text-muted-foreground">
-            Where student cinema comes to life.
+          <p className="text-sm text-center mt-2 text-muted-foreground">
+            Every voice deserves a screen.
           </p>
         </div>
 
@@ -68,23 +75,17 @@ export default function RegisterPage() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 px-4 py-3"
-            style={{
-              background: 'rgba(163,38,38,0.08)',
-              borderLeft: '3px solid #A32626',
-              border: '1px solid rgba(163,38,38,0.4)',
-              borderLeftWidth: 3,
-            }}
+            className="flex items-start gap-2 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/40 border-l-[3px] border-l-destructive"
           >
-            <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: '#A32626' }} />
-            <p className="font-mono text-xs" style={{ color: '#A32626' }}>{error}</p>
+            <AlertCircle size={14} className="shrink-0 mt-0.5 text-destructive" />
+            <p className="text-xs text-destructive">{error}</p>
           </motion.div>
         )}
 
         {/* Rule 7: single-column form, all labels above inputs */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
-            label="Your Name"
+            label="Full Name"
             placeholder="Jane Doe"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -115,6 +116,33 @@ export default function RegisterPage() {
             autoComplete="new-password"
           />
 
+          {/* Role selection cards */}
+          <div className="space-y-1.5">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground">I am a…</label>
+            <div className="grid grid-cols-2 gap-3">
+              {ROLE_CARDS.map(({ role, label, desc, icon: Icon }) => {
+                const selected = selectedRole === role
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setSelectedRole(role)}
+                    className={cn(
+                      'rounded-2xl p-4 text-left border transition-colors',
+                      selected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/40',
+                    )}
+                  >
+                    <Icon size={18} className="text-primary mb-2" />
+                    <p className="text-sm font-bold text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Rule 11 + Rule 3: full-width lg button = min 52px */}
           <Button
             type="submit"
@@ -132,7 +160,7 @@ export default function RegisterPage() {
         </form>
 
         {/* Rule 3: link has py-1 for enlarged tap area */}
-        <p className="text-center font-mono text-xs text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           Already have an account?{' '}
           <Link
             to="/login"

@@ -32,8 +32,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           variant === 'secondary'   && 'bg-transparent border border-primary text-primary hover:bg-primary/10',
           variant === 'ghost'       && 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted',
           variant === 'cima'        && 'bg-accent text-accent-foreground hover:brightness-110',
-          // Rule 11: destructive = burgundy bg (not just red)
-          variant === 'destructive' && 'bg-burgundy text-burgundy-foreground hover:brightness-110 border border-burgundy/20',
+          variant === 'destructive' && 'bg-destructive text-destructive-foreground hover:brightness-110',
           variant === 'outline'     && 'bg-transparent border border-border text-foreground hover:bg-muted',
 
           // ── Sizes with explicit min-height for touch target (Rule 3) ────

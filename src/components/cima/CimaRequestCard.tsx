@@ -26,20 +26,19 @@ export default function CimaRequestCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -40 }}
-      className="rounded-2xl p-4 space-y-3"
-      style={{ background: '#B28A52', color: '#161413' }}
+      className="rounded-2xl p-4 space-y-3 bg-card border border-border"
     >
       <div className="flex items-start gap-3">
         <Avatar name={user?.name ?? '?'} src={user?.avatar} size="md" />
         <div className="flex-1 min-w-0">
-          <p className="font-sans font-semibold text-sm">{user?.name ?? 'Unknown'}</p>
+          <p className="text-sm font-semibold text-foreground">{user?.name ?? 'Unknown'}</p>
           {user?.school && (
-            <p className="font-mono text-xs" style={{ opacity: 0.75 }}>{user.school}</p>
+            <p className="text-xs text-muted-foreground">{user.school}</p>
           )}
           {user?.bio && (
-            <p className="font-sans text-xs mt-1 line-clamp-2" style={{ opacity: 0.8 }}>{user.bio}</p>
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{user.bio}</p>
           )}
-          <p className="font-mono text-[10px] mt-1" style={{ opacity: 0.65 }}>
+          <p className="text-[10px] text-muted-foreground mt-1">
             {formatTimeAgo(request.createdAt)}
           </p>
         </div>
@@ -50,16 +49,16 @@ export default function CimaRequestCard({
           size="sm"
           onClick={() => onAccept(request.id)}
           disabled={isPending}
-          className="flex-1 rounded-full !bg-[#161413] !text-[#E8DDCB]"
+          className="flex-1 rounded-lg"
         >
           Accept
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={() => onDecline(request.id)}
           disabled={isPending}
-          className="flex-1 rounded-full !bg-black/20 !text-[#161413]"
+          className="flex-1 rounded-lg"
         >
           Decline
         </Button>

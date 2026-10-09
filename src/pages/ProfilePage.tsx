@@ -14,7 +14,6 @@ import Avatar from '@/components/ui/Avatar'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import { useState } from 'react'
-import { cardColorFor } from '@/lib/cardColors'
 
 export default function ProfilePage() {
   const { id } = useParams<{ id: string }>()
@@ -118,8 +117,7 @@ export default function ProfilePage() {
               src={profile.avatar}
               name={profile.name}
               size="xl"
-              className="shadow-film"
-              style={{ border: '3px solid #C96A3D' }}
+              className="shadow-film border-4 border-background"
             />
             {isOwn ? (
               <div className="flex items-center gap-2">
@@ -129,8 +127,7 @@ export default function ProfilePage() {
                 </Button>
                 <button
                   onClick={() => setShowLogoutConfirm(true)}
-                  className="w-11 h-11 flex items-center justify-center rounded-xl border transition-colors text-muted-foreground hover:text-foreground"
-                  style={{ borderColor: 'rgba(139,107,92,0.3)' }}
+                  className="w-11 h-11 flex items-center justify-center rounded-xl border border-border transition-colors text-muted-foreground hover:text-foreground"
                   aria-label="Log out"
                 >
                   <LogOut size={15} />
@@ -148,10 +145,7 @@ export default function ProfilePage() {
               </h1>
               <RoleBadge role={profile.role} />
               {openToCollab && (
-                <span
-                  className="genre-pill flex items-center gap-1 text-accent"
-                  style={{ background: 'rgba(178,138,82,0.15)', border: '1px solid rgba(178,138,82,0.4)' }}
-                >
+                <span className="genre-pill flex items-center gap-1 text-primary bg-primary/15 border border-primary/40">
                   <Handshake size={9} />
                   Open to Collab
                 </span>
@@ -215,19 +209,12 @@ export default function ProfilePage() {
           { label: 'Films', value: films.length },
           { label: 'Cima', value: cimaMembers.length },
           { label: 'Reviews', value: profile.reviewsCount ?? 0 },
-        ].map(({ label, value }, i) => {
-          const color = cardColorFor(i)
-          return (
-            <div
-              key={label}
-              className="flex flex-col items-center py-4 rounded-2xl"
-              style={{ background: color.bg, color: color.fg }}
-            >
-              <span className="font-display text-3xl font-extrabold">{value}</span>
-              <span className="font-mono text-xs uppercase tracking-wider" style={{ opacity: 0.8 }}>{label}</span>
-            </div>
-          )
-        })}
+        ].map(({ label, value }) => (
+          <div key={label} className="flex flex-col items-center py-4">
+            <span className="text-xl font-bold text-foreground">{value}</span>
+            <span className="text-xs text-muted-foreground">{label}</span>
+          </div>
+        ))}
       </div>
 
       <div className="px-4 space-y-8 pb-8">
@@ -237,7 +224,7 @@ export default function ProfilePage() {
             <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mt-4 mb-3">
               Cima
             </h2>
-            <div className="p-4 rounded-2xl" style={{ background: cardColorFor(2).bg, color: cardColorFor(2).fg }}>
+            <div className="p-4 rounded-2xl bg-card border border-border">
               <div className="flex flex-wrap gap-2">
                 {cimaMembers.map((m) => (
                   <CimaMemberChip key={m.id} user={m.user} />
@@ -293,20 +280,18 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: 'rgba(22,20,19,0.7)', backdropFilter: 'blur(4px)' }}
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setShowLogoutConfirm(false)}
         >
           <motion.div
             initial={{ y: 80 }}
             animate={{ y: 0 }}
             transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-            className="w-full max-w-sm rounded-t-2xl border-t border-x p-6 space-y-4"
-            style={{ background: 'hsl(var(--card))', borderColor: 'rgba(139,107,92,0.25)' }}
+            className="w-full max-w-sm rounded-t-2xl border-t border-x border-border bg-card p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(163,38,38,0.12)' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/15">
                 <LogOut size={16} className="text-primary" />
               </div>
               <div>

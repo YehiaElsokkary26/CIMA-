@@ -23,7 +23,7 @@ export default function SettingsPage() {
             <button
               onClick={toggleDarkMode}
               className="relative w-11 h-6 rounded-full transition-colors duration-200"
-              style={{ background: isDarkMode ? '#C96A3D' : 'hsl(var(--muted))' }}
+              style={{ background: isDarkMode ? 'hsl(var(--primary))' : 'hsl(var(--muted))' }}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform duration-200 ${isDarkMode ? 'translate-x-5' : ''}`} />
             </button>

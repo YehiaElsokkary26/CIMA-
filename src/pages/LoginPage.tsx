@@ -50,8 +50,7 @@ export default function LoginPage() {
         {/* Logo + tagline */}
         <div className="flex flex-col items-center">
           <CimaIconMark size={72} />
-          {/* Rule 1: min contrast — #4E4A46 on cream = 4.5:1 ✓ */}
-          <p className="font-sans text-sm text-center mt-2 text-muted-foreground">
+          <p className="text-sm text-center mt-2 text-muted-foreground">
             Where student cinema comes to life.
           </p>
         </div>
@@ -61,15 +60,10 @@ export default function LoginPage() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 px-4 py-3 border"
-            style={{
-              background: 'rgba(163,38,38,0.08)',
-              borderColor: 'rgba(163,38,38,0.4)',
-              borderLeft: '3px solid #A32626',
-            }}
+            className="flex items-start gap-2 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/40 border-l-[3px] border-l-destructive"
           >
-            <AlertCircle size={14} className="shrink-0 mt-0.5" style={{ color: '#A32626' }} />
-            <p className="font-mono text-xs" style={{ color: '#A32626' }}>{error}</p>
+            <AlertCircle size={14} className="shrink-0 mt-0.5 text-destructive" />
+            <p className="text-xs text-destructive">{error}</p>
           </motion.div>
         )}
 

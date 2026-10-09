@@ -402,16 +402,11 @@ export default function HomePage() {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 340, damping: 22, delay: 0.4 }}
           onClick={() => navigate('/upload')}
-          className="fixed bottom-24 right-4 z-30 flex items-center justify-center cta-pulse lg:hidden"
-          style={{
-            width: 52,
-            height: 52,
-            background: '#A32626',
-            boxShadow: '0 0 24px 4px rgba(163,38,38,0.4)',
-          }}
+          className="fixed bottom-24 right-4 z-30 flex items-center justify-center cta-pulse lg:hidden bg-primary shadow-glow-orange"
+          style={{ width: 52, height: 52 }}
           aria-label="Upload a film"
         >
-          <Plus size={24} color="#E8DDCB" strokeWidth={2.5} />
+          <Plus size={24} className="text-primary-foreground" strokeWidth={2.5} />
         </motion.button>
       )}
     </motion.div>

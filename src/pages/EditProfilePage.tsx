@@ -102,8 +102,8 @@ export default function EditProfilePage() {
     >
       {/* Sticky header */}
       <div
-        className="sticky top-0 z-10 flex items-center gap-3 px-4 border-b"
-        style={{ height: 52, background: 'hsl(var(--background))', borderColor: 'rgba(139,107,92,0.2)' }}
+        className="sticky top-0 z-10 flex items-center gap-3 px-4 border-b border-border bg-background"
+        style={{ height: 52 }}
       >
         <button
           onClick={() => navigate('/profile/me')}

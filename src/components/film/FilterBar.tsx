@@ -27,14 +27,11 @@ export default function FilterBar({
               key={genre}
               onClick={() => onGenreChange(genre)}
               className={cn(
-                'shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] px-3.5 py-1.5 rounded-full transition-all duration-200',
-                active ? 'font-bold' : 'text-muted-foreground hover:text-foreground',
-              )}
-              style={
+                'shrink-0 text-xs px-3.5 py-1.5 rounded-full transition-all duration-200',
                 active
-                  ? { background: '#B28A52', color: '#161413' }
-                  : { background: 'hsl(var(--muted))' }
-              }
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'bg-secondary text-secondary-foreground',
+              )}
             >
               {genre}
             </button>
@@ -61,10 +58,7 @@ export default function FilterBar({
             <option value="Top Rated">Top Rated</option>
             <option value="Most Discussed">Most Discussed</option>
           </select>
-          <span
-            className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 font-mono text-[9px]"
-            style={{ color: '#A32626' }}
-          >
+          <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-primary text-[9px]">
             ▾
           </span>
         </div>

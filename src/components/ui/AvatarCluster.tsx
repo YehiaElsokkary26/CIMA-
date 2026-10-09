@@ -12,7 +12,7 @@ interface AvatarClusterProps {
   ringColor?: string
 }
 
-export default function AvatarCluster({ people, max = 4, size = 28, ringColor = '#161413' }: AvatarClusterProps) {
+export default function AvatarCluster({ people, max = 4, size = 28, ringColor = 'hsl(var(--background))' }: AvatarClusterProps) {
   if (people.length === 0) return null
 
   const visible = people.slice(0, max)
@@ -43,13 +43,11 @@ export default function AvatarCluster({ people, max = 4, size = 28, ringColor = 
       ))}
       {overflow > 0 && (
         <div
-          className="rounded-full flex items-center justify-center shrink-0 font-mono font-bold"
+          className="rounded-full flex items-center justify-center shrink-0 font-bold bg-secondary text-secondary-foreground"
           style={{
             width: size,
             height: size,
             marginLeft: -8,
-            background: '#333333',
-            color: '#FFFFFF',
             fontSize: size * 0.32,
             border: `2px solid ${ringColor}`,
           }}

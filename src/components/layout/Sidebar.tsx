@@ -62,7 +62,7 @@ export default function Sidebar() {
               )}
               style={
                 isUpload
-                  ? { background: '#A32626', color: '#E8DDCB' }
+                  ? { background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }
                   : undefined
               }
             >
@@ -90,10 +90,8 @@ export default function Sidebar() {
             onKeyDown={(e) => e.key === 'Enter' && navigate('/profile/me')}
             aria-label="View profile"
           >
-            <div
-              className="w-7 h-7 flex items-center justify-center font-mono text-xs font-bold shrink-0"
-              style={{ background: '#8B6B5C', color: '#E8DDCB' }}
-            >
+            <div className="w-7 h-7 flex items-center justify-center bg-secondary text-secondary-foreground text-xs font-bold shrink-0">
+
               {user.name?.charAt(0).toUpperCase()}
             </div>
             <div className="hidden xl:block overflow-hidden">
