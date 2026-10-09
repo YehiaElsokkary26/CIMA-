@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Plus, TrendingUp, Sparkles, Layers, Search, X, Star } from 'lucide-react'
+import { TrendingUp, Sparkles, Layers, Search, X, Star } from 'lucide-react'
 import Masonry from 'react-masonry-css'
 import { useFilms, useFeaturedFilm, useMyVoteThisWeek } from '@/hooks/useFilms'
 import FilmCard from '@/components/film/FilmCard'
@@ -394,21 +394,6 @@ export default function HomePage() {
             </div>
           )}
         </>
-      )}
-
-      {/* Filmmaker FAB — mobile */}
-      {isFilmmaker && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: 'spring', stiffness: 340, damping: 22, delay: 0.4 }}
-          onClick={() => navigate('/upload')}
-          className="fixed bottom-24 right-4 z-30 flex items-center justify-center cta-pulse lg:hidden bg-primary shadow-glow-orange"
-          style={{ width: 52, height: 52 }}
-          aria-label="Upload a film"
-        >
-          <Plus size={24} className="text-primary-foreground" strokeWidth={2.5} />
-        </motion.button>
       )}
     </motion.div>
   )

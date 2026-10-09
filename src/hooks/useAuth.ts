@@ -42,13 +42,16 @@ export function useAuth() {
       name,
       email,
       password,
+      role,
     }: {
       name: string
       email: string
       password: string
-      role?: string
+      role?: UserRole
     }) => {
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } })
+      const { data, error } = await supabase.auth.signUp({
+        email, password, options: { data: { name, role } },
+      })
       if (error) throw new Error(error.message)
       if (!data.user) throw new Error('Signup failed — please try again')
 
@@ -56,26 +59,27 @@ export function useAuth() {
         throw new Error('Check your email to confirm your account before logging in.')
       }
 
-      // The DB trigger (handle_new_user) already created the profile row
-      // from auth.users — no separate create call needed. Role is left
-      // unset here on purpose so onboarding is triggered after signup.
+      // The DB trigger (handle_new_user) reads name/role straight out of
+      // raw_user_meta_data and creates the profile row itself — no
+      // separate create call needed. Passing role here (instead of always
+      // leaving it unset) means the role picker on the register form
+      // actually takes effect instead of being silently discarded.
       const newUser: User = {
         id: data.user.id,
         email: data.user.email ?? email,
         name,
-        role: undefined as unknown as UserRole,
+        role: role as UserRole,
         createdAt: new Date().toISOString(),
       }
       return { token: data.session.access_token, user: newUser }
     },
     onSuccess: ({ token, user }) => {
-      // Force hasSelectedRole: false for new registrations so onboarding shows
       useAuthStore.setState({
         token,
         user,
-        role: null,
+        role: user.role ?? null,
         isLoggedIn: true,
-        hasSelectedRole: false,
+        hasSelectedRole: !!user.role,
       })
       localStorage.setItem('cima_token', token)
     },
