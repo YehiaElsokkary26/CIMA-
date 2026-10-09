@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, Check, Camera, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
-import { uploadFile } from '@/lib/supabaseApi'
+import { uploadFile } from '@/lib/storage'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
@@ -24,7 +24,7 @@ export default function EditProfilePage() {
   const [city, setCity] = useState(user?.city ?? '')
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(user?.favoriteGenres ?? [])
   const [crewRoles, setCrewRoles] = useState<string[]>(user?.crewRoles ?? [])
-  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatar)
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatarUrl)
   const [bannerPreview, setBannerPreview] = useState<string | undefined>(user?.bannerUrl)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [bannerFile, setBannerFile] = useState<File | null>(null)
@@ -66,7 +66,7 @@ export default function EditProfilePage() {
     if (!user?.id) return
     setSaving(true)
     try {
-      let avatarUrl = user.avatar
+      let avatarUrl = user.avatarUrl
       let bannerUrl = user.bannerUrl
       if (avatarFile) {
         avatarUrl = await uploadFile('avatars', avatarFile, `${user.id}/${Date.now()}-${avatarFile.name}`)

@@ -42,31 +42,3 @@ export function getWeekCountdown(): string {
   if (hours > 0) return `${hours}h ${mins}m`
   return `${mins}m`
 }
-
-// ─── localStorage vote helpers ────────────────────────────────────────────────
-
-const PREFIX = 'cima_vote_'
-
-export function getUserVoteThisWeek(userId: string): string | null {
-  try {
-    return localStorage.getItem(`${PREFIX}${userId}_${getCurrentWeekKey()}`)
-  } catch {
-    return null
-  }
-}
-
-export function hasUserVotedThisWeek(userId: string): boolean {
-  return getUserVoteThisWeek(userId) !== null
-}
-
-export function hasUserVotedForFilm(userId: string, filmId: string): boolean {
-  return getUserVoteThisWeek(userId) === filmId
-}
-
-export function setUserVote(userId: string, filmId: string): void {
-  try {
-    localStorage.setItem(`${PREFIX}${userId}_${getCurrentWeekKey()}`, filmId)
-  } catch {
-    // localStorage unavailable — silently ignore
-  }
-}

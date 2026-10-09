@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import type { Film, User } from '@/types'
-import { getUserVoteThisWeek } from '@/lib/votingUtils'
 
 interface RecommendationResult {
   films: Film[]
@@ -56,6 +55,7 @@ export function useRecommendations(
   user: User | null,
   allFilms: Film[],
   limit = 6,
+  votedFilmId?: string | null,
 ): RecommendationResult {
   return useMemo(() => {
     const empty: RecommendationResult = {
@@ -72,7 +72,6 @@ export function useRecommendations(
     const ownFilmGenres = [...new Set(ownFilms.flatMap((f) => f.genre))]
 
     // Voted film this week reveals a real preference signal
-    const votedFilmId = getUserVoteThisWeek(user.id)
     const votedFilm = votedFilmId ? allFilms.find((f) => f.id === votedFilmId) : undefined
     const votedFilmGenres = votedFilm?.genre ?? []
 
@@ -132,5 +131,5 @@ export function useRecommendations(
         : 'Picked for you'
 
     return { films: ranked, interestGenres, hasPreferences, reason }
-  }, [user, allFilms, limit])
+  }, [user, allFilms, limit, votedFilmId])
 }

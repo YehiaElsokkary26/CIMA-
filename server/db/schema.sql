@@ -78,6 +78,12 @@ CREATE TABLE IF NOT EXISTS public.films (
 CREATE INDEX IF NOT EXISTS idx_films_uploader ON public.films(uploader_id);
 CREATE INDEX IF NOT EXISTS idx_films_created  ON public.films(created_at DESC);
 
+-- Trailer + aspect ratio were added after the initial release — the
+-- frontend upload flow and film cards both need them. ADD COLUMN IF NOT
+-- EXISTS keeps this script re-runnable against a DB that already has them.
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS trailer_url  TEXT;
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS aspect_ratio TEXT;
+
 -- -----------------------------------------------
 -- FEATURED FILM OF THE WEEK
 -- -----------------------------------------------
@@ -102,6 +108,20 @@ CREATE TABLE IF NOT EXISTS public.ratings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ratings_film ON public.ratings(film_id);
+
+-- -----------------------------------------------
+-- VOTES  (Film of the Week — one vote per user per calendar week)
+-- -----------------------------------------------
+CREATE TABLE IF NOT EXISTS public.votes (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  film_id    UUID        NOT NULL REFERENCES public.films(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  week_start DATE        NOT NULL DEFAULT (date_trunc('week', CURRENT_DATE)::date),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, week_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_votes_film_week ON public.votes(film_id, week_start);
 
 -- -----------------------------------------------
 -- REVIEWS
@@ -201,18 +221,38 @@ ALTER TABLE public.featured_films ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Profiles are publicly readable"     ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Films: public read, authenticated insert (filmmaker check done in Express)
-CREATE POLICY "Films are publicly readable"        ON public.films FOR SELECT USING (true);
-CREATE POLICY "Authenticated users can add films"  ON public.films FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Uploaders can update own films"     ON public.films FOR UPDATE USING (auth.uid() = filmmaker_id);
-CREATE POLICY "Uploaders can delete own films"     ON public.films FOR DELETE USING (auth.uid() = filmmaker_id);
+-- Drop the old overly-permissive write policies if this script is being
+-- re-run against a database that already has them — "WITH CHECK
+-- (auth.uid() IS NOT NULL)" let any signed-in user write these tables
+-- directly from the browser, impersonating any uploader_id/user_id.
+DROP POLICY IF EXISTS "Authenticated users can add films" ON public.films;
+DROP POLICY IF EXISTS "Uploaders can update own films"    ON public.films;
+DROP POLICY IF EXISTS "Uploaders can delete own films"    ON public.films;
+DROP POLICY IF EXISTS "Auth users can rate"                ON public.ratings;
+DROP POLICY IF EXISTS "Auth users can update own rating"   ON public.ratings;
+DROP POLICY IF EXISTS "Auth users can review"              ON public.reviews;
 
--- Ratings/reviews: public read, authenticated write
+-- Films: public read only. All writes go through Express with the
+-- service-role key (which bypasses RLS entirely), so there is deliberately
+-- no direct-client INSERT/UPDATE/DELETE policy here any more — a policy
+-- like "WITH CHECK (auth.uid() IS NOT NULL)" only checks the caller is
+-- logged in, not that uploader_id matches them, which let any signed-in
+-- user write a films row claiming to be anyone else. Also fixed: these
+-- referenced a "filmmaker_id" column that was never the real column name
+-- (public.films.uploader_id), so they could never have worked as written.
+CREATE POLICY "Films are publicly readable"        ON public.films FOR SELECT USING (true);
+
+-- Ratings/reviews: public read only, same reasoning as films above —
+-- all writes go through Express (POST /api/films/:id/rate and
+-- /api/films/:id/review), which sets user_id from the verified JWT.
 CREATE POLICY "Ratings are publicly readable"      ON public.ratings  FOR SELECT USING (true);
-CREATE POLICY "Auth users can rate"                ON public.ratings  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Auth users can update own rating"   ON public.ratings  FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Reviews are publicly readable"      ON public.reviews  FOR SELECT USING (true);
-CREATE POLICY "Auth users can review"              ON public.reviews  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Votes: public read (vote counts are shown on every film card),
+-- no direct-client write policy — POST /api/films/:id/vote is the only
+-- way to cast a vote, enforced server-side with the caller's verified id.
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Votes are publicly readable"        ON public.votes FOR SELECT USING (true);
 
 -- Cima
 CREATE POLICY "Cima requests visible to involved"  ON public.cima_requests FOR SELECT USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);

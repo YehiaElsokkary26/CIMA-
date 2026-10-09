@@ -1,14 +1,23 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
-import { getProfile, createProfile, updateProfileRole, updateProfile } from '@/lib/supabaseApi'
+import { usersApi } from '@/lib/api'
 import { useNavigate } from 'react-router-dom'
 import type { User, UserRole } from '@/types'
 import { toast } from '@/store/toastStore'
 
+function apiErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const msg = (err as any).response?.data?.message
+    if (typeof msg === 'string') return msg
+  }
+  return err instanceof Error ? err.message : fallback
+}
+
 export function useAuth() {
   const { token, user, isLoggedIn, setAuth, setUser, logout } = useAuthStore()
   const navigate = useNavigate()
+  const qc = useQueryClient()
 
   const loginMutation = useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
@@ -16,9 +25,7 @@ export function useAuth() {
       if (error) throw new Error(error.message)
       if (!data.session) throw new Error('No session returned — please try again')
 
-      const profile = await getProfile(data.user.id, data.user.email)
-      if (!profile) throw new Error('Profile not found. Please contact support.')
-
+      const profile = (await usersApi.get(data.user.id)).data
       return { token: data.session.access_token, user: profile }
     },
     onSuccess: ({ token, user }) => setAuth(token, user),
@@ -41,7 +48,7 @@ export function useAuth() {
       password: string
       role?: string
     }) => {
-      const { data, error } = await supabase.auth.signUp({ email, password })
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } })
       if (error) throw new Error(error.message)
       if (!data.user) throw new Error('Signup failed — please try again')
 
@@ -49,9 +56,9 @@ export function useAuth() {
         throw new Error('Check your email to confirm your account before logging in.')
       }
 
-      // Insert profile without role so onboarding is triggered
-      await createProfile({ id: data.user.id, name })
-
+      // The DB trigger (handle_new_user) already created the profile row
+      // from auth.users — no separate create call needed. Role is left
+      // unset here on purpose so onboarding is triggered after signup.
       const newUser: User = {
         id: data.user.id,
         email: data.user.email ?? email,
@@ -86,23 +93,23 @@ export function useAuth() {
     navigate('/login')
   }
 
-  // Sync role selection to Supabase profiles table
+  // Sync role selection to the profiles table via Express
   const updateRoleMutation = useMutation({
-    mutationFn: async (role: UserRole) => {
-      if (!user?.id) return
-      await updateProfileRole(user.id, role)
-    },
-    onSuccess: (_data, role) => setUser({ ...(user as User), role }),
+    mutationFn: async (role: UserRole) => (await usersApi.changeRole(role)).data,
+    onSuccess: (updated) => setUser(updated),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update role')),
   })
 
-  // Persist any profile field to Supabase
+  // Persist any profile field via Express
   const updateProfileMutation = useMutation({
-    mutationFn: async (patch: Parameters<typeof updateProfile>[1]) => {
-      if (!user?.id) throw new Error('Not logged in')
-      return updateProfile(user.id, patch)
+    mutationFn: async (patch: Parameters<typeof usersApi.update>[0]) =>
+      (await usersApi.update(patch)).data,
+    onSuccess: (updated) => {
+      setUser(updated)
+      qc.invalidateQueries({ queryKey: ['profile', updated.id] })
+      toast.success('Profile updated')
     },
-    onSuccess: (updated) => setUser(updated),
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update profile'),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update profile')),
   })
 
   return {
@@ -126,8 +133,8 @@ export function useMe() {
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) return null
-      const profile = await getProfile(session.user.id, session.user.email)
-      if (profile) setUser(profile)
+      const profile = (await usersApi.get(session.user.id)).data
+      setUser(profile)
       return profile
     },
     enabled: !!token,

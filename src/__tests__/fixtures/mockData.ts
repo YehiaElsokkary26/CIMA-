@@ -1,6 +1,11 @@
 // TEST FIXTURES ONLY — never import this in production components
 import type { User, Film } from '@/types'
-import { getCurrentWeekKey, getUserVoteThisWeek, setUserVote } from '@/lib/votingUtils'
+import { getCurrentWeekKey } from '@/lib/votingUtils'
+
+// In-memory per-user vote tracking for this fixture module only — the real
+// app now tracks votes server-side (server/routes/films.ts), not via
+// localStorage, so this mock no longer reaches into browser storage.
+const mockVotesByUser = new Map<string, string>()
 
 // ─── Demo users ────────────────────────────────────────────────────────────
 
@@ -9,7 +14,7 @@ export const ALEX: User = {
   name: 'Alex Reyes',
   email: 'alex@cimafilms.com',
   role: 'filmmaker',
-  avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=alexreyes',
+  avatarUrl: 'https://api.dicebear.com/9.x/lorelei/svg?seed=alexreyes',
   bio: 'Final year film student. I shoot on 16mm when I can.',
   filmsCount: 2,
   createdAt: '2023-09-01T00:00:00Z',
@@ -20,7 +25,7 @@ export const SARA: User = {
   name: 'Sara El-Amin',
   email: 'sara@cimafilms.com',
   role: 'viewer',
-  avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=saraelamin',
+  avatarUrl: 'https://api.dicebear.com/9.x/lorelei/svg?seed=saraelamin',
   bio: 'Film lover. Always looking for hidden gems.',
   createdAt: '2023-10-15T00:00:00Z',
 }
@@ -30,7 +35,7 @@ const OMAR: User = {
   name: 'Omar Khalil',
   email: 'omar@cimafilms.com',
   role: 'filmmaker',
-  avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=omarkhalil',
+  avatarUrl: 'https://api.dicebear.com/9.x/lorelei/svg?seed=omarkhalil',
   bio: 'Experimental filmmaker based in Cairo.',
   filmsCount: 1,
   createdAt: '2023-08-20T00:00:00Z',
@@ -41,7 +46,7 @@ const LAYLA: User = {
   name: 'Layla Hassan',
   email: 'layla@cimafilms.com',
   role: 'filmmaker',
-  avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=laylahassan',
+  avatarUrl: 'https://api.dicebear.com/9.x/lorelei/svg?seed=laylahassan',
   bio: 'Genre films with a local flavour.',
   filmsCount: 1,
   createdAt: '2024-01-10T00:00:00Z',
@@ -52,7 +57,7 @@ const NOUR: User = {
   name: 'Nour Khalid',
   email: 'nour@cimafilms.com',
   role: 'filmmaker',
-  avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=nourkhalid',
+  avatarUrl: 'https://api.dicebear.com/9.x/lorelei/svg?seed=nourkhalid',
   bio: 'Horror and atmosphere. Mostly at night.',
   filmsCount: 1,
   createdAt: '2024-02-05T00:00:00Z',
@@ -63,7 +68,7 @@ const RAMZI: User = {
   name: 'Ramzi Essam',
   email: 'ramzi@cimafilms.com',
   role: 'filmmaker',
-  avatar: 'https://api.dicebear.com/9.x/lorelei/svg?seed=ramziessam',
+  avatarUrl: 'https://api.dicebear.com/9.x/lorelei/svg?seed=ramziessam',
   bio: 'Comedy shorts and deadpan character studies.',
   filmsCount: 1,
   createdAt: '2023-11-01T00:00:00Z',
@@ -434,7 +439,7 @@ export function voteForFilm(
   filmId: string,
   userId: string,
 ): { success: boolean; film?: Film; error?: 'already_voted_this_film' | 'already_voted_other_film' | 'film_not_found' } {
-  const existing = getUserVoteThisWeek(userId)
+  const existing = mockVotesByUser.get(userId) ?? null
   if (existing === filmId) return { success: false, error: 'already_voted_this_film' }
   if (existing !== null) return { success: false, error: 'already_voted_other_film' }
 
@@ -442,7 +447,7 @@ export function voteForFilm(
   if (!film) return { success: false, error: 'film_not_found' }
 
   film.votes = (film.votes ?? 0) + 1
-  setUserVote(userId, filmId)
+  mockVotesByUser.set(userId, filmId)
   _refreshFotw()
 
   return { success: true, film: { ...film } }

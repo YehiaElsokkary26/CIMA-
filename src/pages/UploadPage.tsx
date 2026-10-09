@@ -81,7 +81,6 @@ export default function UploadPage() {
         runtime: runtime ? parseInt(runtime, 10) : undefined,
         year: parseInt(year, 10),
         uploaderId: user.id,
-        uploaderName: user.name,
       })
       toast.success('Your film is live. 🎬')
       navigate('/home', { replace: true })

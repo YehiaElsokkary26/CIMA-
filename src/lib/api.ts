@@ -7,22 +7,15 @@ const api = axios.create({
 })
 
 // Attach the Supabase access_token (auto-refreshed by the Supabase client) to
-// every request. Falls back to the legacy cima_token stored in localStorage so
-// the demo fallback in OnboardingPage still works without a real Supabase project.
+// every request. Supabase Auth is the single source of truth for identity —
+// Express only ever trusts req.userId as derived from this verified JWT,
+// never anything the client sends in a request body.
 api.interceptors.request.use(async (config) => {
-  try {
-    // Lazy-import to avoid a circular dependency during module initialisation
-    const { supabase } = await import('./supabase')
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`
-      return config
-    }
-  } catch { /* supabase not configured — fall through */ }
-
-  // Legacy fallback
-  const token = localStorage.getItem('cima_token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  const { supabase } = await import('./supabase')
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`
+  }
   return config
 })
 
@@ -40,32 +33,23 @@ api.interceptors.response.use(
           return axios(err.config)
         }
       } catch { /* ignore */ }
-
-      // Couldn't refresh — clear everything and redirect to login
-      localStorage.removeItem('cima_token')
-      window.location.href = '/onboarding'
     }
     return Promise.reject(err)
   }
 )
 
-// ---- Auth -------------------------------------------------------------------
-export const authApi = {
-  register: (data: { name: string; email: string; password: string; role: string }) =>
-    api.post<{ token: string; user: User }>('/auth/register', data),
-  login: (data: { email: string; password: string }) =>
-    api.post<{ token: string; user: User }>('/auth/login', data),
-  me: () => api.get<User>('/auth/me'),
-}
-
-// ---- Films ------------------------------------------------------------------
+// ---- Films --------------------------------------------------------------------
 export const filmsApi = {
-  list: (params?: { genre?: string; sort?: string; filter?: string }) =>
+  list: (params?: { genre?: string; sort?: string }) =>
     api.get<Film[]>('/films', { params }),
   featured: () => api.get<Film>('/films/featured/week'),
   get: (id: string) => api.get<Film>(`/films/${id}`),
-  upload: (formData: FormData) =>
-    api.post<Film>('/films', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  create: (data: {
+    title: string; description?: string; genre: string[]; runtime?: number; year?: number
+    thumbnailUrl?: string; videoUrl?: string; trailerUrl?: string; aspectRatio?: string
+  }) => api.post<Film>('/films', data),
+  vote: (id: string) => api.post<{ ok: true; votes: number }>(`/films/${id}/vote`),
+  myVoteThisWeek: () => api.get<{ filmId: string | null }>('/films/votes/mine'),
   rate: (id: string, rating: number) => api.post(`/films/${id}/rate`, { rating }),
   reviews: (id: string) => api.get<Review[]>(`/films/${id}/reviews`),
   addReview: (id: string, data: { rating: number; body: string }) =>
@@ -75,8 +59,14 @@ export const filmsApi = {
 // ---- Users ------------------------------------------------------------------
 export const usersApi = {
   get: (id: string) => api.get<User>(`/users/${id}`),
-  update: (data: Partial<User>) => api.patch<User>('/users/me', data),
   films: (id: string) => api.get<Film[]>(`/users/${id}/films`),
+  update: (data: Partial<{
+    name: string; bio: string; school: string; city: string; topGenre: string
+    lookingForCollaborators: boolean; favoriteGenres: string[]; crewRoles: string[]
+    avatarUrl: string; bannerUrl: string
+  }>) => api.patch<User>('/users/me', data),
+  changeRole: (role: 'filmmaker' | 'viewer') =>
+    api.post<User>('/users/me/role', { role }),
 }
 
 // ---- Cima -------------------------------------------------------------------

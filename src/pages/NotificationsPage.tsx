@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button'
 import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getNotifications, markAllNotificationsRead } from '@/lib/supabaseApi'
+import { notificationsApi } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 
 const notifIcon: Record<string, React.ElementType> = {
@@ -33,7 +33,7 @@ export default function NotificationsPage() {
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['notifications', user?.id],
-    queryFn: () => getNotifications(user!.id),
+    queryFn: async () => (await notificationsApi.list()).data,
     enabled: !!user?.id,
   })
 
@@ -56,7 +56,7 @@ export default function NotificationsPage() {
 
   const markAllRead = async () => {
     if (!user?.id) return
-    await markAllNotificationsRead(user.id)
+    await notificationsApi.markAllRead()
     qc.invalidateQueries({ queryKey: ['notifications', user.id] })
   }
 

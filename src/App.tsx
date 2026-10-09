@@ -4,7 +4,7 @@ import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { supabase } from '@/lib/supabase'
-import { getProfile } from '@/lib/supabaseApi'
+import { usersApi } from '@/lib/api'
 import ToastContainer from '@/components/ui/Toast'
 import AppShell from '@/components/layout/AppShell'
 import LoginPage from '@/pages/LoginPage'
@@ -70,8 +70,10 @@ export default function App() {
     // Restore any existing session on mount (handles page reload)
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const profile = await getProfile(session.user.id, session.user.email)
-        if (profile) setAuth(session.access_token, profile)
+        try {
+          const profile = (await usersApi.get(session.user.id)).data
+          setAuth(session.access_token, profile)
+        } catch { /* profile row may not exist yet right after signup */ }
       }
     })
 
@@ -80,8 +82,10 @@ export default function App() {
         if (event === 'SIGNED_OUT') {
           logout()
         } else if (session && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) {
-          const profile = await getProfile(session.user.id, session.user.email)
-          if (profile) setAuth(session.access_token, profile)
+          try {
+            const profile = (await usersApi.get(session.user.id)).data
+            setAuth(session.access_token, profile)
+          } catch { /* profile row may not exist yet right after signup */ }
         }
       },
     )

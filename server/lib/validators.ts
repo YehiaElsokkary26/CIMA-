@@ -29,8 +29,16 @@ export const updateUserSchema = z.object({
   bio:                      z.string().max(500).optional(),
   school:                   z.string().max(200).optional(),
   city:                     z.string().max(100).optional(),
-  top_genre:                z.string().max(50).optional(),
-  looking_for_collaborators: z.boolean().optional(),
+  topGenre:                 z.string().max(50).optional(),
+  lookingForCollaborators:  z.boolean().optional(),
+  avatarUrl:                z.string().url().optional(),
+  bannerUrl:                z.string().url().optional(),
+  favoriteGenres:           z.array(z.string()).optional(),
+  crewRoles:                z.array(z.string()).optional(),
+})
+
+export const roleChangeSchema = z.object({
+  role: z.enum(['filmmaker', 'viewer']),
 })
 
 // ---- middleware factory ------------------------------------------------------

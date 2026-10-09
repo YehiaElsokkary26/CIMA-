@@ -119,7 +119,7 @@ export default function CimaHubPage() {
             {/* Avatar strip */}
             <div className="mb-4">
               <AvatarCluster
-                people={displayData.members.map((m) => ({ name: m.user.name, avatar: m.user.avatar }))}
+                people={displayData.members.map((m) => ({ name: m.user.name, avatar: m.user.avatarUrl }))}
                 max={6}
                 size={32}
                 ringColor="hsl(var(--card))"

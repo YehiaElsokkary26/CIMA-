@@ -114,7 +114,7 @@ export default function ProfilePage() {
         <div className="px-4 pb-4">
           <div className="flex items-end justify-between -mt-8 mb-4">
             <Avatar
-              src={profile.avatar}
+              src={profile.avatarUrl}
               name={profile.name}
               size="xl"
               className="shadow-film border-4 border-background"

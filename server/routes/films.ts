@@ -1,7 +1,5 @@
 import { Router, Response, NextFunction } from 'express'
-import multer from 'multer'
-import path from 'path'
-import { v4 as uuid } from 'uuid'
+import { z } from 'zod'
 import { query } from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { isFilmmaker } from '../middleware/role'
@@ -11,22 +9,24 @@ import { createNotification } from '../lib/notify'
 
 const router = Router()
 
-// ---- Multer upload config ---------------------------------------------------
-const storage = multer.diskStorage({
-  destination: path.join(__dirname, '..', 'uploads'),
-  filename:    (_, file, cb) => cb(null, `${uuid()}${path.extname(file.originalname).toLowerCase()}`),
-})
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2 GB
-  fileFilter: (_, file, cb) => {
-    const allowed = /\.(mp4|mov|webm|jpg|jpeg|png|gif|webp)$/i
-    cb(null, allowed.test(file.originalname))
-  },
+// Binary files (video/thumbnail/trailer) are uploaded directly from the
+// browser to Supabase Storage (src/lib/storage.ts) — this route only ever
+// receives the resulting URLs as JSON, never the file bytes themselves.
+const createFilmSchema = z.object({
+  title:         z.string().min(1).max(200),
+  description:   z.string().max(2000).optional(),
+  genre:         z.array(z.string()).default([]),
+  runtime:       z.number().int().positive().optional(),
+  year:          z.number().int().optional(),
+  thumbnailUrl:  z.string().url().optional(),
+  videoUrl:      z.string().url().optional(),
+  trailerUrl:    z.string().url().optional(),
+  aspectRatio:   z.enum(['16:9', '4:5', '2:3']).optional(),
 })
 
 // ---- helpers ----------------------------------------------------------------
+
+const VOTE_WEEK_SQL = `date_trunc('week', CURRENT_DATE)::date`
 
 async function filmWithMeta(id: string) {
   const res = await query(
@@ -38,12 +38,16 @@ async function filmWithMeta(id: string) {
             p.avatar_url  AS uploader_avatar,
             p.created_at  AS uploader_created_at,
             ROUND(AVG(r.rating)::numeric, 1)::float AS avg_rating,
-            COUNT(r.id)::int                         AS rating_count
+            COUNT(DISTINCT r.id)::int                AS rating_count,
+            COUNT(DISTINCT v.id) FILTER (WHERE v.week_start = ${VOTE_WEEK_SQL})::int AS votes,
+            (ff.film_id IS NOT NULL) AS is_film_of_the_week
      FROM   films f
      JOIN   profiles p ON p.id = f.uploader_id
      LEFT   JOIN ratings r ON r.film_id = f.id
+     LEFT   JOIN votes   v ON v.film_id = f.id
+     LEFT   JOIN featured_films ff ON ff.film_id = f.id AND ff.week_start = ${VOTE_WEEK_SQL}
      WHERE  f.id = $1
-     GROUP  BY f.id, p.id`,
+     GROUP  BY f.id, p.id, ff.film_id`,
     [id]
   )
   return res.rows[0] ?? null
@@ -57,11 +61,15 @@ function mapFilm(f: any) {
     description: f.description,
     thumbnailUrl: f.thumbnail_url,
     videoUrl:    f.video_url,
+    trailerUrl:  f.trailer_url  ?? undefined,
+    aspectRatio: f.aspect_ratio ?? undefined,
     genre:       f.genre ?? [],
     runtime:     f.runtime_min,
     year:        f.release_year,
     rating:      f.avg_rating    ?? undefined,
     ratingCount: f.rating_count  ?? 0,
+    votes:       f.votes ?? 0,
+    isFilmOfTheWeek: !!f.is_film_of_the_week,
     uploaderId:  f.uploader_id,
     uploader: f.uploader_name ? {
       id:        f.uploader_id,
@@ -102,6 +110,17 @@ router.get('/featured/week', async (_req, res: Response, next: NextFunction) => 
   } catch (err) { next(err) }
 })
 
+// ---- GET /api/films/votes/mine  (must be before /:id) -----------------------
+router.get('/votes/mine', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `SELECT film_id FROM votes WHERE user_id = $1 AND week_start = ${VOTE_WEEK_SQL}`,
+      [req.userId]
+    )
+    res.json({ filmId: result.rows[0]?.film_id ?? null })
+  } catch (err) { next(err) }
+})
+
 // ---- GET /api/films ---------------------------------------------------------
 router.get('/', async (req, res: Response, next: NextFunction) => {
   const { genre, sort = 'newest' } = req.query as Record<string, string>
@@ -114,10 +133,14 @@ router.get('/', async (req, res: Response, next: NextFunction) => {
              p.avatar_url AS uploader_avatar,
              p.created_at AS uploader_created_at,
              ROUND(AVG(r.rating)::numeric, 1)::float AS avg_rating,
-             COUNT(r.id)::int                         AS rating_count
+             COUNT(DISTINCT r.id)::int                AS rating_count,
+             COUNT(DISTINCT v.id) FILTER (WHERE v.week_start = ${VOTE_WEEK_SQL})::int AS votes,
+             (ff.film_id IS NOT NULL) AS is_film_of_the_week
       FROM   films f
       JOIN   profiles p ON p.id = f.uploader_id
       LEFT   JOIN ratings r ON r.film_id = f.id
+      LEFT   JOIN votes   v ON v.film_id = f.id
+      LEFT   JOIN featured_films ff ON ff.film_id = f.id AND ff.week_start = ${VOTE_WEEK_SQL}
     `
     const params: any[] = []
 
@@ -126,7 +149,7 @@ router.get('/', async (req, res: Response, next: NextFunction) => {
       params.push(genre)
     }
 
-    sql += ` GROUP BY f.id, p.id`
+    sql += ` GROUP BY f.id, p.id, ff.film_id`
 
     if (sort === 'top') sql += ' ORDER BY avg_rating DESC NULLS LAST, f.created_at DESC'
     else                 sql += ' ORDER BY f.created_at DESC'
@@ -145,39 +168,48 @@ router.get('/:id', async (req, res: Response, next: NextFunction) => {
   } catch (err) { next(err) }
 })
 
-// ---- POST /api/films  (filmmaker upload) ------------------------------------
-router.post(
-  '/',
-  authMiddleware,
-  isFilmmaker,
-  upload.fields([
-    { name: 'video',     maxCount: 1 },
-    { name: 'thumbnail', maxCount: 1 },
-  ]),
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const { title, description, year, runtime } = req.body
-    const genre = req.body.genre
-      ? (Array.isArray(req.body.genre) ? req.body.genre : [req.body.genre])
-      : []
+// ---- POST /api/films  (filmmaker upload — body carries Storage URLs) -------
+router.post('/', authMiddleware, isFilmmaker, validate(createFilmSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { title, description, genre, runtime, year, thumbnailUrl, videoUrl, trailerUrl, aspectRatio } = req.body
+  try {
+    const result = await query(
+      `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, video_url, thumbnail_url, trailer_url, aspect_ratio)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING id`,
+      [
+        title, description ?? null, genre, runtime ?? null, year ?? null, req.userId,
+        videoUrl ?? null, thumbnailUrl ?? null, trailerUrl ?? null, aspectRatio ?? null,
+      ]
+    )
+    const film = await filmWithMeta(result.rows[0].id)
+    res.status(201).json(mapFilm(film))
+  } catch (err) { next(err) }
+})
 
-    if (!title) { next(new AppError('title is required', 400)); return }
+// ---- POST /api/films/:id/vote  (Film of the Week — one vote/user/week) -----
+router.post('/:id/vote', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const filmRes = await query('SELECT id FROM films WHERE id = $1', [req.params.id])
+    if (!filmRes.rowCount) throw notFound('Film')
 
-    try {
-      const files = req.files as { [k: string]: Express.Multer.File[] }
-      const videoUrl     = files.video?.[0]     ? `/uploads/${files.video[0].filename}`     : null
-      const thumbnailUrl = files.thumbnail?.[0] ? `/uploads/${files.thumbnail[0].filename}` : null
+    const result = await query(
+      `INSERT INTO votes (film_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, week_start) DO NOTHING
+       RETURNING id`,
+      [req.params.id, req.userId]
+    )
+    if (!result.rowCount) {
+      next(new AppError('You already voted for a film this week', 409, 'ALREADY_VOTED')); return
+    }
 
-      const result = await query(
-        `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, video_url, thumbnail_url)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-         RETURNING id`,
-        [title, description, genre, runtime ? parseInt(runtime) : null, year ? parseInt(year) : null, req.userId, videoUrl, thumbnailUrl]
-      )
-      const film = await filmWithMeta(result.rows[0].id)
-      res.status(201).json(mapFilm(film))
-    } catch (err) { next(err) }
-  }
-)
+    const countRes = await query(
+      `SELECT COUNT(*)::int AS c FROM votes WHERE film_id = $1 AND week_start = ${VOTE_WEEK_SQL}`,
+      [req.params.id]
+    )
+    res.status(201).json({ ok: true, votes: countRes.rows[0].c })
+  } catch (err) { next(err) }
+})
 
 // ---- POST /api/films/:id/rate -----------------------------------------------
 router.post('/:id/rate', authMiddleware, validate(rateFilmSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
