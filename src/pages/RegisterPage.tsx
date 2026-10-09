@@ -36,13 +36,13 @@ export default function RegisterPage() {
     }
 
     try {
-      await register.mutateAsync({ name, email, password, role: selectedRole })
-      navigate('/onboarding', { replace: true })
+      const result = await register.mutateAsync({ name, email, password, role: selectedRole })
+      navigate(result.user.role ? '/home' : '/onboarding', { replace: true })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed.'
       setError(
         msg.includes('fetch') || msg.includes('network') || msg.includes('Failed')
-          ? 'No server connection. Use a demo account on the Sign In page.'
+          ? "Couldn't reach Cima right now. Check your connection and try again."
           : msg
       )
     }
