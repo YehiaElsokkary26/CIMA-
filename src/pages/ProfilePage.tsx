@@ -178,7 +178,7 @@ export default function ProfilePage() {
           {/* Open to Collab toggle — filmmakers only */}
           {isFilmmaker && (
             <Button
-              variant="outline"
+              variant={openToCollab ? 'primary' : 'outline'}
               size="sm"
               onClick={handleToggleCollab}
               className="w-full rounded-full"
@@ -195,9 +195,16 @@ export default function ProfilePage() {
               size="md"
               onClick={handleBecomeFilmmaker}
               className="w-full"
+              disabled={updateRole.isPending}
             >
-              <Film size={15} />
-              Become a Filmmaker
+              {updateRole.isPending ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <>
+                  <Film size={15} />
+                  Become a Filmmaker
+                </>
+              )}
             </Button>
           )}
         </div>

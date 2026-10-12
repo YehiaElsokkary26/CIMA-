@@ -20,8 +20,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           // Base: font-mono uppercase tracking for all buttons (Rule 11)
           'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-wider rounded-lg',
           'transition-all duration-150',
-          // Rule 9: tactile pressed feedback
-          'active:scale-[0.97]',
+          // Rule 9: tactile pressed feedback + hover pop
+          'hover:scale-[1.03] active:scale-[0.97]',
           // Rule 3: never below 44px height — disabled state
           'disabled:opacity-50 disabled:pointer-events-none',
 

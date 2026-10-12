@@ -51,6 +51,7 @@ export default function CimaButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      whileHover={{ scale: 1.03 }}
       whileTap={{ scale: 0.96 }}
       className={cn(
         'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-primary text-primary font-sans font-semibold text-sm transition-colors duration-150 hover:bg-primary/10 disabled:opacity-50 disabled:pointer-events-none min-h-[44px]',
