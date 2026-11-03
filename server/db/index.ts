@@ -2,8 +2,16 @@ import { Pool, PoolClient, QueryResult } from 'pg'
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 import path from 'path'
+import fs from 'fs'
 
-dotenv.config({ path: path.join(__dirname, '..', '.env') })
+// Try multiple locations so the server works regardless of cwd
+const envCandidates = [
+  path.join(__dirname, '..', '.env'),
+  path.join(process.cwd(), '.env'),
+  path.join(process.cwd(), 'server', '.env'),
+]
+const envPath = envCandidates.find(p => fs.existsSync(p))
+if (envPath) dotenv.config({ path: envPath })
 
 // ---- Validation -------------------------------------------------------------
 
