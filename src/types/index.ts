@@ -32,6 +32,7 @@ export interface Film {
   genre: string[]
   runtime?: number
   year: number
+  uploaderRole?: string
   rating?: number
   ratingCount?: number
   uploaderId: string

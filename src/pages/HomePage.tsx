@@ -1,6 +1,6 @@
 // UI/UX audit applied — WCAG 2.1 AA compliant
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useMemo, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { TrendingUp, Sparkles, Layers, Search, X, Star } from 'lucide-react'
 import Masonry from 'react-masonry-css'
@@ -55,6 +55,12 @@ function SectionLabel({
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const routeState = location.state as { publishedFilmId?: unknown } | null
+  const publishedFilmId = typeof routeState?.publishedFilmId === 'string'
+    ? routeState.publishedFilmId
+    : undefined
+  const [highlightedFilmId, setHighlightedFilmId] = useState<string | null>(null)
   const user = useAuthStore((s) => s.user)
   const role = useAuthStore((s) => s.role)
   const isFilmmaker = role === 'filmmaker'
@@ -126,6 +132,31 @@ export default function HomePage() {
         .slice(0, 4),
     [allFilms],
   )
+
+  useEffect(() => {
+    if (!publishedFilmId) return
+    if (searchQuery) {
+      clearSearch()
+      return
+    }
+    if (!newUploads.some((film) => film.id === publishedFilmId)) return
+
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById(`published-film-${publishedFilmId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+      setHighlightedFilmId(publishedFilmId)
+      navigate(location.pathname, { replace: true, state: null })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [publishedFilmId, newUploads, searchQuery, clearSearch, navigate, location.pathname])
+
+  useEffect(() => {
+    if (!highlightedFilmId) return
+    const timeout = window.setTimeout(() => setHighlightedFilmId(null), 3500)
+    return () => window.clearTimeout(timeout)
+  }, [highlightedFilmId])
 
   const visibleFilms = filteredFilms.slice(0, visibleCount)
   const hasMore = visibleCount < filteredFilms.length
@@ -348,6 +379,8 @@ export default function HomePage() {
                     film={film}
                     index={i}
                     isOwner={isFilmmaker && film.uploaderId === user?.id}
+                    domId={`published-film-${film.id}`}
+                    highlighted={highlightedFilmId === film.id}
                   />
                 ))}
               </Masonry>

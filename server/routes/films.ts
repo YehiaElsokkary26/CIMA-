@@ -22,6 +22,7 @@ const createFilmSchema = z.object({
   videoUrl:      z.string().url().optional(),
   trailerUrl:    z.string().url().optional(),
   aspectRatio:   z.enum(['16:9', '4:5', '2:3']).optional(),
+  uploaderRole:  z.string().max(100).optional(),
 })
 
 // ---- helpers ----------------------------------------------------------------
@@ -32,7 +33,7 @@ async function filmWithMeta(id: string) {
   const res = await query(
     `SELECT f.*,
             p.name        AS uploader_name,
-            p.role        AS uploader_role,
+            p.role        AS uploader_account_role,
             p.school      AS uploader_school,
             p.bio         AS uploader_bio,
             p.avatar_url  AS uploader_avatar,
@@ -63,6 +64,7 @@ function mapFilm(f: any) {
     videoUrl:    f.video_url,
     trailerUrl:  f.trailer_url  ?? undefined,
     aspectRatio: f.aspect_ratio ?? undefined,
+    uploaderRole: f.uploader_role ?? undefined,
     genre:       f.genre ?? [],
     runtime:     f.runtime_min,
     year:        f.release_year,
@@ -74,7 +76,7 @@ function mapFilm(f: any) {
     uploader: f.uploader_name ? {
       id:        f.uploader_id,
       name:      f.uploader_name,
-      role:      f.uploader_role,
+      role:      f.uploader_account_role,
       school:    f.uploader_school,
       bio:       f.uploader_bio,
       avatarUrl: f.uploader_avatar,
@@ -128,7 +130,7 @@ router.get('/', async (req, res: Response, next: NextFunction) => {
     let sql = `
       SELECT f.*,
              p.name       AS uploader_name,
-             p.role       AS uploader_role,
+             p.role       AS uploader_account_role,
              p.school     AS uploader_school,
              p.avatar_url AS uploader_avatar,
              p.created_at AS uploader_created_at,
@@ -170,15 +172,15 @@ router.get('/:id', async (req, res: Response, next: NextFunction) => {
 
 // ---- POST /api/films  (filmmaker upload — body carries Storage URLs) -------
 router.post('/', authMiddleware, isFilmmaker, validate(createFilmSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { title, description, genre, runtime, year, thumbnailUrl, videoUrl, trailerUrl, aspectRatio } = req.body
+  const { title, description, genre, runtime, year, thumbnailUrl, videoUrl, trailerUrl, aspectRatio, uploaderRole } = req.body
   try {
     const result = await query(
-      `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, video_url, thumbnail_url, trailer_url, aspect_ratio)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      `INSERT INTO films (title, description, genre, runtime_min, release_year, uploader_id, video_url, thumbnail_url, trailer_url, aspect_ratio, uploader_role)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING id`,
       [
         title, description ?? null, genre, runtime ?? null, year ?? null, req.userId,
-        videoUrl ?? null, thumbnailUrl ?? null, trailerUrl ?? null, aspectRatio ?? null,
+        videoUrl ?? null, thumbnailUrl ?? null, trailerUrl ?? null, aspectRatio ?? null, uploaderRole ?? null,
       ]
     )
     const film = await filmWithMeta(result.rows[0].id)

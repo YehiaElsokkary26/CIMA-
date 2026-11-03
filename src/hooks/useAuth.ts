@@ -103,7 +103,7 @@ export function useAuth() {
     onSuccess: (updated) => {
       setUser(updated)
       if (updated.role === 'filmmaker') {
-        toast.success("You're a filmmaker now — you can upload films from the tab bar.")
+        toast.success("You’re a filmmaker now — you can upload films from the tab bar.")
       }
     },
     onError: (err) => toast.error(apiErrorMessage(err, 'Failed to update role')),

@@ -6,7 +6,20 @@ import { toast } from '@/store/toastStore'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
-    const msg = (err as any).response?.data?.message
+    const response = err.response
+    if (response && typeof response === 'object' && 'status' in response && response.status === 422 &&
+        'data' in response && response.data && typeof response.data === 'object' && 'errors' in response.data) {
+      const errors = response.data.errors
+      if (errors && typeof errors === 'object') {
+        for (const messages of Object.values(errors)) {
+          if (Array.isArray(messages) && typeof messages[0] === 'string') return messages[0]
+        }
+      }
+    }
+    const msg = response && typeof response === 'object' && 'data' in response &&
+      response.data && typeof response.data === 'object' && 'message' in response.data
+      ? response.data.message
+      : undefined
     if (typeof msg === 'string') return msg
   }
   return err instanceof Error ? err.message : fallback
@@ -120,21 +133,35 @@ export function useUploadFilm() {
       runtime?: number
       year: number
       uploaderId: string
+      uploaderRole?: string
+      onProgress?: (progress: number, status: string) => void
     }) => {
       let videoUrl: string | undefined
       let thumbnailUrl: string | undefined
       let trailerUrl: string | undefined
+      const uploadCount = [params.videoFile, params.thumbFile, params.trailerFile].filter(Boolean).length
+      const totalStages = uploadCount + 1
+      let completedStages = 0
+      const updateProgress = (status: string) =>
+        params.onProgress?.(Math.round((completedStages / totalStages) * 100), status)
 
       if (params.videoFile) {
+        updateProgress('Uploading film video…')
         videoUrl = await uploadFile('films', params.videoFile, `${params.uploaderId}/${Date.now()}-${params.videoFile.name}`)
+        completedStages += 1
       }
       if (params.thumbFile) {
+        updateProgress('Uploading thumbnail…')
         thumbnailUrl = await uploadFile('thumbnails', params.thumbFile, `${params.uploaderId}/${Date.now()}-thumb-${params.thumbFile.name}`)
+        completedStages += 1
       }
       if (params.trailerFile) {
+        updateProgress('Uploading trailer…')
         trailerUrl = await uploadFile('trailers', params.trailerFile, `${params.uploaderId}/${Date.now()}-trailer-${params.trailerFile.name}`)
+        completedStages += 1
       }
 
+      updateProgress('Publishing film…')
       const { data } = await filmsApi.create({
         title: params.title,
         description: params.description,
@@ -144,7 +171,9 @@ export function useUploadFilm() {
         thumbnailUrl,
         videoUrl,
         trailerUrl,
+        uploaderRole: params.uploaderRole,
       })
+      params.onProgress?.(100, 'Film published')
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['films'] }),

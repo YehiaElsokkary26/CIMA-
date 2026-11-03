@@ -47,6 +47,7 @@ export const filmsApi = {
   create: (data: {
     title: string; description?: string; genre: string[]; runtime?: number; year?: number
     thumbnailUrl?: string; videoUrl?: string; trailerUrl?: string; aspectRatio?: string
+    uploaderRole?: string
   }) => api.post<Film>('/films', data),
   vote: (id: string) => api.post<{ ok: true; votes: number }>(`/films/${id}/vote`),
   myVoteThisWeek: () => api.get<{ filmId: string | null }>('/films/votes/mine'),

@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.films (
   genre         TEXT[]      NOT NULL DEFAULT '{}',
   runtime_min   INTEGER,
   release_year  INTEGER,
+  uploader_role TEXT,
   uploader_id   UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -83,6 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_films_created  ON public.films(created_at DESC);
 -- EXISTS keeps this script re-runnable against a DB that already has them.
 ALTER TABLE public.films ADD COLUMN IF NOT EXISTS trailer_url  TEXT;
 ALTER TABLE public.films ADD COLUMN IF NOT EXISTS aspect_ratio TEXT;
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS uploader_role TEXT;
 
 -- -----------------------------------------------
 -- FEATURED FILM OF THE WEEK

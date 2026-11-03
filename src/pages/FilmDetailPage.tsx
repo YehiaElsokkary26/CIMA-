@@ -186,7 +186,10 @@ export default function FilmDetailPage() {
           >
             <Avatar name={displayFilm.uploader.name} size="sm" />
             <div>
-              <p className="font-sans text-sm font-medium text-foreground">{displayFilm.uploader.name}</p>
+              <p className="font-sans text-sm font-medium text-foreground">
+                {displayFilm.uploader.name}
+                {displayFilm.uploaderRole && ` · ${displayFilm.uploaderRole}`}
+              </p>
               {displayFilm.uploader.school && (
                 <p className="text-xs text-muted-foreground">{displayFilm.uploader.school}</p>
               )}

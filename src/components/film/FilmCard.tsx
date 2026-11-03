@@ -12,9 +12,18 @@ interface FilmCardProps {
   className?: string
   isOwner?: boolean
   compact?: boolean
+  domId?: string
+  highlighted?: boolean
 }
 
-export default function FilmCard({ film, index = 0, className, isOwner = false }: FilmCardProps) {
+export default function FilmCard({
+  film,
+  index = 0,
+  className,
+  isOwner = false,
+  domId,
+  highlighted = false,
+}: FilmCardProps) {
   const navigate = useNavigate()
   const [isHovered, setIsHovered] = useState(false)
 
@@ -28,7 +37,12 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
       transition={{ duration: 0.4, delay: Math.min(index * 0.06, 0.45), ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ scale: 1.02, transition: { duration: 0.2, ease: 'easeOut' } }}
       whileTap={{ scale: 0.98, transition: { duration: 0.1, ease: 'easeOut' } }}
-      className={cn('rounded-2xl overflow-hidden bg-card border border-border', className)}
+      id={domId}
+      className={cn(
+        'rounded-2xl overflow-hidden bg-card border border-border transition-shadow duration-500',
+        highlighted && 'ring-2 ring-primary shadow-[0_0_24px_hsl(var(--primary)/0.45)]',
+        className,
+      )}
     >
       <Link to={`/film/${film.id}`} className="block" tabIndex={-1}>
         {/* Poster / video area */}
@@ -88,7 +102,9 @@ export default function FilmCard({ film, index = 0, className, isOwner = false }
           <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-2">
             {film.title}
           </h3>
-          <p className="text-xs text-muted-foreground truncate">{uploaderName}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {uploaderName}{film.uploaderRole && ` · ${film.uploaderRole}`}
+          </p>
         </div>
       </Link>
     </motion.div>

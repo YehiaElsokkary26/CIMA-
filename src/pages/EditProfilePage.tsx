@@ -9,9 +9,9 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
 import { toast } from '@/store/toastStore'
+import { CREW_ROLES } from '@/lib/crewRoles'
 
 const ALL_GENRES = ['Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi', 'Thriller', 'Horror', 'Comedy', 'Animation']
-const ALL_CREW_ROLES = ['Director', 'Producer', 'Assistant Director', 'Cinematographer', 'Editor', 'Sound Designer', 'Production Designer', 'Screenwriter']
 
 export default function EditProfilePage() {
   const navigate = useNavigate()
@@ -246,7 +246,7 @@ export default function EditProfilePage() {
             Roles you've held on film sets — used for collaboration discovery.
           </p>
           <div className="flex flex-wrap gap-2">
-            {ALL_CREW_ROLES.map((r) => {
+            {CREW_ROLES.map((r) => {
               const active = crewRoles.includes(r)
               return (
                 <button

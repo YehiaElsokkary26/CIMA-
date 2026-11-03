@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { GENRES } from '@/lib/utils'
+import { CREW_ROLES } from '@/lib/crewRoles'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 
@@ -17,6 +18,7 @@ export default function UploadPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const [step, setStep] = useState(0)
+  const [uploadProgress, setUploadProgress] = useState({ value: 0, status: 'Preparing upload…' })
 
   // Step 0 state
   const [videoFile, setVideoFile] = useState<File | null>(null)
@@ -31,6 +33,18 @@ export default function UploadPage() {
   const [year, setYear] = useState(String(new Date().getFullYear()))
   const [runtime, setRuntime] = useState('')
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  const [uploaderRole, setUploaderRole] = useState('')
+  const currentYear = new Date().getFullYear()
+  const yearValue = Number(year)
+  const yearIsValid = /^\d{4}$/.test(year.trim()) && Number.isInteger(yearValue) &&
+    yearValue >= 1888 && yearValue <= currentYear
+  const yearError = !year.trim()
+    ? 'Year is required.'
+    : !/^\d{4}$/.test(year.trim()) || !Number.isInteger(yearValue)
+      ? 'Enter a valid 4-digit year.'
+      : !yearIsValid
+        ? `Enter a year between 1888 and ${currentYear}.`
+        : undefined
 
   // Step 2 state — trailer
   const [trailerFile, setTrailerFile] = useState<File | null>(null)
@@ -71,7 +85,7 @@ export default function UploadPage() {
   const handlePublish = async () => {
     if (!user) return
     try {
-      await uploadFilm.mutateAsync({
+      const film = await uploadFilm.mutateAsync({
         videoFile,
         thumbFile,
         trailerFile,
@@ -79,11 +93,13 @@ export default function UploadPage() {
         description,
         genre: selectedGenres,
         runtime: runtime ? parseInt(runtime, 10) : undefined,
-        year: parseInt(year, 10),
+        year: yearValue,
         uploaderId: user.id,
+        uploaderRole: uploaderRole || undefined,
+        onProgress: (value, status) => setUploadProgress({ value, status }),
       })
       toast.success('Your film is live. 🎬')
-      navigate('/home', { replace: true })
+      navigate('/home', { replace: true, state: { publishedFilmId: film.id } })
     } catch {
       // Error toast is shown by the mutation's onError handler
     }
@@ -257,8 +273,13 @@ export default function UploadPage() {
               <Input
                 label="Year"
                 type="number"
+                min={1888}
+                max={currentYear}
+                step={1}
+                required
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
+                error={yearError}
               />
               <Input
                 label="Runtime (min)"
@@ -267,6 +288,24 @@ export default function UploadPage() {
                 value={runtime}
                 onChange={(e) => setRuntime(e.target.value)}
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="uploader-role"
+                className="font-mono text-xs uppercase tracking-wider text-muted-foreground"
+              >
+                Your Role on This Film
+              </label>
+              <select
+                id="uploader-role"
+                value={uploaderRole}
+                onChange={(e) => setUploaderRole(e.target.value)}
+                className="input-cima w-full"
+              >
+                <option value="">Select a role (optional)</option>
+                {CREW_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+              </select>
             </div>
 
             <div className="space-y-2">
@@ -297,7 +336,7 @@ export default function UploadPage() {
               <Button variant="outline" onClick={() => setStep(0)} className="flex-1">
                 <ArrowLeft size={16} /> Back
               </Button>
-              <Button className="flex-1" disabled={!title} onClick={() => setStep(2)}>
+              <Button className="flex-1" disabled={!title.trim() || !yearIsValid} onClick={() => setStep(2)}>
                 Next <ArrowRight size={16} />
               </Button>
             </div>
@@ -438,7 +477,9 @@ export default function UploadPage() {
                     <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-[10px] font-mono">
                       {user.name.charAt(0)}
                     </div>
-                    <span className="font-mono text-xs text-muted-foreground">{user.name}</span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {user.name}{uploaderRole && ` · ${uploaderRole}`}
+                    </span>
                   </div>
                 )}
               </div>
@@ -455,9 +496,30 @@ export default function UploadPage() {
                 disabled={uploadFilm.isPending}
               >
                 <Film size={15} />
-                {uploadFilm.isPending ? 'Publishing…' : 'Publish Film'}
+                {uploadFilm.isPending ? 'Publishing' : 'Publish Film'}
               </Button>
             </div>
+            {uploadFilm.isPending && (
+              <div className="space-y-2" role="status" aria-live="polite">
+                <div className="flex justify-between font-mono text-xs text-muted-foreground">
+                  <span>{uploadProgress.status}</span>
+                  <span>{uploadProgress.value}%</span>
+                </div>
+                <div
+                  className="h-2 w-full overflow-hidden rounded-full bg-secondary"
+                  role="progressbar"
+                  aria-label="Film publishing progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={uploadProgress.value}
+                >
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${uploadProgress.value}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
