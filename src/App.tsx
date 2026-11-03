@@ -3,6 +3,8 @@ import { useEffect } from 'react'
 import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
+import { supabase } from '@/lib/supabase'
+import { usersApi } from '@/lib/api'
 import ToastContainer from '@/components/ui/Toast'
 import AppShell from '@/components/layout/AppShell'
 import WelcomePage from '@/pages/WelcomePage'
@@ -14,6 +16,7 @@ import VotePage from '@/pages/VotePage'
 import FilmDetailPage from '@/pages/FilmDetailPage'
 import UploadPage from '@/pages/UploadPage'
 import ProfilePage from '@/pages/ProfilePage'
+import EditProfilePage from '@/pages/EditProfilePage'
 import CrewPage from '@/pages/CrewPage'
 import DiscoverPage from '@/pages/DiscoverPage'
 import NotificationsPage from '@/pages/NotificationsPage'
@@ -50,7 +53,7 @@ function FilmmakerRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (role !== 'filmmaker') {
-      toast.error('Only filmmakers can upload films.')
+      toast.error('Only filmmakers can upload films. You can switch on your profile.')
       navigate('/home', { replace: true })
     }
   }, [role, navigate])
@@ -63,10 +66,37 @@ function FilmmakerRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { isDarkMode } = useUIStore()
+  const { setAuth, logout } = useAuthStore()
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode)
   }, [isDarkMode])
+
+  // Supabase session restoration + auth state sync
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        try {
+          const profile = (await usersApi.get(session.user.id)).data
+          setAuth(session.access_token, profile)
+        } catch { /* profile row may not exist yet right after signup */ }
+      }
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        logout()
+      } else if (session && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) {
+        try {
+          const profile = (await usersApi.get(session.user.id)).data
+          setAuth(session.access_token, profile)
+        } catch { /* profile row may not exist yet right after signup */ }
+      }
+    })
+
+    return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <>
@@ -91,6 +121,7 @@ export default function App() {
           <Route path="/reveal" element={<RevealPage />} />
           <Route path="/film/:id" element={<FilmDetailPage />} />
           <Route path="/upload" element={<FilmmakerRoute><UploadPage /></FilmmakerRoute>} />
+          <Route path="/profile/me/edit" element={<EditProfilePage />} />
           <Route path="/profile/:id" element={<ProfilePage />} />
           <Route path="/crew" element={<CrewPage />} />
           <Route path="/discover" element={<DiscoverPage />} />

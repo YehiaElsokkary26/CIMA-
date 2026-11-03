@@ -1,22 +1,19 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Play, Share2 } from 'lucide-react'
-import { useAddReview, useFilm, useFilmReviews } from '@/hooks/useFilms'
+import { AlertCircle, ArrowLeft, Loader2, MessageSquare, Play, Share2 } from 'lucide-react'
+import { useAddReview, useFilm, useFilmReviews, useMyVoteThisWeek, useVoteFilm } from '@/hooks/useFilms'
 import { useRating } from '@/hooks/useRating'
 import { useSendCimaRequest } from '@/hooks/useCima'
-import { getFilmById, getFilmOfTheWeek } from '@/lib/mockData'
 import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
 import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
-import type { Film, Review } from '@/types'
 import { FilmStill } from '@/components/klaket/FilmCards'
 import { Clap, SectionHeader, Slate } from '@/components/klaket/primitives'
 import StarRating from '@/components/ui/StarRating'
 import Button from '@/components/ui/Button'
 import Avatar from '@/components/ui/Avatar'
 import EmptyState from '@/components/ui/EmptyState'
-import { MessageSquare } from 'lucide-react'
 
 function tcToSeconds(tc: string): number {
   const [h, m, s] = tc.split(':').map((n) => parseInt(n, 10) || 0)
@@ -28,27 +25,58 @@ export default function FilmDetailPage() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
 
-  const { data: serverFilm } = useFilm(id)
-  const { data: serverReviews } = useFilmReviews(id)
+  const { data: film, isPending: isLoading, isError, refetch } = useFilm(id)
+  const { data: reviews } = useFilmReviews(id)
   const addReview = useAddReview(id)
   const sendCrewRequest = useSendCimaRequest()
-
-  const film: Film = serverFilm ?? getFilmById(id) ?? getFilmOfTheWeek()
-  const [localNotes, setLocalNotes] = useState<Review[]>([])
-  const notes: Review[] = [...localNotes, ...(serverReviews ?? [])]
-
+  const { data: myVote, isLoading: checkingVote } = useMyVoteThisWeek()
+  const vote = useVoteFilm()
   const rating = useRating(id, undefined)
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
   const [now, setNow] = useState(0)
-  const [duration, setDuration] = useState((film.runtime ?? 0) * 60)
+  const [mediaDuration, setMediaDuration] = useState(0)
   const [saved, setSaved] = useState(false)
-  const [crewAsked, setCrewAsked] = useState(false)
+  const [crewStatus, setCrewStatus] = useState<'none' | 'pending'>('none')
   const [draft, setDraft] = useState('')
   const [pinToTime, setPinToTime] = useState(true)
 
+  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/home'))
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-24" role="status" aria-label="Loading film">
+        <Loader2 size={24} className="animate-spin text-muted-foreground" aria-hidden="true" />
+      </div>
+    )
+  }
+
+  if (isError || !film) {
+    return (
+      <div className="max-w-xl mx-auto px-4 pt-4">
+        <button type="button" onClick={goBack} aria-label="Back" className="w-11 h-11 flex items-center justify-center border-[1.5px] border-foreground press">
+          <ArrowLeft size={20} aria-hidden="true" />
+        </button>
+        <EmptyState
+          icon={AlertCircle}
+          title="Couldn’t load this film"
+          subtitle="Something went wrong reaching the server."
+          action={<Button variant="solid" size="sm" onClick={() => refetch()}>Retry</Button>}
+        />
+      </div>
+    )
+  }
+
+  const notes = reviews ?? []
   const src = film.videoUrl ?? film.trailerUrl
   const isOwn = user?.id === film.uploaderId
+  const duration = mediaDuration || (film.runtime ?? 0) * 60
+
+  const votedFilmId = myVote?.filmId ?? null
+  const votedThis = votedFilmId === film.id
+  const votedOther = votedFilmId !== null && !votedThis
+  const canVote = !!user && !votedFilmId && !checkingVote
 
   const startPlayback = () => {
     if (!src) {
@@ -79,30 +107,33 @@ export default function FilmDetailPage() {
   }
 
   const askToCrew = () => {
-    if (!film.uploader?.id || crewAsked) return
-    sendCrewRequest.mutate(film.uploader.id)
-    setCrewAsked(true)
-    toast.success(`Call sheet sent to ${film.uploader.name}.`)
+    if (!film.uploader?.id || crewStatus !== 'none') return
+    setCrewStatus('pending')
+    sendCrewRequest.mutate(film.uploader.id, {
+      onSuccess: () => toast.success(`Call sheet sent to ${film.uploader?.name}.`),
+      onError: () => {
+        setCrewStatus('none')
+        toast.error('Couldn’t send the call sheet. Try again.')
+      },
+    })
+  }
+
+  const castVote = () => {
+    if (!canVote) return
+    vote.mutate(film.id, { onSuccess: () => toast.success('Vote locked. The envelope opens when the week ends.') })
   }
 
   const postNote = async () => {
     const text = draft.trim()
     if (!text) return
     const body = pinToTime && playing ? `[${timecode(now)}] ${text}` : text
-    const stars = rating.selected || 4
     try {
-      await addReview.mutateAsync({ rating: stars, body })
+      await addReview.mutateAsync({ rating: rating.selected || 4, body })
+      setDraft('')
+      toast.success('Note posted.')
     } catch {
-      // No server: keep the note on this screen so the flow still works.
-      if (user) {
-        setLocalNotes((n) => [
-          { id: `local-${Date.now()}`, filmId: id, userId: user.id, user, rating: stars, body, createdAt: new Date().toISOString() },
-          ...n,
-        ])
-      }
+      // The hook shows the error toast; keep the draft so nothing is lost.
     }
-    setDraft('')
-    toast.success('Note posted.')
   }
 
   const progress = duration ? Math.min(100, (now / duration) * 100) : 0
@@ -117,23 +148,13 @@ export default function FilmDetailPage() {
       <section aria-label="Player" className="bg-k-ink text-k-paper">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between px-3 py-2.5">
-            <button
-              type="button"
-              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/home'))}
-              aria-label="Back"
-              className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press"
-            >
+            <button type="button" onClick={goBack} aria-label="Back" className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press">
               <ArrowLeft size={20} aria-hidden="true" />
             </button>
             <span className="k-label text-[10.5px] text-k-mustard truncate px-2">
               {film.isFilmOfTheWeek ? '★ Film of the week' : film.genre?.[0] ?? 'Short film'}
             </span>
-            <button
-              type="button"
-              onClick={share}
-              aria-label="Copy link to this film"
-              className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press"
-            >
+            <button type="button" onClick={share} aria-label="Copy link to this film" className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press">
               <Share2 size={18} aria-hidden="true" />
             </button>
           </div>
@@ -147,7 +168,7 @@ export default function FilmDetailPage() {
                 playsInline
                 className="absolute inset-0 w-full h-full"
                 onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
-                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || duration)}
+                onLoadedMetadata={(e) => setMediaDuration(e.currentTarget.duration || 0)}
               />
             ) : (
               <>
@@ -187,14 +208,13 @@ export default function FilmDetailPage() {
             { label: 'Scene', value: film.genre?.join(' · ') || 'Short' },
             { label: 'Length', value: film.runtime ? `${film.runtime} min` : '—' },
             { label: 'Roll', value: rollFor(film) },
-            { label: 'Year', value: film.year },
+            { label: film.uploaderRole ? 'Credit' : 'Year', value: film.uploaderRole ?? film.year },
           ]}
         />
       </div>
 
       <div className="max-w-5xl mx-auto px-4 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-10">
         <div>
-          {/* Title, synopsis, actions */}
           <section className="py-4 flex flex-col gap-3">
             <h1 className="k-display text-[30px] sm:text-[40px] uppercase">{film.title}</h1>
             {film.description && <p className="text-[15px] leading-relaxed max-w-[65ch]">{film.description}</p>}
@@ -216,13 +236,13 @@ export default function FilmDetailPage() {
             </div>
           </section>
 
-          {/* Credits block */}
+          {/* Credits */}
           <section aria-label="Credits" className="bg-k-red text-k-paper border-[1.5px] border-foreground p-3.5 flex flex-col gap-2">
             <span className="k-label text-[10px] text-k-mustard">Credits</span>
             <div className="flex items-center gap-3">
-              {film.uploader && <Avatar name={film.uploader.name} src={film.uploader.avatarUrl ?? film.uploader.avatar} size="md" className="border-k-paper" />}
+              {film.uploader && <Avatar name={film.uploader.name} src={film.uploader.avatarUrl} size="md" className="border-k-paper" />}
               <p className="k-label text-[11px] leading-relaxed min-w-0">
-                Directed by{' '}
+                {film.uploaderRole ?? 'Directed by'}{' '}
                 {film.uploader ? (
                   <Link to={`/profile/${film.uploader.id}`} className="font-semibold underline underline-offset-2">
                     {film.uploader.name}
@@ -237,26 +257,38 @@ export default function FilmDetailPage() {
               <button
                 type="button"
                 onClick={askToCrew}
-                disabled={crewAsked}
+                disabled={crewStatus !== 'none'}
                 className="press self-start mt-1 min-h-[40px] px-3 bg-k-ink text-k-paper k-label text-[10.5px] font-semibold disabled:opacity-70"
               >
-                {crewAsked ? 'Call sheet sent ✓' : `Send ${film.uploader.name.split(' ')[0]} a call sheet`}
+                {crewStatus === 'pending' ? 'Call sheet sent ✓' : `Send ${film.uploader.name.split(' ')[0]} a call sheet`}
               </button>
             )}
           </section>
 
           {/* Vote + rating */}
           <section className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Link
-              to="/vote"
-              className="press border-[1.5px] border-foreground bg-k-mustard text-k-ink p-3 flex flex-col gap-0.5"
-            >
+            <div className="border-[1.5px] border-foreground bg-k-mustard text-k-ink p-3 flex flex-col gap-1">
               <span className="k-label text-[10px] font-semibold">This week’s vote</span>
               <span className="font-black text-[18px]" style={{ fontStretch: '115%' }}>
                 {(film.votes ?? 0).toLocaleString()} VOTES
               </span>
-              <span className="k-label text-[10px]">Circle it on the contact sheet →</span>
-            </Link>
+              {votedThis ? (
+                <span className="k-label text-[10.5px] font-semibold min-h-[40px] flex items-center">✓ You circled this film</span>
+              ) : votedOther ? (
+                <Link to="/vote" className="k-label text-[10.5px] underline underline-offset-2 min-h-[40px] flex items-center">
+                  You voted for another film this week →
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={castVote}
+                  disabled={!canVote || vote.isPending}
+                  className="press self-start min-h-[40px] px-3 bg-k-ink text-k-paper k-label text-[10.5px] font-semibold disabled:opacity-60"
+                >
+                  {vote.isPending ? 'Locking…' : 'Circle this film'}
+                </button>
+              )}
+            </div>
             <div className="border-[1.5px] border-foreground bg-card p-3 flex flex-col gap-1">
               <span className="k-label text-[10px] font-semibold">
                 Rate it{film.rating ? ` · avg ★ ${film.rating.toFixed(1)} (${film.ratingCount ?? 0})` : ''}
@@ -272,6 +304,7 @@ export default function FilmDetailPage() {
                 size="md"
                 className="-ms-2.5"
               />
+              <span className="text-[12px] text-muted-foreground">Your stars are sent with your next note.</span>
             </div>
           </section>
         </div>
@@ -299,9 +332,7 @@ export default function FilmDetailPage() {
                         </button>
                       )}
                       <b className="text-[13.5px]">{n.user?.name ?? 'Someone'}</b>
-                      <span className="text-[12px] text-muted-foreground">
-                        ★ {n.rating} · {formatTimeAgo(n.createdAt)}
-                      </span>
+                      <span className="text-[12px] text-muted-foreground">★ {n.rating} · {formatTimeAgo(n.createdAt)}</span>
                     </div>
                     <p className="text-[14.5px] leading-relaxed">{text}</p>
                   </li>
@@ -333,17 +364,12 @@ export default function FilmDetailPage() {
                 disabled={!draft.trim() || addReview.isPending}
                 className="min-w-[72px] bg-solid text-solid-foreground font-extrabold text-[13px] disabled:opacity-50 press"
               >
-                POST
+                {addReview.isPending ? '…' : 'POST'}
               </button>
             </div>
             {playing && (
               <label className="flex items-center gap-2 text-[13px] text-muted-foreground min-h-[32px]">
-                <input
-                  type="checkbox"
-                  checked={pinToTime}
-                  onChange={(e) => setPinToTime(e.target.checked)}
-                  className="w-4 h-4 accent-[#C42320]"
-                />
+                <input type="checkbox" checked={pinToTime} onChange={(e) => setPinToTime(e.target.checked)} className="w-4 h-4 accent-[#C42320]" />
                 Pin this note to {timecode(now)}
               </label>
             )}

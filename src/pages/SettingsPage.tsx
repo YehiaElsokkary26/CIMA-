@@ -17,7 +17,7 @@ export default function SettingsPage() {
 
         {user && (
           <section className="border-[1.5px] border-foreground bg-card p-3.5 flex items-center gap-3.5">
-            <Avatar name={user.name} src={user.avatarUrl ?? user.avatar} size="lg" />
+            <Avatar name={user.name} src={user.avatarUrl} size="lg" />
             <div className="min-w-0 flex flex-col gap-1">
               <b className="text-[16px] truncate">{user.name}</b>
               <span className="text-[13px] text-muted-foreground truncate">{user.email}</span>

@@ -1,16 +1,17 @@
+/// <reference types="vite/client" />
+
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl     = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '[Klaket] Supabase env vars not set. Running in offline/mock mode.\n' +
-    'Create .env.local with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable real auth.'
+  console.error(
+    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env — set them from your Supabase project settings (API tab).'
   )
 }
 
 export const supabase = createClient(
-  supabaseUrl     ?? 'https://placeholder.supabase.co',
-  supabaseAnonKey ?? 'placeholder'
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-anon-key'
 )

@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Bell, MessageSquare, Star, UserPlus, Users } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Bell, MessageSquare, Star, UserPlus, Users } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '@/lib/api'
-import { getFilmOfTheWeek } from '@/lib/mockData'
+import { supabase } from '@/lib/supabase'
+import { useFeaturedFilm } from '@/hooks/useFilms'
 import { weekNumber } from '@/lib/klaket'
 import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import type { Notification } from '@/types'
 import { Clap } from '@/components/klaket/primitives'
 import { FilmStill } from '@/components/klaket/FilmCards'
+import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import { NotificationSkeleton } from '@/components/ui/Skeleton'
 
@@ -23,30 +25,39 @@ const KIND: Record<Notification['type'], { icon: React.ElementType; bg: string; 
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
-  const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const user = useAuthStore((s) => s.user)
   const qc = useQueryClient()
+  const { data: winner } = useFeaturedFilm()
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: () => notificationsApi.list().then((r) => r.data),
-    enabled: isLoggedIn,
-    staleTime: 30_000,
+  const { data, isPending: isLoading, isError, refetch } = useQuery({
+    queryKey: ['notifications', user?.id],
+    queryFn: async () => (await notificationsApi.list()).data,
+    enabled: !!user?.id,
   })
 
-  // After a failed load, show the empty state instead of flashing skeletons on every retry.
-  const [failed, setFailed] = useState(false)
+  // New notifications arrive live while this screen is open.
   useEffect(() => {
-    if (isError) setFailed(true)
-  }, [isError])
+    if (!user?.id) return
+    const channel = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => qc.invalidateQueries({ queryKey: ['notifications', user.id] }),
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, qc])
 
   const markAll = useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications', user?.id] }),
   })
 
   const items: Notification[] = data ?? []
   const unread = items.filter((n) => !n.read).length
-  const winner = getFilmOfTheWeek()
 
   return (
     <div className="min-h-full">
@@ -73,22 +84,30 @@ export default function NotificationsPage() {
           )}
         </header>
 
-        {/* Reveal banner */}
-        <Link to="/reveal" className="press flex flex-col border-[1.5px] border-foreground bg-k-red text-k-paper">
-          <Clap variant="live" className="h-2.5" />
-          <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 p-2.5">
-            <FilmStill film={winner} className="h-[84px] border-[1.5px] border-k-ink" />
-            <div className="flex flex-col justify-center gap-0.5 min-w-0">
-              <span className="k-label text-[10px] text-k-mustard font-semibold">★ Week {weekNumber()} · Film of the week</span>
-              <b className="text-[17px] leading-tight">The envelope is ready. Watch the reveal.</b>
-              <span className="k-label text-[10px]">Tap to open →</span>
+        {winner && (
+          <Link to="/reveal" className="press flex flex-col border-[1.5px] border-foreground bg-k-red text-k-paper">
+            <Clap variant="live" className="h-2.5" />
+            <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 p-2.5">
+              <FilmStill film={winner} className="h-[84px] border-[1.5px] border-k-ink" />
+              <div className="flex flex-col justify-center gap-0.5 min-w-0">
+                <span className="k-label text-[10px] text-k-mustard font-semibold">★ Week {weekNumber()} · Film of the week</span>
+                <b className="text-[17px] leading-tight">The envelope is ready. Watch the reveal.</b>
+                <span className="k-label text-[10px]">Tap to open →</span>
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+        )}
 
         <section aria-label="All notifications" className="flex flex-col">
-          {isLoading && !failed ? (
+          {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => <NotificationSkeleton key={i} />)
+          ) : isError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Couldn’t load notifications"
+              subtitle="Something went wrong reaching the server."
+              action={<Button variant="solid" size="sm" onClick={() => refetch()}>Retry</Button>}
+            />
           ) : items.length === 0 ? (
             <EmptyState icon={Bell} title="Quiet on set" subtitle="Notes on your films, call sheets and votes will show up here." />
           ) : (
@@ -99,23 +118,14 @@ export default function NotificationsPage() {
                 return (
                   <li key={n.id}>
                     <Link to={k.href(n)} className="grid grid-cols-[40px_minmax(0,1fr)_10px] gap-3 items-start py-3 border-b border-rule hover:bg-foreground/5">
-                      <span
-                        className="w-10 h-10 flex items-center justify-center border-[1.5px] border-foreground"
-                        style={{ background: k.bg, color: k.fg }}
-                      >
+                      <span className="w-10 h-10 flex items-center justify-center border-[1.5px] border-foreground" style={{ background: k.bg, color: k.fg }}>
                         <Icon size={17} aria-hidden="true" />
                       </span>
                       <span className="flex flex-col gap-0.5 min-w-0">
-                        <span className={n.read ? 'text-[14.5px] text-muted-foreground' : 'text-[14.5px] font-semibold'}>
-                          {n.message}
-                        </span>
+                        <span className={n.read ? 'text-[14.5px] text-muted-foreground' : 'text-[14.5px] font-semibold'}>{n.message}</span>
                         <span className="k-label text-[9.5px] text-muted-foreground">{formatTimeAgo(n.createdAt)}</span>
                       </span>
-                      {!n.read ? (
-                        <span className="w-2.5 h-2.5 rounded-full bg-hot mt-1.5" aria-label="Unread" />
-                      ) : (
-                        <span />
-                      )}
+                      {!n.read ? <span className="w-2.5 h-2.5 rounded-full bg-hot mt-1.5" aria-label="Unread" /> : <span />}
                     </Link>
                   </li>
                 )

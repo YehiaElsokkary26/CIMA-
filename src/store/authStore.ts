@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, UserRole } from '@/types'
-import { authenticateUser } from '@/lib/mockData'
 
 interface AuthStore {
   token: string | null
@@ -10,15 +9,15 @@ interface AuthStore {
   isLoggedIn: boolean
   hasSelectedRole: boolean
 
-  // Supabase / server path (keeps legacy callers working)
+  // Supabase / server path
   setAuth: (token: string, user: User) => void
   setUser: (user: User) => void
 
-  // Mock / offline path
-  loginWithMock: (email: string, password: string) => boolean
-
   // Role selection (shown after first login when role is not yet set)
   setRole: (role: UserRole) => void
+
+  // Update profile fields
+  updateUser: (patch: Partial<User>) => void
 
   logout: () => void
 }
@@ -48,25 +47,18 @@ export const useAuthStore = create<AuthStore>()(
         set({ user, role: user.role ?? get().role })
       },
 
-      loginWithMock: (email, password) => {
-        const user = authenticateUser(email, password)
-        if (!user) return false
-        localStorage.setItem('klaket_token', 'mock_token')
-        set({
-          token: 'mock_token',
-          user,
-          role: user.role,
-          isLoggedIn: true,
-          hasSelectedRole: !!user.role,
-        })
-        return true
-      },
-
       setRole: (role) => {
         const user = get().user
         if (!user) return
         const updated = { ...user, role }
         set({ user: updated, role, hasSelectedRole: true })
+      },
+
+      updateUser: (patch) => {
+        const user = get().user
+        if (!user) return
+        const updated = { ...user, ...patch }
+        set({ user: updated, role: updated.role ?? get().role })
       },
 
       logout: () => {

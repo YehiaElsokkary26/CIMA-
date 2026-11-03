@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clapperboard, ImagePlus, Trash2, X } from 'lucide-react'
 import { useUploadFilm } from '@/hooks/useFilms'
 import { GENRES, cn } from '@/lib/utils'
-import { addFilm } from '@/lib/mockData'
-import { getCurrentWeekKey } from '@/lib/votingUtils'
+import { CREW_ROLES } from '@/lib/crewRoles'
 import { posterColors, weekNumber } from '@/lib/klaket'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
@@ -23,6 +22,7 @@ export default function UploadPage() {
   const user = useAuthStore((s) => s.user)
   const uploadFilm = useUploadFilm()
   const [step, setStep] = useState(0)
+  const [progress, setProgress] = useState({ value: 0, status: 'Preparing upload…' })
 
   // 1 · Slate it
   const [title, setTitle] = useState('')
@@ -30,6 +30,18 @@ export default function UploadPage() {
   const [year, setYear] = useState(String(new Date().getFullYear()))
   const [runtime, setRuntime] = useState('')
   const [description, setDescription] = useState('')
+  const [uploaderRole, setUploaderRole] = useState('')
+
+  const currentYear = new Date().getFullYear()
+  const yearValue = Number(year)
+  const yearValid = /^\d{4}$/.test(year.trim()) && yearValue >= 1888 && yearValue <= currentYear
+  const yearError = !year.trim()
+    ? 'Year is required.'
+    : !/^\d{4}$/.test(year.trim())
+      ? 'Enter a 4-digit year.'
+      : !yearValid
+        ? `Enter a year between 1888 and ${currentYear}.`
+        : undefined
 
   // 2 · Cut it
   const [videoFile, setVideoFile] = useState<File | null>(null)
@@ -62,6 +74,7 @@ export default function UploadPage() {
   const pickThumb = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
+    if (thumbPreview) URL.revokeObjectURL(thumbPreview)
     setThumbFile(f)
     setThumbPreview(URL.createObjectURL(f))
   }
@@ -81,43 +94,37 @@ export default function UploadPage() {
   }
 
   const release = async () => {
+    if (!user) return
     try {
-      const fd = new FormData()
-      if (videoFile) fd.append('video', videoFile)
-      if (thumbFile) fd.append('thumbnail', thumbFile)
-      if (trailerFile) fd.append('trailer', trailerFile)
-      fd.append('title', title)
-      fd.append('description', description)
-      fd.append('year', year)
-      fd.append('runtime', runtime)
-      genres.forEach((g) => fd.append('genre', g))
-      await uploadFilm.mutateAsync(fd)
-    } catch {
-      // No server: add it to the local catalogue so the flow can be demoed.
-      if (!user) return
-      addFilm({
-        title,
+      const film = await uploadFilm.mutateAsync({
+        videoFile,
+        thumbFile,
+        trailerFile,
+        title: title.trim(),
         description,
         genre: genres,
         runtime: runtime ? parseInt(runtime, 10) : undefined,
-        year: parseInt(year, 10),
-        thumbnailUrl: thumbPreview ?? undefined,
-        trailerUrl: trailerPreview ?? undefined,
+        year: yearValue,
         uploaderId: user.id,
-        uploader: user,
-        rating: undefined,
-        ratingCount: 0,
-        votes: 0,
-        weekKey: getCurrentWeekKey(),
-        isFilmOfTheWeek: false,
+        uploaderRole: uploaderRole || undefined,
+        onProgress: (value, status) => setProgress({ value, status }),
       })
+      toast.success(`Released. ${title.trim()} is in the week ${weekNumber()} slate.`)
+      navigate('/home', { replace: true, state: { publishedFilmId: film.id } })
+    } catch {
+      // The hook shows the error toast; stay here so nothing is lost.
     }
-    toast.success(`Released. ${title} is in the week ${weekNumber()} slate.`)
-    navigate('/home', { replace: true })
   }
 
-  const canNext = step === 0 ? !!title.trim() && genres.length > 0 : step === 1 ? !!videoFile : true
-  const blocker = step === 0 ? (!title.trim() ? 'Add a title to continue.' : 'Pick at least one scene.') : 'Add your video file to continue.'
+  const canNext = step === 0 ? !!title.trim() && genres.length > 0 && yearValid : step === 1 ? !!videoFile : true
+  const blocker =
+    step === 0
+      ? !title.trim()
+        ? 'Add a title to continue.'
+        : genres.length === 0
+          ? 'Pick at least one scene.'
+          : yearError ?? ''
+      : 'Add your video file to continue.'
   const previewId = title || 'new'
   const c = posterColors(previewId)
 
@@ -128,14 +135,13 @@ export default function UploadPage() {
           <button
             type="button"
             onClick={() => (step === 0 ? navigate(-1) : setStep(step - 1))}
+            disabled={uploadFilm.isPending}
             aria-label={step === 0 ? 'Close' : `Back to ${STEPS[step - 1]}`}
-            className="w-11 h-11 flex items-center justify-center border-[1.5px] border-foreground press"
+            className="w-11 h-11 flex items-center justify-center border-[1.5px] border-foreground press disabled:opacity-50"
           >
             {step === 0 ? <X size={20} aria-hidden="true" /> : <ArrowLeft size={20} aria-hidden="true" />}
           </button>
-          <span className="k-label text-[11px] font-semibold">
-            New film · Step {step + 1} of {STEPS.length}
-          </span>
+          <span className="k-label text-[11px] font-semibold">New film · Step {step + 1} of {STEPS.length}</span>
           <span className="w-11" />
         </header>
 
@@ -171,6 +177,7 @@ export default function UploadPage() {
           <div className="px-3 py-2.5">
             <span className="k-label text-[9px] text-k-sand">Prod. title</span>
             <p className="k-display text-[24px] uppercase break-words">{title || 'Untitled'}</p>
+            {uploaderRole && <span className="k-label text-[9.5px] text-k-sand">{uploaderRole} · {user?.name}</span>}
           </div>
         </section>
 
@@ -199,8 +206,22 @@ export default function UploadPage() {
               </div>
             </fieldset>
             <div className="grid grid-cols-2 gap-3">
-              <Input label="Year" type="number" inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} min={1950} max={2100} />
+              <Input
+                label="Year"
+                inputMode="numeric"
+                value={year}
+                onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                error={year && !yearValid ? yearError : undefined}
+                required
+              />
               <Input label="Runtime (minutes)" type="number" inputMode="numeric" value={runtime} onChange={(e) => setRuntime(e.target.value)} min={1} placeholder="e.g. 12" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="uploader-role" className="k-label text-[10.5px] font-semibold">Your credit on this film</label>
+              <select id="uploader-role" value={uploaderRole} onChange={(e) => setUploaderRole(e.target.value)} className="input-k">
+                <option value="">Choose a role (optional)</option>
+                {CREW_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label htmlFor="synopsis" className="k-label text-[10.5px] font-semibold">Synopsis</label>
@@ -269,7 +290,7 @@ export default function UploadPage() {
 
             <div className="border-t border-rule pt-4 flex flex-col gap-2">
               <b className="text-[15px]">Trailer (optional)</b>
-              <p className="text-[13px] text-muted-foreground">A short clip that plays when people hover your poster.</p>
+              <p className="text-[13px] text-muted-foreground">A short clip that plays when people preview your film.</p>
               {trailerFile ? (
                 <div className="flex items-center gap-3 border-[1.5px] border-foreground p-2">
                   {trailerPreview && <video src={trailerPreview} muted className="w-24 aspect-video object-cover bg-black" />}
@@ -294,11 +315,7 @@ export default function UploadPage() {
         {step === 2 && (
           <div className="flex flex-col gap-4">
             <h1 className="k-display text-[26px]">READY TO RELEASE</h1>
-            <section
-              aria-label="Poster preview"
-              className="grid grid-cols-[132px_minmax(0,1fr)] border-[1.5px] border-foreground"
-              style={{ background: c.bg, color: c.fg }}
-            >
+            <section aria-label="Poster preview" className="grid grid-cols-[132px_minmax(0,1fr)] border-[1.5px] border-foreground" style={{ background: c.bg, color: c.fg }}>
               <div className="aspect-[4/5] border-e-[1.5px] border-k-ink overflow-hidden">
                 {thumbPreview ? (
                   <img src={thumbPreview} alt="" className="w-full h-full object-cover" />
@@ -312,31 +329,36 @@ export default function UploadPage() {
                 <span className="k-label text-[9.5px] mt-auto leading-relaxed">
                   {genres.join(' · ')}
                   <br />
-                  Dir. {user?.name}
+                  {uploaderRole || 'Dir.'} {user?.name}
                   {runtime ? ` · ${runtime} min` : ''} · {year}
                 </span>
               </div>
             </section>
             <ul className="border-[1.5px] border-foreground bg-field text-[14px]">
-              <li className="flex justify-between gap-3 px-3 py-2.5 border-b border-rule">
-                <span>Enters the vote</span>
-                <b>Week {weekNumber()}</b>
-              </li>
-              <li className="flex justify-between gap-3 px-3 py-2.5 border-b border-rule">
-                <span>Video</span>
-                <b className="truncate max-w-[60%]">{videoFile?.name}</b>
-              </li>
-              <li className="flex justify-between gap-3 px-3 py-2.5">
-                <span>Trailer</span>
-                <b>{trailerFile ? 'Added' : 'None'}</b>
-              </li>
+              <li className="flex justify-between gap-3 px-3 py-2.5 border-b border-rule"><span>Enters the vote</span><b>Week {weekNumber()}</b></li>
+              <li className="flex justify-between gap-3 px-3 py-2.5 border-b border-rule"><span>Video</span><b className="truncate max-w-[60%]">{videoFile?.name}</b></li>
+              <li className="flex justify-between gap-3 px-3 py-2.5"><span>Trailer</span><b>{trailerFile ? 'Added' : 'None'}</b></li>
             </ul>
+            {uploadFilm.isPending && (
+              <div className="flex flex-col gap-1.5" aria-live="polite">
+                <div
+                  className="h-2.5 border-[1.5px] border-foreground bg-field"
+                  role="progressbar"
+                  aria-label="Release progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress.value}
+                >
+                  <div className="h-full bg-k-red transition-all" style={{ width: `${progress.value}%` }} />
+                </div>
+                <span className="k-label text-[10.5px] text-muted-foreground">{progress.status} · {progress.value}%</span>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Footer action */}
         <div className="flex flex-col gap-1.5 pt-2 pb-4">
-          {!canNext && <span className="k-label text-[10.5px] text-muted-foreground">{blocker}</span>}
+          {!canNext && blocker && <span className="k-label text-[10.5px] text-muted-foreground">{blocker}</span>}
           {step < 2 ? (
             <button
               type="button"

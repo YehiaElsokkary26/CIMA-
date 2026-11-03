@@ -5,7 +5,7 @@ import Sidebar from './Sidebar'
 import NavBar from './NavBar'
 
 // Screens that bring their own top bar (full-bleed player, step flows).
-const OWN_HEADER = [/^\/film\//, /^\/upload/, /^\/reveal/, /^\/notifications/, /^\/vote/]
+const OWN_HEADER = [/^\/film\//, /^\/upload/, /^\/reveal/, /^\/notifications/, /^\/vote/, /^\/profile\/me\/edit/]
 
 export default function AppShell() {
   const { pathname } = useLocation()

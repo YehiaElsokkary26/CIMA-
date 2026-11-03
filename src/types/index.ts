@@ -5,19 +5,19 @@ export interface User {
   name: string
   email: string
   role: UserRole
-  avatar?:    string   // used by mock data
-  avatarUrl?: string   // returned by Express API
+  avatarUrl?: string
+  bannerUrl?: string
   bio?: string
   school?: string
   city?: string
   lookingForCollaborators?: boolean
+  openToCollab?: boolean
+  favoriteGenres?: string[]
+  crewRoles?: string[]
   filmsCount?: number
   cimaCount?: number
   reviewsCount?: number
   topGenre?: string
-  favoriteGenres?: string[]
-  bannerUrl?: string
-  crewRoles?: string[]
   createdAt: string
 }
 
@@ -32,6 +32,7 @@ export interface Film {
   genre: string[]
   runtime?: number
   year: number
+  uploaderRole?: string
   rating?: number
   ratingCount?: number
   uploaderId: string

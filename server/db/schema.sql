@@ -21,7 +21,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   city        TEXT,
   avatar_url  TEXT,
   looking_for_collaborators BOOLEAN NOT NULL DEFAULT FALSE,
-  top_genre   TEXT,
+  top_genre       TEXT,
+  favorite_genres TEXT[]      NOT NULL DEFAULT '{}',
+  crew_roles      TEXT[]      NOT NULL DEFAULT '{}',
+  banner_url      TEXT,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -67,6 +70,7 @@ CREATE TABLE IF NOT EXISTS public.films (
   genre         TEXT[]      NOT NULL DEFAULT '{}',
   runtime_min   INTEGER,
   release_year  INTEGER,
+  uploader_role TEXT,
   uploader_id   UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -74,6 +78,13 @@ CREATE TABLE IF NOT EXISTS public.films (
 
 CREATE INDEX IF NOT EXISTS idx_films_uploader ON public.films(uploader_id);
 CREATE INDEX IF NOT EXISTS idx_films_created  ON public.films(created_at DESC);
+
+-- Trailer + aspect ratio were added after the initial release — the
+-- frontend upload flow and film cards both need them. ADD COLUMN IF NOT
+-- EXISTS keeps this script re-runnable against a DB that already has them.
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS trailer_url  TEXT;
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS aspect_ratio TEXT;
+ALTER TABLE public.films ADD COLUMN IF NOT EXISTS uploader_role TEXT;
 
 -- -----------------------------------------------
 -- FEATURED FILM OF THE WEEK
@@ -101,6 +112,20 @@ CREATE TABLE IF NOT EXISTS public.ratings (
 CREATE INDEX IF NOT EXISTS idx_ratings_film ON public.ratings(film_id);
 
 -- -----------------------------------------------
+-- VOTES  (Film of the Week — one vote per user per calendar week)
+-- -----------------------------------------------
+CREATE TABLE IF NOT EXISTS public.votes (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  film_id    UUID        NOT NULL REFERENCES public.films(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  week_start DATE        NOT NULL DEFAULT (date_trunc('week', CURRENT_DATE)::date),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, week_start)
+);
+
+CREATE INDEX IF NOT EXISTS idx_votes_film_week ON public.votes(film_id, week_start);
+
+-- -----------------------------------------------
 -- REVIEWS
 -- -----------------------------------------------
 CREATE TABLE IF NOT EXISTS public.reviews (
@@ -123,13 +148,15 @@ CREATE TABLE IF NOT EXISTS public.cima_requests (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   from_user_id UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   to_user_id   UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  status       TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  status       TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'cancelled')),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (from_user_id <> to_user_id),
   UNIQUE (from_user_id, to_user_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_cima_req_to ON public.cima_requests(to_user_id);
+CREATE INDEX IF NOT EXISTS idx_cima_req_to ON public.cima_requests(to_user_id, status);
+CREATE INDEX IF NOT EXISTS idx_cima_req_from ON public.cima_requests(from_user_id, status);
 
 -- -----------------------------------------------
 -- CIMA MEMBERS  (accepted creative circles)
@@ -139,10 +166,12 @@ CREATE TABLE IF NOT EXISTS public.cima_members (
   owner_id  UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   member_id UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (owner_id <> member_id),
   UNIQUE (owner_id, member_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_cima_members_owner ON public.cima_members(owner_id);
+CREATE INDEX IF NOT EXISTS idx_cima_members_member ON public.cima_members(member_id);
 
 -- -----------------------------------------------
 -- NOTIFICATIONS
@@ -194,34 +223,80 @@ ALTER TABLE public.cima_members  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.featured_films ENABLE ROW LEVEL SECURITY;
 
+-- Every CREATE POLICY below is preceded by DROP POLICY IF EXISTS for both
+-- its own name and any name an earlier iteration of this script used, so
+-- the whole file stays safely re-runnable against a database that already
+-- has policies from a previous run (under any of their past names).
+
+-- Drop the old overly-permissive write policies if this script is being
+-- re-run against a database that already has them — "WITH CHECK
+-- (auth.uid() IS NOT NULL)" let any signed-in user write these tables
+-- directly from the browser, impersonating any uploader_id/user_id.
+DROP POLICY IF EXISTS "Authenticated users can add films" ON public.films;
+DROP POLICY IF EXISTS "Uploaders can update own films"    ON public.films;
+DROP POLICY IF EXISTS "Uploaders can delete own films"    ON public.films;
+DROP POLICY IF EXISTS "Auth users can rate"                ON public.ratings;
+DROP POLICY IF EXISTS "Auth users can update own rating"   ON public.ratings;
+DROP POLICY IF EXISTS "Auth users can review"              ON public.reviews;
+
 -- Profiles: public read, self-update
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile"             ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile"             ON public.profiles;
+DROP POLICY IF EXISTS "Profiles are publicly readable"           ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile"       ON public.profiles;
 CREATE POLICY "Profiles are publicly readable"     ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Films: public read, authenticated insert (filmmaker check done in Express)
+-- Films: public read only. All writes go through Express with the
+-- service-role key (which bypasses RLS entirely), so there is deliberately
+-- no direct-client INSERT/UPDATE/DELETE policy here any more — a policy
+-- like "WITH CHECK (auth.uid() IS NOT NULL)" only checks the caller is
+-- logged in, not that uploader_id matches them, which let any signed-in
+-- user write a films row claiming to be anyone else. Also fixed: these
+-- referenced a "filmmaker_id" column that was never the real column name
+-- (public.films.uploader_id), so they could never have worked as written.
 CREATE POLICY "Films are publicly readable"        ON public.films FOR SELECT USING (true);
-CREATE POLICY "Authenticated users can add films"  ON public.films FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Uploaders can update own films"     ON public.films FOR UPDATE USING (auth.uid() = uploader_id);
-CREATE POLICY "Uploaders can delete own films"     ON public.films FOR DELETE USING (auth.uid() = uploader_id);
 
--- Ratings/reviews: public read, authenticated write
+-- Ratings/reviews: public read only, same reasoning as films above —
+-- all writes go through Express (POST /api/films/:id/rate and
+-- /api/films/:id/review), which sets user_id from the verified JWT.
 CREATE POLICY "Ratings are publicly readable"      ON public.ratings  FOR SELECT USING (true);
-CREATE POLICY "Auth users can rate"                ON public.ratings  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
-CREATE POLICY "Auth users can update own rating"   ON public.ratings  FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Reviews are publicly readable"      ON public.reviews  FOR SELECT USING (true);
-CREATE POLICY "Auth users can review"              ON public.reviews  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Votes: public read (vote counts are shown on every film card),
+-- no direct-client write policy — POST /api/films/:id/vote is the only
+-- way to cast a vote, enforced server-side with the caller's verified id.
+ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Votes are publicly readable"        ON public.votes FOR SELECT USING (true);
 
 -- Cima
+DROP POLICY IF EXISTS "Cima requests visible to sender or recipient" ON public.cima_requests;
+DROP POLICY IF EXISTS "Recipient can update request status"          ON public.cima_requests;
+DROP POLICY IF EXISTS "Users can send cima requests"                 ON public.cima_requests;
+DROP POLICY IF EXISTS "Cima requests visible to involved"            ON public.cima_requests;
+DROP POLICY IF EXISTS "Auth users can send cima requests"            ON public.cima_requests;
+DROP POLICY IF EXISTS "Recipients can update cima request"           ON public.cima_requests;
 CREATE POLICY "Cima requests visible to involved"  ON public.cima_requests FOR SELECT USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
 CREATE POLICY "Auth users can send cima requests"  ON public.cima_requests FOR INSERT WITH CHECK (auth.uid() = from_user_id);
 CREATE POLICY "Recipients can update cima request" ON public.cima_requests FOR UPDATE USING (auth.uid() = to_user_id);
+
+DROP POLICY IF EXISTS "Cima members publicly readable" ON public.cima_members;
+DROP POLICY IF EXISTS "Owner manages own cima members" ON public.cima_members;
+DROP POLICY IF EXISTS "Cima members visible to owner"  ON public.cima_members;
 CREATE POLICY "Cima members visible to owner"      ON public.cima_members  FOR SELECT USING (auth.uid() = owner_id OR auth.uid() = member_id);
 
 -- Notifications: private to owner
+DROP POLICY IF EXISTS "System or self can insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users see own notifications"              ON public.notifications;
+DROP POLICY IF EXISTS "Users update own notifications"           ON public.notifications;
+DROP POLICY IF EXISTS "Users can update own notifications"       ON public.notifications;
 CREATE POLICY "Users see own notifications"        ON public.notifications FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
 
 -- Featured films: publicly readable
+DROP POLICY IF EXISTS "Featured films publicly readable" ON public.featured_films;
+DROP POLICY IF EXISTS "Featured films are public"         ON public.featured_films;
 CREATE POLICY "Featured films are public"          ON public.featured_films FOR SELECT USING (true);
 
 -- -----------------------------------------------

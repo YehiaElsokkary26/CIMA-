@@ -1,27 +1,70 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { Loader2, Trophy, X } from 'lucide-react'
 import { useFeaturedFilm, useFilms } from '@/hooks/useFilms'
-import { getFilmOfTheWeek, getFilms } from '@/lib/mockData'
 import { timecode, weekNumber } from '@/lib/klaket'
 import type { Film } from '@/types'
 import { FilmStill } from '@/components/klaket/FilmCards'
+import EmptyState from '@/components/ui/EmptyState'
 
 type Phase = 'ready' | 'count' | 'done'
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// Film of the week reveal: an academy-leader countdown, then the winning poster.
+// Loads this week's winner, then hands off to the reveal.
 export default function RevealPage() {
   const navigate = useNavigate()
-  const { data: serverFeatured } = useFeaturedFilm()
-  const { data: serverFilms } = useFilms()
-  const winner: Film = serverFeatured ?? getFilmOfTheWeek()
-  const others = (serverFilms ?? getFilms())
+  const { data: winner, isLoading } = useFeaturedFilm()
+  const { data: films } = useFilms()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-full bg-k-ink text-k-paper flex items-center justify-center" role="status" aria-label="Loading">
+        <Loader2 size={24} className="animate-spin" aria-hidden="true" />
+      </div>
+    )
+  }
+
+  if (!winner) {
+    return (
+      <div className="min-h-full bg-k-ink text-k-paper flex flex-col">
+        <div className="px-4 pt-4 max-w-2xl w-full mx-auto">
+          <button
+            type="button"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/home'))}
+            aria-label="Close"
+            className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press"
+          >
+            <X size={20} aria-hidden="true" />
+          </button>
+        </div>
+        <EmptyState
+          icon={Trophy}
+          title="No winner yet"
+          subtitle="The envelope opens when this week’s vote closes."
+          action={
+            <Link to="/vote" className="press inline-flex items-center min-h-[48px] px-4 bg-k-mustard text-k-ink font-extrabold text-[14px]">
+              GO TO THE VOTE →
+            </Link>
+          }
+          className="[&_h3]:text-k-paper [&_p]:text-k-sand"
+        />
+      </div>
+    )
+  }
+
+  const others = (films ?? [])
     .filter((f) => f.id !== winner.id && f.weekKey === winner.weekKey)
     .sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
     .slice(0, 2)
+
+  return <RevealStage winner={winner} others={others} />
+}
+
+// Film of the week reveal: an academy-leader countdown, then the winning poster.
+function RevealStage({ winner, others }: { winner: Film; others: Film[] }) {
+  const navigate = useNavigate()
 
   const [phase, setPhase] = useState<Phase>('ready')
   const [n, setN] = useState(3)

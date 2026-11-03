@@ -38,7 +38,6 @@ router.get('/filmmakers', async (req, res: Response, next: NextFunction) => {
     res.json(result.rows.map((p) => ({
       id:                      p.id,
       name:                    p.name,
-      email:                   p.email,
       role:                    p.role,
       bio:                     p.bio,
       school:                  p.school,

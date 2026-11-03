@@ -77,12 +77,29 @@ export function SlateFilmCard({ film, className }: { film: Film; className?: str
 
 /* ─── Poster card: vertical afeesh for grids (Discover, Profile) ────────── */
 
-export function PosterCard({ film, className }: { film: Film; className?: string }) {
+export function PosterCard({
+  film,
+  className,
+  domId,
+  highlighted = false,
+}: {
+  film: Film
+  className?: string
+  /** DOM id so the page can scroll to it (e.g. right after publishing) */
+  domId?: string
+  /** Mustard ring to point out a just-published film */
+  highlighted?: boolean
+}) {
   const c = posterColors(film.id)
   return (
     <Link
+      id={domId}
       to={`/film/${film.id}`}
-      className={cn('press flex flex-col border-[1.5px] border-foreground hover:-translate-y-0.5 transition-transform', className)}
+      className={cn(
+        'press flex flex-col border-[1.5px] border-foreground hover:-translate-y-0.5 transition-transform',
+        highlighted && 'outline outline-4 outline-k-mustard outline-offset-2',
+        className,
+      )}
       style={{ background: c.bg, color: c.fg }}
     >
       <div className="relative m-2 mb-0 border-[1.5px] border-k-ink aspect-[4/5]">

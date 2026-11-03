@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { Camera, Eye, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import { cn } from '@/lib/utils'
+import type { UserRole } from '@/types'
 import AuthFrame, { FormError } from '@/components/klaket/AuthFrame'
 import { Clap } from '@/components/klaket/primitives'
 import Input from '@/components/ui/Input'
+
+const ROLES: { role: UserRole; label: string; desc: string; icon: typeof Camera }[] = [
+  { role: 'filmmaker', label: 'I make films', desc: 'Upload and enter the vote', icon: Camera },
+  { role: 'viewer', label: 'I watch films', desc: 'Discover, vote, leave notes', icon: Eye },
+]
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -13,6 +20,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<UserRole>('viewer')
   const [error, setError] = useState('')
 
   const submit = async (e: React.FormEvent) => {
@@ -23,13 +31,13 @@ export default function RegisterPage() {
       return
     }
     try {
-      await register.mutateAsync({ name, email, password, role: 'viewer' })
-      navigate('/onboarding', { replace: true })
+      const result = await register.mutateAsync({ name, email, password, role })
+      navigate(result.user.role ? '/home' : '/onboarding', { replace: true })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
       setError(
         /fetch|network|failed/i.test(msg)
-          ? 'Can’t reach the server right now. You can still look around with a demo account on the Sign in tab.'
+          ? 'Can’t reach Klaket right now. Check your connection and try again.'
           : msg || 'Couldn’t create your account. Try again.',
       )
     }
@@ -43,7 +51,34 @@ export default function RegisterPage() {
         <Input label="Email" type="email" autoComplete="email" placeholder="you@school.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Input label="Password" type="password" autoComplete="new-password" placeholder="At least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
 
-        <div className="mt-3 flex flex-col">
+        <fieldset className="flex flex-col gap-2">
+          <legend className="k-label text-[10.5px] font-semibold mb-1">Which side of the camera?</legend>
+          <div role="radiogroup" aria-label="Your role" className="grid grid-cols-2 gap-2">
+            {ROLES.map(({ role: r, label, desc, icon: Icon }) => {
+              const on = role === r
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setRole(r)}
+                  className={cn(
+                    'press text-start border-[1.5px] border-foreground p-3 flex flex-col gap-1',
+                    on ? (r === 'filmmaker' ? 'bg-k-red text-k-paper' : 'bg-k-teal text-k-paper') : 'bg-card hover:bg-muted',
+                  )}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <b className="text-[14px]">{label}</b>
+                  <span className={cn('text-[12px]', on ? 'opacity-90' : 'text-muted-foreground')}>{desc}</span>
+                </button>
+              )
+            })}
+          </div>
+          <span className="text-[12.5px] text-muted-foreground">You can switch to filmmaker later from your profile.</span>
+        </fieldset>
+
+        <div className="mt-2 flex flex-col">
           <Clap className="h-2.5 border-[1.5px] border-b-0 border-foreground" />
           <button
             type="submit"

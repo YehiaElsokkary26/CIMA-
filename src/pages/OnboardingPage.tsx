@@ -39,7 +39,7 @@ export default function OnboardingPage() {
         <div className="flex flex-col gap-1">
           <span className="k-label text-[11px] text-hot font-semibold">Last step</span>
           <h1 className="k-display text-[32px]" style={{ fontStretch: '120%' }}>Which side of the camera?</h1>
-          <p className="text-[14px] text-muted-foreground">This sets what you can do on Klaket. You can’t change it later.</p>
+          <p className="text-[14px] text-muted-foreground">This sets what you can do on Klaket. You can switch to filmmaker later from your profile.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {ROLES.map(({ role, icon: Icon, title, body, still, tone }) => (

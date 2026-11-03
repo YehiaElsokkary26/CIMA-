@@ -1,10 +1,13 @@
 import { Router, Response, NextFunction } from 'express'
+import { z } from 'zod'
 import { query, transaction } from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
 import { notFound, conflict, AppError } from '../lib/errors'
 import { createNotification } from '../lib/notify'
 
 const router = Router()
+
+const targetUserIdSchema = z.object({ targetUserId: z.string().uuid() })
 
 // ---- GET /api/cima/mine -----------------------------------------------------
 router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -47,7 +50,11 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
 
 // ---- POST /api/cima/request/:targetUserId -----------------------------------
 router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const { targetUserId } = req.params
+  const parsed = targetUserIdSchema.safeParse(req.params)
+  if (!parsed.success) {
+    next(new AppError('Invalid user id', 422, 'VALIDATION_ERROR')); return
+  }
+  const { targetUserId } = parsed.data
   if (targetUserId === req.userId) {
     next(new AppError('You cannot send a Cima request to yourself', 400)); return
   }
@@ -55,15 +62,21 @@ router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, r
     const targetRes = await query('SELECT id, name FROM profiles WHERE id = $1', [targetUserId])
     if (!targetRes.rowCount) throw notFound('User')
 
+    // Only a currently-pending request blocks a resend — a previously
+    // declined (or cancelled) request should be sendable again.
     const existing = await query(
-      'SELECT id FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2',
+      'SELECT id, status FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2',
       [req.userId, targetUserId]
     )
-    if (existing.rowCount! > 0) throw conflict('Cima request already sent')
+    if (existing.rowCount! > 0 && existing.rows[0].status === 'pending') {
+      throw conflict('Cima request already sent')
+    }
 
     const result = await query(
-      `INSERT INTO cima_requests (from_user_id, to_user_id)
-       VALUES ($1,$2) RETURNING id`,
+      `INSERT INTO cima_requests (from_user_id, to_user_id, status)
+       VALUES ($1,$2,'pending')
+       ON CONFLICT (from_user_id, to_user_id) DO UPDATE SET status = 'pending', updated_at = NOW()
+       RETURNING id`,
       [req.userId, targetUserId]
     )
 

@@ -1,92 +1,135 @@
-import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { Film as FilmIcon, Users } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AlertCircle, Film as FilmIcon, GraduationCap, Handshake, Loader2, LogOut, MapPin, Pencil, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
-import { useFilms } from '@/hooks/useFilms'
-import { useSendCimaRequest } from '@/hooks/useCima'
-import { getFilms, getUserById } from '@/lib/mockData'
+import { useAuth } from '@/hooks/useAuth'
+import { useFilmsByUser, useProfile } from '@/hooks/useFilms'
+import { useCima, useSendCimaRequest } from '@/hooks/useCima'
 import { cn } from '@/lib/utils'
 import { toast } from '@/store/toastStore'
-import type { Film, User } from '@/types'
 import Still from '@/components/klaket/Still'
 import { Clap, Slate } from '@/components/klaket/primitives'
 import { FilmStill } from '@/components/klaket/FilmCards'
 import RoleBadge from '@/components/profile/RoleBadge'
 import Avatar from '@/components/ui/Avatar'
+import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
-
-const SAMPLE_PROFILE: User = {
-  id: 'u4',
-  name: 'Omar Hadid',
-  email: '',
-  role: 'filmmaker',
-  bio: 'Documentary and experimental filmmaker based in Casablanca. Obsessed with sound design and found footage.',
-  school: 'ESAV Marrakech',
-  city: 'Casablanca',
-  topGenre: 'Experimental',
-  filmsCount: 4,
-  cimaCount: 7,
-  reviewsCount: 23,
-  lookingForCollaborators: true,
-  createdAt: '2023-06-01',
-}
-
-const SAMPLE_CREW: User[] = [
-  { id: 'u10', name: 'Hana Bakkali', email: '', role: 'filmmaker', school: 'Cairo Film Institute', crewRoles: ['Camera'], createdAt: '' },
-  { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker', school: 'ISAC Rabat', crewRoles: ['Edit'], createdAt: '' },
-  { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker', school: 'ESAV Marrakech', crewRoles: ['Sound'], createdAt: '' },
-]
 
 type Tab = 'Films' | 'Crew'
 
 export default function ProfilePage() {
   const { id = 'me' } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
+  const { updateRole, updateProfile, logout } = useAuth()
   const isOwn = id === 'me' || id === currentUser?.id
-  const profile: User = (isOwn ? currentUser : getUserById(id)) ?? SAMPLE_PROFILE
+  const profileId = isOwn ? currentUser?.id : id
 
-  const { data: serverFilms } = useFilms()
+  const { data: fetchedProfile, isPending: profileLoading, isError: profileError, refetch } = useProfile(isOwn ? undefined : profileId)
+  const { data: fetchedFilms, isPending: filmsLoading } = useFilmsByUser(profileId)
+  const { data: crewData } = useCima()
   const sendRequest = useSendCimaRequest()
-  const [tab, setTab] = useState<Tab>(profile.role === 'filmmaker' ? 'Films' : 'Crew')
-  const [asked, setAsked] = useState(false)
 
-  const films: Film[] = useMemo(
-    () => (serverFilms ?? getFilms()).filter((f) => f.uploaderId === profile.id),
-    [serverFilms, profile.id],
-  )
+  const [tab, setTab] = useState<Tab>('Films')
+  const [crewStatus, setCrewStatus] = useState<'none' | 'pending'>('none')
+  const [confirmLogout, setConfirmLogout] = useState(false)
+
+  const profile = isOwn ? currentUser : fetchedProfile
+  const films = fetchedFilms ?? []
+  const crew = isOwn ? (crewData?.members ?? []) : []
   const laurels = films.filter((f) => f.isFilmOfTheWeek)
 
+  if (!isOwn && profileLoading) {
+    return (
+      <div className="flex justify-center py-24" role="status" aria-label="Loading profile">
+        <Loader2 size={24} className="animate-spin text-muted-foreground" aria-hidden="true" />
+      </div>
+    )
+  }
+
+  if (!isOwn && (profileError || !profile)) {
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Couldn’t load this profile"
+        subtitle="Something went wrong reaching the server."
+        action={<Button variant="solid" size="sm" onClick={() => refetch()}>Retry</Button>}
+        className="py-24"
+      />
+    )
+  }
+
+  if (!profile) return null
+
+  const isFilmmaker = profile.role === 'filmmaker'
+  const openToCollab = profile.openToCollab ?? profile.lookingForCollaborators ?? false
+
   const ask = () => {
-    sendRequest.mutate(profile.id)
-    setAsked(true)
-    toast.success(`Call sheet sent to ${profile.name}.`)
+    if (!profileId || crewStatus !== 'none') return
+    setCrewStatus('pending')
+    sendRequest.mutate(profileId, {
+      onSuccess: () => toast.success(`Call sheet sent to ${profile.name}.`),
+      onError: () => {
+        setCrewStatus('none')
+        toast.error('Couldn’t send the call sheet. Try again.')
+      },
+    })
   }
 
   return (
     <div className="min-h-full">
-      {/* Poster header */}
+      {/* Poster header: their banner photo, or the illustrated portrait */}
       <section className="relative overflow-hidden bg-k-teal text-k-paper border-b-[1.5px] border-foreground">
-        <div className="absolute inset-y-0 end-0 w-[62%] sm:w-[40%]" aria-hidden="true">
-          <Still kind="portrait" className="absolute inset-0" />
-        </div>
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(90deg, #1A6A65 38%, rgba(26,106,101,0) 78%)' }}
-          aria-hidden="true"
-        />
-        <div className="relative max-w-5xl mx-auto px-4 pt-4 pb-5 min-h-[280px] flex flex-col gap-2">
+        {profile.bannerUrl ? (
+          <>
+            <img src={profile.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="halftone absolute inset-0 opacity-30 mix-blend-multiply" aria-hidden="true" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(21,18,14,.85) 20%, rgba(21,18,14,.15) 75%)' }} aria-hidden="true" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-y-0 end-0 w-[62%] sm:w-[40%]" aria-hidden="true">
+              <Still kind="portrait" className="absolute inset-0" />
+            </div>
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, #1A6A65 38%, rgba(26,106,101,0) 78%)' }} aria-hidden="true" />
+          </>
+        )}
+        <div className="relative max-w-5xl mx-auto px-4 pt-4 pb-5 min-h-[290px] flex flex-col gap-2">
           <div className="flex justify-between items-start gap-2">
-            <RoleBadge role={profile.role} />
+            <div className="flex gap-1.5 flex-wrap">
+              <RoleBadge role={profile.role} />
+              {openToCollab && (
+                <span className="inline-flex items-center gap-1 k-label text-[10px] font-semibold px-2 py-[3px] bg-k-mustard text-k-ink">
+                  <Handshake size={11} aria-hidden="true" /> Open to crew
+                </span>
+              )}
+            </div>
             {isOwn && (
-              <Link to="/settings" className="k-label text-[10.5px] bg-k-ink text-k-paper px-2 py-1.5 press">
-                Settings
-              </Link>
+              <div className="flex gap-1.5">
+                <Link to="/profile/me/edit" className="inline-flex items-center gap-1.5 k-label text-[10.5px] bg-k-ink text-k-paper px-2.5 min-h-[36px] press">
+                  <Pencil size={13} aria-hidden="true" /> Edit
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setConfirmLogout(true)}
+                  aria-label="Sign out"
+                  className="w-9 h-9 flex items-center justify-center bg-k-ink text-k-paper press"
+                >
+                  <LogOut size={15} aria-hidden="true" />
+                </button>
+              </div>
             )}
           </div>
           <div className="flex-1" />
-          <Avatar name={profile.name} src={profile.avatarUrl ?? profile.avatar} size="lg" className="border-k-paper" />
+          <Avatar name={profile.name} src={profile.avatarUrl} size="lg" className="border-k-paper" />
           <h1 className="k-display text-[32px] sm:text-[44px] uppercase max-w-[14ch]">{profile.name}</h1>
           {profile.bio && <p className="text-[14px] max-w-[34ch] sm:max-w-[48ch]">{profile.bio}</p>}
+          {(profile.city || profile.school) && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 k-label text-[10px]">
+              {profile.city && <span className="inline-flex items-center gap-1"><MapPin size={11} aria-hidden="true" />{profile.city}</span>}
+              {profile.school && <span className="inline-flex items-center gap-1"><GraduationCap size={11} aria-hidden="true" />{profile.school}</span>}
+            </div>
+          )}
         </div>
       </section>
 
@@ -95,31 +138,65 @@ export default function ProfilePage() {
         <Slate
           className="max-w-5xl mx-auto"
           cells={[
-            { label: 'Films', value: films.length || profile.filmsCount || 0 },
+            { label: 'Films', value: films.length },
             { label: 'Laurels', value: laurels.length },
-            { label: 'Crew', value: profile.cimaCount ?? SAMPLE_CREW.length },
-            { label: 'Roll', value: profile.school ?? profile.city ?? '—' },
+            { label: 'Crew', value: isOwn ? crew.length : profile.cimaCount ?? 0 },
+            { label: 'Notes', value: profile.reviewsCount ?? 0 },
           ]}
         />
       </div>
 
       <div className="max-w-5xl mx-auto px-4">
-        {!isOwn && (
-          <div className="flex gap-2 py-4">
+        {/* Actions */}
+        <div className="flex flex-col gap-2 py-4">
+          {!isOwn && (
             <button
               type="button"
               onClick={ask}
-              disabled={asked}
-              className="press flex-1 min-h-[48px] bg-k-red text-k-paper font-extrabold text-[14px] disabled:bg-k-teal"
+              disabled={crewStatus !== 'none'}
+              className="press min-h-[48px] bg-k-red text-k-paper font-extrabold text-[14px] disabled:bg-k-teal"
               style={{ fontStretch: '110%' }}
             >
-              {asked ? 'CALL SHEET SENT ✓' : 'SEND CALL SHEET'}
+              {crewStatus === 'pending' ? 'CALL SHEET SENT ✓' : 'SEND CALL SHEET'}
             </button>
-          </div>
-        )}
+          )}
+          {isOwn && isFilmmaker && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={openToCollab}
+              onClick={() => updateProfile.mutate({ lookingForCollaborators: !openToCollab })}
+              disabled={updateProfile.isPending}
+              className={cn(
+                'press flex items-center justify-between gap-3 min-h-[52px] px-3 border-[1.5px] border-foreground text-start disabled:opacity-60',
+                openToCollab ? 'bg-k-mustard text-k-ink' : 'bg-field',
+              )}
+            >
+              <span className="flex flex-col">
+                <b className="text-[14px]">Open to crew</b>
+                <span className="text-[12px] opacity-80">Show up in Discover for people looking for a crew</span>
+              </span>
+              <span aria-hidden="true" className="w-[46px] h-[26px] border-[1.5px] border-k-ink relative shrink-0 bg-k-paper">
+                <span className={cn('absolute top-[2px] w-[19px] h-[19px] bg-k-ink transition-all', openToCollab ? 'left-[23px]' : 'left-[2px]')} />
+              </span>
+            </button>
+          )}
+          {isOwn && !isFilmmaker && (
+            <button
+              type="button"
+              onClick={() => updateRole.mutate('filmmaker')}
+              disabled={updateRole.isPending}
+              className="press flex items-center justify-between min-h-[52px] px-4 bg-k-red text-k-paper font-extrabold text-[14px] disabled:opacity-60"
+              style={{ fontStretch: '110%' }}
+            >
+              <span className="flex items-center gap-2"><FilmIcon size={16} aria-hidden="true" /> BECOME A FILMMAKER</span>
+              {updateRole.isPending ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <span className="k-label text-[10px] font-normal">Upload your own films</span>}
+            </button>
+          )}
+        </div>
 
         {laurels.length > 0 && (
-          <section aria-label="Laurels" className={cn('flex gap-2 flex-wrap', isOwn && 'pt-4')}>
+          <section aria-label="Laurels" className="flex gap-2 flex-wrap">
             {laurels.map((f) => (
               <Link key={f.id} to={`/film/${f.id}`} className="press border-[1.5px] border-foreground bg-k-mustard text-k-ink px-2.5 py-2 flex flex-col">
                 <span className="k-label text-[9px]">★ Film of the week</span>
@@ -128,6 +205,23 @@ export default function ProfilePage() {
             ))}
           </section>
         )}
+
+        {(profile.crewRoles?.length || profile.favoriteGenres?.length) ? (
+          <section className="mt-4 flex flex-col gap-1.5">
+            {!!profile.crewRoles?.length && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="k-label text-[10px] text-muted-foreground w-16">Roles</span>
+                {profile.crewRoles.map((r) => <span key={r} className="k-label text-[10px] font-semibold px-1.5 py-0.5 bg-solid text-solid-foreground">{r}</span>)}
+              </div>
+            )}
+            {!!profile.favoriteGenres?.length && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="k-label text-[10px] text-muted-foreground w-16">Scenes</span>
+                {profile.favoriteGenres.map((g) => <span key={g} className="k-label text-[10px] font-semibold px-1.5 py-0.5 border border-foreground">{g}</span>)}
+              </div>
+            )}
+          </section>
+        ) : null}
 
         <div role="tablist" aria-label="Profile sections" className="mt-4 grid grid-cols-2 border-[1.5px] border-foreground sm:max-w-sm">
           {(['Films', 'Crew'] as Tab[]).map((t) => (
@@ -146,13 +240,17 @@ export default function ProfilePage() {
 
         <section className="py-3">
           {tab === 'Films' ? (
-            films.length === 0 ? (
+            filmsLoading ? (
+              <div className="flex flex-col gap-2" aria-hidden="true">
+                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-16" />)}
+              </div>
+            ) : films.length === 0 ? (
               <EmptyState
                 icon={FilmIcon}
                 title="No films yet"
-                subtitle={isOwn && profile.role === 'filmmaker' ? 'Slate your first film and release it to the week’s vote.' : 'Nothing released yet.'}
+                subtitle={isOwn && isFilmmaker ? 'Slate your first film and release it to the week’s vote.' : 'Nothing released yet.'}
                 action={
-                  isOwn && profile.role === 'filmmaker' ? (
+                  isOwn && isFilmmaker ? (
                     <Link to="/upload" className="press inline-flex items-center min-h-[44px] px-4 bg-k-red text-k-paper font-extrabold text-[13px]">
                       UPLOAD A FILM
                     </Link>
@@ -181,29 +279,101 @@ export default function ProfilePage() {
                 ))}
               </ul>
             )
+          ) : !isOwn ? (
+            <p className="text-[14px] text-muted-foreground py-6">Crew lists are private. Send a call sheet to work together.</p>
+          ) : crew.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No crew yet"
+              subtitle="Send call sheets from films and profiles to build one."
+              action={<Link to="/discover?tab=people" className="k-label text-[11px] font-semibold underline underline-offset-4 min-h-[44px] inline-flex items-center">Find filmmakers →</Link>}
+            />
           ) : (
             <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {SAMPLE_CREW.map((m) => (
+              {crew.map((m) => (
                 <li key={m.id}>
-                  <Link to={`/profile/${m.id}`} className="press border-[1.5px] border-foreground bg-card p-2.5 flex items-center gap-2.5 min-w-0">
-                    <Avatar name={m.name} size="sm" />
+                  <Link to={`/profile/${m.user.id}`} className="press border-[1.5px] border-foreground bg-card p-2.5 flex items-center gap-2.5 min-w-0">
+                    <Avatar name={m.user.name} src={m.user.avatarUrl} size="sm" />
                     <span className="min-w-0">
-                      <b className="block text-[13px] truncate">{m.name}</b>
-                      <span className="k-label text-[9px] text-muted-foreground">{m.crewRoles?.join(' · ')}</span>
+                      <b className="block text-[13px] truncate">{m.user.name}</b>
+                      <span className="k-label text-[9px] text-muted-foreground">{m.user.crewRoles?.join(' · ') || 'Crew'}</span>
                     </span>
                   </Link>
                 </li>
               ))}
-              {isOwn && (
-                <li className="col-span-2 sm:col-span-3">
-                  <Link to="/crew" className="k-label text-[11px] font-semibold underline underline-offset-4 inline-flex items-center gap-1.5 min-h-[44px]">
-                    <Users size={14} aria-hidden="true" /> Manage your crew →
-                  </Link>
-                </li>
-              )}
+              <li className="col-span-2 sm:col-span-3">
+                <Link to="/crew" className="k-label text-[11px] font-semibold underline underline-offset-4 inline-flex items-center gap-1.5 min-h-[44px]">
+                  <Users size={14} aria-hidden="true" /> Manage your crew →
+                </Link>
+              </li>
             </ul>
           )}
         </section>
+      </div>
+
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Sign out of Klaket?"
+          body="You’ll need your email and password to sign back in."
+          confirm="SIGN OUT"
+          onCancel={() => setConfirmLogout(false)}
+          onConfirm={() => {
+            setConfirmLogout(false)
+            logout()
+            navigate('/welcome')
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ─── Centered confirmation dialog ──────────────────────────────────────── */
+
+function ConfirmDialog({
+  title,
+  body,
+  confirm,
+  onConfirm,
+  onCancel,
+}: {
+  title: string
+  body: string
+  confirm: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    cancelRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-body"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm border-[1.5px] border-foreground bg-background"
+      >
+        <div className="clap h-3" aria-hidden="true" />
+        <div className="p-4 flex flex-col gap-2">
+          <h2 id="confirm-title" className="k-display text-[24px]">{title}</h2>
+          <p id="confirm-body" className="text-[14px] text-muted-foreground">{body}</p>
+        </div>
+        <div className="grid grid-cols-2 border-t-[1.5px] border-foreground">
+          <button ref={cancelRef} type="button" onClick={onCancel} className="min-h-[48px] font-extrabold text-[13px] border-e-[1.5px] border-foreground hover:bg-foreground/5">
+            CANCEL
+          </button>
+          <button type="button" onClick={onConfirm} className="min-h-[48px] font-extrabold text-[13px] bg-k-red text-k-paper hover:brightness-110">
+            {confirm}
+          </button>
+        </div>
       </div>
     </div>
   )

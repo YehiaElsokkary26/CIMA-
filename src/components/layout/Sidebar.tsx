@@ -7,6 +7,7 @@ import { useUIStore } from '@/store/uiStore'
 import { Wordmark } from '@/components/klaket/primitives'
 import Avatar from '@/components/ui/Avatar'
 import { mainNav } from './navLinks'
+import SearchField from './SearchField'
 
 // Desktop navigation: a vertical slate down the left edge.
 export default function Sidebar() {
@@ -24,8 +25,9 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 h-full border-e-[1.5px] border-foreground bg-background">
-      <div className="px-5 pt-6 pb-5 border-b-[1.5px] border-foreground">
+      <div className="px-5 pt-6 pb-5 border-b-[1.5px] border-foreground flex flex-col gap-4">
         <Wordmark size="md" />
+        <SearchField id="sidebar-search" />
       </div>
 
       <nav aria-label="Main" className="flex flex-col flex-1 py-3">
@@ -57,7 +59,7 @@ export default function Sidebar() {
       <div className="border-t-[1.5px] border-foreground p-4 flex flex-col gap-2">
         {user && (
           <div className="flex items-center gap-3">
-            <Avatar name={user.name} src={user.avatarUrl ?? user.avatar} size="sm" />
+            <Avatar name={user.name} src={user.avatarUrl} size="sm" />
             <div className="min-w-0">
               <p className="text-[13px] font-bold truncate">{user.name}</p>
               <p className="k-label text-[9.5px] text-muted-foreground">{user.role}</p>
