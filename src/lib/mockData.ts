@@ -380,7 +380,7 @@ function _refreshFotw(): void {
   const weekKey = getCurrentWeekKey()
   let prevWinner: string | null = null
   try {
-    prevWinner = localStorage.getItem('cima_fotw_prev_winner')
+    prevWinner = localStorage.getItem('klaket_fotw_prev_winner')
   } catch { /* ignore */ }
 
   const eligible = films.filter((f) => f.weekKey === weekKey && f.id !== prevWinner)
@@ -409,7 +409,7 @@ export function getFilmOfTheWeek(): Film {
   const weekKey = getCurrentWeekKey()
   let prevWinner: string | null = null
   try {
-    prevWinner = localStorage.getItem('cima_fotw_prev_winner')
+    prevWinner = localStorage.getItem('klaket_fotw_prev_winner')
   } catch { /* ignore */ }
 
   const eligible = films.filter((f) => f.weekKey === weekKey && f.id !== prevWinner)

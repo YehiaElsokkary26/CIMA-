@@ -1,122 +1,129 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
-import { motion } from 'framer-motion'
-import { Bell, Star, Film, UserPlus, MessageSquare, CheckCheck } from 'lucide-react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import RecordLED from '@/components/layout/RecordLED'
-import EmptyState from '@/components/ui/EmptyState'
-import { NotificationSkeleton } from '@/components/ui/Skeleton'
-import { formatTimeAgo } from '@/lib/utils'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Bell, MessageSquare, Star, UserPlus, Users } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi } from '@/lib/api'
+import { getFilmOfTheWeek } from '@/lib/mockData'
+import { weekNumber } from '@/lib/klaket'
+import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import type { Notification } from '@/types'
+import { Clap } from '@/components/klaket/primitives'
+import { FilmStill } from '@/components/klaket/FilmCards'
+import EmptyState from '@/components/ui/EmptyState'
+import { NotificationSkeleton } from '@/components/ui/Skeleton'
 
-const notifIcon: Record<string, React.ElementType> = {
-  review: MessageSquare,
-  cima_request: Film,
-  cima_accepted: Film,
-  rating: Star,
-  follower: UserPlus,
+const KIND: Record<Notification['type'], { icon: React.ElementType; bg: string; fg: string; href: (n: Notification) => string }> = {
+  review:        { icon: MessageSquare, bg: '#15120E', fg: '#F1B51C', href: (n) => (n.filmId ? `/film/${n.filmId}` : '/home') },
+  rating:        { icon: Star,          bg: '#F1B51C', fg: '#15120E', href: (n) => (n.filmId ? `/film/${n.filmId}` : '/home') },
+  cima_request:  { icon: Users,         bg: '#C42320', fg: '#F1E8D3', href: () => '/crew' },
+  cima_accepted: { icon: Users,         bg: '#1A6A65', fg: '#F1E8D3', href: () => '/crew' },
+  follower:      { icon: UserPlus,      bg: '#F7F0E0', fg: '#15120E', href: (n) => (n.fromUser ? `/profile/${n.fromUser.id}` : '/profile/me') },
 }
 
 export default function NotificationsPage() {
+  const navigate = useNavigate()
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
-  const queryClient = useQueryClient()
+  const qc = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['notifications'],
-    queryFn:  () => notificationsApi.list().then((r) => r.data),
-    enabled:  isLoggedIn,
+    queryFn: () => notificationsApi.list().then((r) => r.data),
+    enabled: isLoggedIn,
     staleTime: 30_000,
   })
 
-  const markAllMutation = useMutation({
+  // After a failed load, show the empty state instead of flashing skeletons on every retry.
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (isError) setFailed(true)
+  }, [isError])
+
+  const markAll = useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
-    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
   })
 
-  const notifications: Notification[] = data ?? []
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const items: Notification[] = data ?? []
+  const unread = items.filter((n) => !n.read).length
+  const winner = getFilmOfTheWeek()
 
   return (
-    <div className="min-h-full px-4 py-6">
-      {/* Rule 9: header row with mark-all-read action */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">
-          Notifications
-        </h1>
-        {unreadCount > 0 && (
-          /* Rule 3: min 44px tap area via py-2.5 */
+    <div className="min-h-full">
+      <div className="max-w-2xl mx-auto px-4 pt-4 flex flex-col gap-4">
+        <header className="flex items-center gap-3">
           <button
-            onClick={() => markAllMutation.mutate()}
-            disabled={markAllMutation.isPending}
-            className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors py-2.5 px-2"
-            style={{ minHeight: 44 }}
-            aria-label="Mark all notifications as read"
+            type="button"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/home'))}
+            aria-label="Back"
+            className="w-11 h-11 shrink-0 flex items-center justify-center border-[1.5px] border-foreground press"
           >
-            <CheckCheck size={14} />
-            Mark all read
+            <ArrowLeft size={20} aria-hidden="true" />
           </button>
-        )}
+          <h1 className="k-display text-[22px] sm:text-[28px] flex-1">NOTIFICATIONS</h1>
+          {unread > 0 && (
+            <button
+              type="button"
+              onClick={() => markAll.mutate()}
+              disabled={markAll.isPending}
+              className="k-label text-[10px] font-semibold min-h-[44px] px-2.5 border-[1.5px] border-foreground hover:bg-foreground/5"
+            >
+              Mark all read
+            </button>
+          )}
+        </header>
+
+        {/* Reveal banner */}
+        <Link to="/reveal" className="press flex flex-col border-[1.5px] border-foreground bg-k-red text-k-paper">
+          <Clap variant="live" className="h-2.5" />
+          <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 p-2.5">
+            <FilmStill film={winner} className="h-[84px] border-[1.5px] border-k-ink" />
+            <div className="flex flex-col justify-center gap-0.5 min-w-0">
+              <span className="k-label text-[10px] text-k-mustard font-semibold">★ Week {weekNumber()} · Film of the week</span>
+              <b className="text-[17px] leading-tight">The envelope is ready. Watch the reveal.</b>
+              <span className="k-label text-[10px]">Tap to open →</span>
+            </div>
+          </div>
+        </Link>
+
+        <section aria-label="All notifications" className="flex flex-col">
+          {isLoading && !failed ? (
+            Array.from({ length: 4 }).map((_, i) => <NotificationSkeleton key={i} />)
+          ) : items.length === 0 ? (
+            <EmptyState icon={Bell} title="Quiet on set" subtitle="Notes on your films, call sheets and votes will show up here." />
+          ) : (
+            <ul>
+              {items.map((n) => {
+                const k = KIND[n.type] ?? KIND.review
+                const Icon = k.icon
+                return (
+                  <li key={n.id}>
+                    <Link to={k.href(n)} className="grid grid-cols-[40px_minmax(0,1fr)_10px] gap-3 items-start py-3 border-b border-rule hover:bg-foreground/5">
+                      <span
+                        className="w-10 h-10 flex items-center justify-center border-[1.5px] border-foreground"
+                        style={{ background: k.bg, color: k.fg }}
+                      >
+                        <Icon size={17} aria-hidden="true" />
+                      </span>
+                      <span className="flex flex-col gap-0.5 min-w-0">
+                        <span className={n.read ? 'text-[14.5px] text-muted-foreground' : 'text-[14.5px] font-semibold'}>
+                          {n.message}
+                        </span>
+                        <span className="k-label text-[9.5px] text-muted-foreground">{formatTimeAgo(n.createdAt)}</span>
+                      </span>
+                      {!n.read ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-hot mt-1.5" aria-label="Unread" />
+                      ) : (
+                        <span />
+                      )}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
       </div>
-
-      {isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 4 }).map((_, i) => <NotificationSkeleton key={i} />)}
-        </div>
-      ) : notifications.length === 0 ? (
-        <EmptyState icon={Bell} title="Quiet on Set." subtitle="No notifications yet." />
-      ) : (
-        <div className="space-y-2">
-          {notifications.map((notif, i) => {
-            const Icon = notifIcon[notif.type] ?? Bell
-
-            return (
-              <motion.div
-                key={notif.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className={`flex items-start gap-3 p-4 rounded-2xl border transition-colors ${
-                  !notif.read
-                    ? 'bg-card border-border'
-                    : 'bg-card/50 border-border/50'
-                }`}
-              >
-                <div className="relative mt-0.5">
-                  {/* Rule 3: icon area w-10 h-10 = 40px (row tap area covers full row) */}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    notif.type === 'cima_request' || notif.type === 'cima_accepted'
-                      ? 'bg-cima-tag/20'
-                      : notif.type === 'rating'
-                        ? 'bg-primary/20'
-                        : 'bg-muted'
-                  }`}>
-                    <Icon size={15} className={
-                      notif.type === 'cima_request' || notif.type === 'cima_accepted'
-                        ? 'text-cima-tag'
-                        : notif.type === 'rating'
-                          ? 'text-primary'
-                          : 'text-muted-foreground'
-                    } />
-                  </div>
-                  {!notif.read && (
-                    <RecordLED size="sm" className="absolute -top-0.5 -right-0.5" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className={`font-sans text-sm leading-snug ${!notif.read ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                    {notif.message}
-                  </p>
-                  <p className="font-mono text-[10px] text-muted-foreground/60 mt-1">
-                    {formatTimeAgo(notif.createdAt)}
-                  </p>
-                </div>
-              </motion.div>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }

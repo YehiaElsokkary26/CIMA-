@@ -7,10 +7,11 @@ interface UIStore {
   setDarkMode: (dark: boolean) => void
 }
 
+// Newsprint (light) is the default look; dark is the "screening room".
 export const useUIStore = create<UIStore>()(
   persist(
     (set, get) => ({
-      isDarkMode: true,
+      isDarkMode: false,
       toggleDarkMode: () => {
         const next = !get().isDarkMode
         set({ isDarkMode: next })
@@ -21,6 +22,6 @@ export const useUIStore = create<UIStore>()(
         document.documentElement.classList.toggle('dark', dark)
       },
     }),
-    { name: 'cima-ui' }
+    { name: 'klaket-ui' }
   )
 )

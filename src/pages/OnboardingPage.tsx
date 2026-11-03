@@ -1,85 +1,66 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { Camera, Play } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { Wordmark } from '@/components/klaket/primitives'
+import Still from '@/components/klaket/Still'
 
 const ROLES = [
   {
     role: 'filmmaker' as const,
     icon: Camera,
-    title: 'Filmmaker',
-    description: 'Upload your short films, build your portfolio, and grow your Cima.',
-    bg: 'bg-primary/10 border-primary/50 hover:bg-primary/15 hover:border-primary',
-    iconBg: 'bg-primary/20',
-    iconColor: 'text-primary',
+    title: 'I make films',
+    body: 'Upload your shorts, enter the weekly vote, and build a crew.',
+    still: 'portrait' as const,
+    tone: 'bg-k-red text-k-paper',
   },
   {
     role: 'viewer' as const,
     icon: Play,
-    title: 'Viewer',
-    description: 'Discover student films, leave reviews, and find your next favourite short.',
-    bg: 'bg-secondary/10 border-secondary/50 hover:bg-secondary/15 hover:border-secondary',
-    iconBg: 'bg-secondary/20',
-    iconColor: 'text-secondary',
+    title: 'I watch films',
+    body: 'Discover student films, vote every week, and leave notes on the cut.',
+    still: 'tram' as const,
+    tone: 'bg-k-teal text-k-paper',
   },
 ]
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const setRole  = useAuthStore((s) => s.setRole)
+  const setRole = useAuthStore((s) => s.setRole)
 
-  const handleSelect = (role: 'filmmaker' | 'viewer') => {
+  const choose = (role: 'filmmaker' | 'viewer') => {
     setRole(role)
     navigate('/home', { replace: true })
   }
 
   return (
-    <div className="min-h-full bg-background flex flex-col items-center justify-center px-6 py-12">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.35 }}
-        className="w-full max-w-sm space-y-8"
-      >
-        <div className="text-center space-y-2">
-          <h2 className="font-display text-4xl uppercase tracking-widest text-foreground">
-            Who Are You on Cima?
-          </h2>
-          {/* Rule 1: muted-foreground on cream ≥ 4.5:1 ✓ */}
-          <p className="font-mono text-xs text-muted-foreground">
-            Choose your role. You can't change this later.
-          </p>
+    <div className="h-full scroll-container bg-background">
+      <div className="min-h-full max-w-lg mx-auto px-4 py-6 flex flex-col gap-6">
+        <Wordmark size="sm" />
+        <div className="flex flex-col gap-1">
+          <span className="k-label text-[11px] text-hot font-semibold">Last step</span>
+          <h1 className="k-display text-[32px]" style={{ fontStretch: '120%' }}>Which side of the camera?</h1>
+          <p className="text-[14px] text-muted-foreground">This sets what you can do on Klaket. You can’t change it later.</p>
         </div>
-
-        {/* Rule 3: cards are min 44px — they're much larger so ✓ */}
-        <div className="flex flex-col gap-4 sm:flex-row">
-          {ROLES.map(({ role, icon: Icon, title, description, bg, iconBg, iconColor }) => (
-            <motion.button
+        <div className="grid gap-3 sm:grid-cols-2">
+          {ROLES.map(({ role, icon: Icon, title, body, still, tone }) => (
+            <button
               key={role}
-              whileTap={{ scale: 0.97 }}  /* Rule 9: tactile feedback */
-              onClick={() => handleSelect(role)}
-              className={`flex-1 border rounded-2xl p-5 text-left flex flex-col gap-4 transition-all duration-200 interactive-lift ${bg}`}
-              /* Rule 3: full card is tappable, min-height generous */
-              style={{ minHeight: 140 }}
+              type="button"
+              onClick={() => choose(role)}
+              className={`press text-start border-[1.5px] border-foreground flex flex-col hover:-translate-y-0.5 transition-transform ${tone}`}
             >
-              {/* Rule 3: icon area min 44×44 ✓ (w-12 h-12 = 48px) */}
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${iconBg}`}>
-                <Icon size={22} className={iconColor} />
+              <div className="h-[140px] border-b-[1.5px] border-foreground overflow-hidden" aria-hidden="true">
+                <Still kind={still} />
               </div>
-              <div>
-                <h3 className="font-display text-2xl uppercase tracking-widest text-foreground">
-                  {title}
-                </h3>
-                {/* Rule 2: text-xs = 12px → push to text-sm for 15px on body text */}
-                <p className="font-sans text-sm text-muted-foreground mt-1 leading-relaxed">
-                  {description}
-                </p>
+              <div className="p-3.5 flex flex-col gap-1.5">
+                <Icon size={20} aria-hidden="true" />
+                <b className="k-display text-[22px]">{title}</b>
+                <span className="text-[14px] opacity-90">{body}</span>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }

@@ -1,115 +1,85 @@
-import { motion } from 'framer-motion'
-import { Moon, Sun, Camera, Eye, LogOut, ChevronRight, Shield } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useUIStore } from '@/store/uiStore'
 import { useAuth } from '@/hooks/useAuth'
+import { cn } from '@/lib/utils'
+import { PageTitle } from '@/components/klaket/primitives'
 import RoleBadge from '@/components/profile/RoleBadge'
 import Avatar from '@/components/ui/Avatar'
 
 export default function SettingsPage() {
-  const { isDarkMode, toggleDarkMode } = useUIStore()
+  const { isDarkMode, setDarkMode } = useUIStore()
   const { user, logout } = useAuth()
 
-  const sections = [
-    {
-      title: 'Appearance',
-      items: [
-        {
-          label: 'Dark Mode',
-          desc: 'The cinematic default',
-          icon: isDarkMode ? Moon : Sun,
-          action: (
-            <button
-              onClick={toggleDarkMode}
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${isDarkMode ? 'bg-primary' : 'bg-muted'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-background shadow transition-transform duration-200 ${isDarkMode ? 'translate-x-5' : ''}`} />
-            </button>
-          ),
-        },
-      ],
-    },
-    {
-      title: 'Account',
-      items: [
-        {
-          label: 'Your Role',
-          desc: user?.role === 'filmmaker' ? 'You can upload films' : 'Discover and review films',
-          icon: user?.role === 'filmmaker' ? Camera : Eye,
-          action: user ? <RoleBadge role={user.role} /> : null,
-        },
-        {
-          label: 'Privacy',
-          desc: 'Manage who can see your profile',
-          icon: Shield,
-          action: <ChevronRight size={16} className="text-muted-foreground" />,
-        },
-      ],
-    },
-  ]
-
   return (
-    <div className="min-h-full px-4 py-6 space-y-8">
-      <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">Settings</h1>
+    <div className="min-h-full">
+      <div className="max-w-2xl mx-auto px-4 pt-2 pb-8 flex flex-col gap-6">
+        <PageTitle en="SETTINGS" ar="الإعدادات" />
 
-      {/* Profile card */}
-      {user && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-2xl border border-border p-4 flex items-center gap-4"
-        >
-          <Avatar name={user.name} size="lg" />
-          <div>
-            <p className="font-sans font-semibold text-foreground">{user.name}</p>
-            <p className="font-mono text-xs text-muted-foreground">{user.email}</p>
-            <RoleBadge role={user.role} className="mt-2" />
-          </div>
-        </motion.div>
-      )}
+        {user && (
+          <section className="border-[1.5px] border-foreground bg-card p-3.5 flex items-center gap-3.5">
+            <Avatar name={user.name} src={user.avatarUrl ?? user.avatar} size="lg" />
+            <div className="min-w-0 flex flex-col gap-1">
+              <b className="text-[16px] truncate">{user.name}</b>
+              <span className="text-[13px] text-muted-foreground truncate">{user.email}</span>
+              <RoleBadge role={user.role} className="self-start" />
+            </div>
+          </section>
+        )}
 
-      {sections.map((section, si) => (
-        <motion.section
-          key={section.title}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: si * 0.1 }}
-        >
-          <h2 className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-3">
-            {section.title}
-          </h2>
-          <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
-            {section.items.map(({ label, desc, icon: Icon, action }) => (
-              <div key={label} className="flex items-center gap-3 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <Icon size={15} className="text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-sans text-sm font-medium text-foreground">{label}</p>
-                  <p className="font-mono text-xs text-muted-foreground">{desc}</p>
-                </div>
-                {action}
-              </div>
+        <section className="flex flex-col gap-2">
+          <h2 className="k-label text-[11px] font-semibold">Theme</h2>
+          <div role="radiogroup" aria-label="Theme" className="grid grid-cols-2 border-[1.5px] border-foreground">
+            {[
+              { dark: false, label: 'Newsprint', note: 'Light', swatch: 'bg-k-paper' },
+              { dark: true, label: 'Screening room', note: 'Dark', swatch: 'bg-k-ink' },
+            ].map((t, i) => (
+              <button
+                key={t.label}
+                type="button"
+                role="radio"
+                aria-checked={isDarkMode === t.dark}
+                onClick={() => setDarkMode(t.dark)}
+                className={cn(
+                  'flex items-center gap-3 p-3 text-start min-h-[60px]',
+                  i === 0 && 'border-e-[1.5px] border-foreground',
+                  isDarkMode === t.dark ? 'bg-solid text-solid-foreground' : 'hover:bg-foreground/5',
+                )}
+              >
+                <span className={cn('w-8 h-8 border-[1.5px] border-current shrink-0', t.swatch)} aria-hidden="true" />
+                <span className="flex flex-col">
+                  <b className="text-[14px]">{t.label}</b>
+                  <span className="k-label text-[9.5px] opacity-80">{t.note}</span>
+                </span>
+              </button>
             ))}
           </div>
-        </motion.section>
-      ))}
+        </section>
 
-      {/* Logout — Rule 3: min 44px touch target via py-3.5 (14×2 + ~20px text = 48px ✓) */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+        <section className="flex flex-col gap-2">
+          <h2 className="k-label text-[11px] font-semibold">Account</h2>
+          <div className="border-[1.5px] border-foreground bg-field divide-y divide-rule">
+            <div className="flex items-center justify-between gap-3 px-3 py-3">
+              <span className="flex flex-col">
+                <b className="text-[14px]">Your role</b>
+                <span className="text-[13px] text-muted-foreground">
+                  {user?.role === 'filmmaker' ? 'You can upload films and enter the vote.' : 'You can watch, vote and leave notes.'}
+                </span>
+              </span>
+              {user && <RoleBadge role={user.role} />}
+            </div>
+          </div>
+        </section>
+
         <button
+          type="button"
           onClick={logout}
-          style={{ minHeight: 48 }}
-          className="w-full flex items-center justify-center gap-2 bg-destructive/10 text-destructive border border-destructive/20 rounded-2xl py-3.5 font-sans font-semibold text-sm hover:bg-destructive/20 active:scale-[0.98] transition-all"
+          className="press flex items-center justify-center gap-2 min-h-[50px] border-[1.5px] border-hot text-hot font-extrabold text-[14px] hover:bg-hot/10"
         >
-          <LogOut size={16} />
-          Sign Out
+          <LogOut size={16} aria-hidden="true" />
+          SIGN OUT
         </button>
-      </motion.div>
 
-      <div className="text-center pb-4">
-        <p className="font-mono text-[10px] text-muted-foreground/50">
-          Cima v0.1.0 — Your film, your scene.
-        </p>
+        <p className="k-label text-[10px] text-muted-foreground text-center">Klaket v0.1.0 · كلاكيت</p>
       </div>
     </div>
   )

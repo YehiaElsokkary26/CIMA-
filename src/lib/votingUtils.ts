@@ -45,7 +45,7 @@ export function getWeekCountdown(): string {
 
 // ─── localStorage vote helpers ────────────────────────────────────────────────
 
-const PREFIX = 'cima_vote_'
+const PREFIX = 'klaket_vote_'
 
 export function getUserVoteThisWeek(userId: string): string | null {
   try {

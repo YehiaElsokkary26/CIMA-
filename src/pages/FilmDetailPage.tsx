@@ -1,248 +1,355 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Play, ArrowLeft, Clock, Calendar, ChevronDown, Send } from 'lucide-react'
-import { useFilm, useFilmReviews, useAddReview } from '@/hooks/useFilms'
+import { useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, Play, Share2 } from 'lucide-react'
+import { useAddReview, useFilm, useFilmReviews } from '@/hooks/useFilms'
 import { useRating } from '@/hooks/useRating'
 import { useSendCimaRequest } from '@/hooks/useCima'
-import ReviewCard from '@/components/film/ReviewCard'
-import VoteSection from '@/components/film/VoteSection'
-import StarRating from '@/components/ui/StarRating'
-import Badge from '@/components/ui/Badge'
-import Avatar from '@/components/ui/Avatar'
-import Button from '@/components/ui/Button'
-import CimaButton from '@/components/cima/CimaButton'
-import LoadingDots from '@/components/ui/LoadingDots'
-import EmptyState from '@/components/ui/EmptyState'
-import { Film, MessageSquare } from 'lucide-react'
-import { formatRuntime, formatTimeAgo } from '@/lib/utils'
+import { getFilmById, getFilmOfTheWeek } from '@/lib/mockData'
+import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
+import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
+import { toast } from '@/store/toastStore'
+import type { Film, Review } from '@/types'
+import { FilmStill } from '@/components/klaket/FilmCards'
+import { Clap, SectionHeader, Slate } from '@/components/klaket/primitives'
+import StarRating from '@/components/ui/StarRating'
+import Button from '@/components/ui/Button'
+import Avatar from '@/components/ui/Avatar'
+import EmptyState from '@/components/ui/EmptyState'
+import { MessageSquare } from 'lucide-react'
 
-const MOCK_FILM = {
-  id: '4', title: 'STATIC', description: 'A radio technician picks up a signal from 1986. What begins as a technical glitch spirals into a haunting encounter with a voice that knows too much. Shot entirely on location in a decommissioned broadcasting tower in rural Morocco, STATIC is a lo-fi meditation on memory, loss, and the frequencies we leave behind.', genre: ['Sci-Fi', 'Experimental'], runtime: 31, year: 2023, rating: 4.8, ratingCount: 67, thumbnailUrl: 'https://images.unsplash.com/photo-1585676623595-e7cb4792a3e0?w=900&q=80', uploaderId: 'u4',
-  uploader: { id: 'u4', name: 'Omar Hadid', role: 'filmmaker' as const, email: '', bio: 'Documentary and experimental filmmaker based in Casablanca. Obsessed with sound design and found footage.', school: 'ESAV Marrakech', createdAt: '' },
-  createdAt: '2023-12-20',
+function tcToSeconds(tc: string): number {
+  const [h, m, s] = tc.split(':').map((n) => parseInt(n, 10) || 0)
+  return h * 3600 + m * 60 + s
 }
 
-const MOCK_REVIEWS = [
-  { id: 'r1', filmId: '4', userId: 'u10', rating: 5, body: 'One of the most atmospheric short films I\'ve seen this year. The sound design is extraordinary — every crackle and hiss feels intentional. The ending left me genuinely unsettled.', createdAt: '2024-01-15', user: { id: 'u10', name: 'Hana Bakkali', email: '', role: 'viewer' as const, createdAt: '' } },
-  { id: 'r2', filmId: '4', userId: 'u11', rating: 4, body: 'The visual language is confident and assured. Hadid knows exactly when to hold a shot. My only critique is the pacing in the middle act drags slightly — but the final ten minutes are worth every second.', createdAt: '2024-02-03', user: { id: 'u11', name: 'Mehdi Laroui', email: '', role: 'filmmaker' as const, createdAt: '' } },
-  { id: 'r3', filmId: '4', userId: 'u12', rating: 5, body: 'Shot on 16mm if I\'m not mistaken. The grain alone makes this worth watching. A genuinely original voice emerging from North African cinema.', createdAt: '2024-03-08', user: { id: 'u12', name: 'Sofia Tazi', email: '', role: 'filmmaker' as const, createdAt: '' } },
-]
-
 export default function FilmDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id = '' } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
-  const [showReviewForm, setShowReviewForm] = useState(false)
-  const [reviewBody, setReviewBody] = useState('')
-  const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
 
-  const { data: film } = useFilm(id ?? '')
-  const { data: reviews } = useFilmReviews(id ?? '')
-  const addReview = useAddReview(id ?? '')
-  const sendCimaRequest = useSendCimaRequest()
+  const { data: serverFilm } = useFilm(id)
+  const { data: serverReviews } = useFilmReviews(id)
+  const addReview = useAddReview(id)
+  const sendCrewRequest = useSendCimaRequest()
 
-  const displayFilm = film ?? MOCK_FILM
-  const displayReviews = reviews ?? MOCK_REVIEWS
+  const film: Film = serverFilm ?? getFilmById(id) ?? getFilmOfTheWeek()
+  const [localNotes, setLocalNotes] = useState<Review[]>([])
+  const notes: Review[] = [...localNotes, ...(serverReviews ?? [])]
 
-  const rating = useRating(id ?? '', displayFilm.rating)
+  const rating = useRating(id, undefined)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [now, setNow] = useState(0)
+  const [duration, setDuration] = useState((film.runtime ?? 0) * 60)
+  const [saved, setSaved] = useState(false)
+  const [crewAsked, setCrewAsked] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [pinToTime, setPinToTime] = useState(true)
 
-  const handleAddToRating = (val: number) => {
-    rating.setHovered(null)
-    rating.submit(val)
+  const src = film.videoUrl ?? film.trailerUrl
+  const isOwn = user?.id === film.uploaderId
+
+  const startPlayback = () => {
+    if (!src) {
+      toast.info('This film hasn’t been uploaded in full yet.')
+      return
+    }
+    setPlaying(true)
+    requestAnimationFrame(() => videoRef.current?.play().catch(() => {}))
   }
 
-  const handleCima = () => {
-    if (cimaStatus === 'none' && displayFilm.uploader?.id) {
-      sendCimaRequest.mutate(displayFilm.uploader.id)
-      setCimaStatus('pending')
+  const seek = (tc: string) => {
+    const secs = tcToSeconds(tc)
+    setNow(secs)
+    if (!playing) startPlayback()
+    requestAnimationFrame(() => {
+      if (videoRef.current) videoRef.current.currentTime = secs
+    })
+  }
+
+  const share = async () => {
+    const url = window.location.href
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied.')
+    } catch {
+      toast.info(url)
     }
   }
 
-  const handleSubmitReview = async () => {
-    if (!reviewBody.trim()) return
-    await addReview.mutateAsync({ rating: rating.selected || 3, body: reviewBody })
-    setReviewBody('')
-    setShowReviewForm(false)
+  const askToCrew = () => {
+    if (!film.uploader?.id || crewAsked) return
+    sendCrewRequest.mutate(film.uploader.id)
+    setCrewAsked(true)
+    toast.success(`Call sheet sent to ${film.uploader.name}.`)
   }
+
+  const postNote = async () => {
+    const text = draft.trim()
+    if (!text) return
+    const body = pinToTime && playing ? `[${timecode(now)}] ${text}` : text
+    const stars = rating.selected || 4
+    try {
+      await addReview.mutateAsync({ rating: stars, body })
+    } catch {
+      // No server: keep the note on this screen so the flow still works.
+      if (user) {
+        setLocalNotes((n) => [
+          { id: `local-${Date.now()}`, filmId: id, userId: user.id, user, rating: stars, body, createdAt: new Date().toISOString() },
+          ...n,
+        ])
+      }
+    }
+    setDraft('')
+    toast.success('Note posted.')
+  }
+
+  const progress = duration ? Math.min(100, (now / duration) * 100) : 0
+  const marks = notes
+    .map((n) => splitTimecodedNote(n.body).tc)
+    .filter((tc): tc is string => !!tc && !!duration)
+    .map((tc) => Math.min(100, (tcToSeconds(tc) / duration) * 100))
 
   return (
     <div className="min-h-full">
-      {/* Poster Header */}
-      <motion.div
-        initial={{ y: 40, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="relative"
-      >
-        <div className="relative aspect-video w-full overflow-hidden">
-          {displayFilm.thumbnailUrl ? (
-            <img
-              src={displayFilm.thumbnailUrl}
-              alt={displayFilm.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-secondary to-background" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-
-          {/* Back button — Rule 3: min 44×44px touch target (w-11 h-11 = 44px) */}
-          <Link
-            to="/home"
-            className="absolute top-4 left-4 w-11 h-11 bg-background/60 backdrop-blur-sm rounded-full flex items-center justify-center border border-border"
-            aria-label="Back to home"
-          >
-            <ArrowLeft size={18} className="text-foreground" />
-          </Link>
-
-          {/* Play button */}
-          <button className="absolute inset-0 flex items-center justify-center group">
-            <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center shadow-glow-orange group-hover:scale-110 transition-transform duration-200">
-              <Play size={22} fill="currentColor" className="text-primary-foreground ml-1" />
-            </div>
-          </button>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.35 }}
-        className="px-4 pt-4 space-y-5"
-      >
-        {/* Title + genres */}
-        <div>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {displayFilm.genre?.map((g) => <Badge key={g} variant="film">{g}</Badge>)}
-          </div>
-          <h1 className="font-display text-4xl uppercase tracking-widest text-foreground leading-none">
-            {displayFilm.title}
-          </h1>
-
-          {/* Metadata strip */}
-          <div className="flex items-center gap-3 mt-2 flex-wrap">
-            {displayFilm.runtime && (
-              <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
-                <Clock size={11} /> {formatRuntime(displayFilm.runtime)}
-              </span>
-            )}
-            <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
-              <Calendar size={11} /> {displayFilm.year}
+      {/* Player */}
+      <section aria-label="Player" className="bg-k-ink text-k-paper">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between px-3 py-2.5">
+            <button
+              type="button"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/home'))}
+              aria-label="Back"
+              className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press"
+            >
+              <ArrowLeft size={20} aria-hidden="true" />
+            </button>
+            <span className="k-label text-[10.5px] text-k-mustard truncate px-2">
+              {film.isFilmOfTheWeek ? '★ Film of the week' : film.genre?.[0] ?? 'Short film'}
             </span>
-            {displayFilm.ratingCount && (
-              <span className="font-mono text-xs text-muted-foreground">
-                {displayFilm.ratingCount} ratings
-              </span>
+            <button
+              type="button"
+              onClick={share}
+              aria-label="Copy link to this film"
+              className="w-11 h-11 flex items-center justify-center border-[1.5px] border-k-paper press"
+            >
+              <Share2 size={18} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="relative aspect-video max-h-[60vh] w-full bg-black">
+            {playing && src ? (
+              <video
+                ref={videoRef}
+                src={src}
+                controls
+                playsInline
+                className="absolute inset-0 w-full h-full"
+                onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
+                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || duration)}
+              />
+            ) : (
+              <>
+                <FilmStill film={film} className="absolute inset-0" />
+                <button
+                  type="button"
+                  onClick={startPlayback}
+                  aria-label={`Play ${film.title}`}
+                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[68px] h-[68px] rounded-full bg-k-paper border-2 border-k-ink flex items-center justify-center press"
+                >
+                  <Play size={26} fill="#15120E" stroke="#15120E" className="ms-1" aria-hidden="true" />
+                </button>
+              </>
             )}
           </div>
-        </div>
 
-        {/* Aggregate rating */}
-        <div className="flex items-center gap-3">
-          <span className="font-display text-5xl text-primary">
-            {displayFilm.rating?.toFixed(1)}
-          </span>
-          <div>
-            <StarRating value={Math.round(displayFilm.rating ?? 0)} size="md" />
-            <p className="font-mono text-[10px] text-muted-foreground mt-0.5">
-              {displayFilm.ratingCount} ratings
-            </p>
+          <div className="px-3 pt-2 pb-3 flex flex-col gap-1.5">
+            <div className="relative h-1.5 bg-k-smoke" aria-hidden="true">
+              <div className="absolute inset-y-0 left-0 bg-k-mustard" style={{ width: `${progress}%` }} />
+              {marks.map((p, i) => (
+                <span key={i} className="absolute -top-[3px] w-0.5 h-3 bg-k-coral" style={{ left: `${p}%` }} />
+              ))}
+            </div>
+            <div className="flex justify-between k-label text-[10.5px]">
+              <span>{timecode(now)}</span>
+              <span className="text-k-sand">{duration ? timecode(duration) : '—'}</span>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Vote section */}
-        <VoteSection film={displayFilm as import('@/types').Film} />
+      <Clap className="h-2.5 border-b-[1.5px] border-foreground" />
+      <div className="border-b-[1.5px] border-foreground">
+        <Slate
+          className="max-w-5xl mx-auto"
+          cells={[
+            { label: 'Scene', value: film.genre?.join(' · ') || 'Short' },
+            { label: 'Length', value: film.runtime ? `${film.runtime} min` : '—' },
+            { label: 'Roll', value: rollFor(film) },
+            { label: 'Year', value: film.year },
+          ]}
+        />
+      </div>
 
-        {/* Filmmaker chip */}
-        {displayFilm.uploader && (
-          <Link
-            to={`/profile/${displayFilm.uploader.id}`}
-            className="flex items-center gap-3 bg-card rounded-xl p-3 border border-border interactive-lift"
-          >
-            <Avatar name={displayFilm.uploader.name} size="sm" />
-            <div>
-              <p className="font-sans text-sm font-medium text-foreground">{displayFilm.uploader.name}</p>
-              {displayFilm.uploader.school && (
-                <p className="font-mono text-xs text-muted-foreground">{displayFilm.uploader.school}</p>
-              )}
-            </div>
-            <ChevronDown size={14} className="text-muted-foreground ml-auto -rotate-90" />
-          </Link>
-        )}
-
-        {/* Description */}
-        <p className="font-sans text-sm text-muted-foreground leading-relaxed">{displayFilm.description}</p>
-
-        {/* Actions */}
-        <div className="flex gap-3 flex-wrap">
-          {user?.id !== displayFilm.uploaderId && (
-            <CimaButton status={cimaStatus} onClick={handleCima} />
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowReviewForm(!showReviewForm)}
-            className="flex items-center gap-2"
-          >
-            <MessageSquare size={14} />
-            Write a Review
-          </Button>
-        </div>
-
-        {/* Rate this film */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
-          <p className="font-mono text-xs text-muted-foreground uppercase tracking-wider">Rate this film</p>
-          <StarRating
-            value={rating.displayRating}
-            interactive
-            onHover={(v) => rating.setHovered(v)}
-            onSelect={handleAddToRating}
-            size="lg"
-          />
-        </div>
-
-        {/* Review form */}
-        {showReviewForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-card rounded-2xl border border-border p-4 space-y-3"
-          >
-            {/* Rule 7: label explicitly associated with textarea for accessibility */}
-            <label htmlFor="review-body" className="font-mono text-xs text-muted-foreground uppercase tracking-wider block">
-              Your Review
-            </label>
-            <textarea
-              id="review-body"
-              value={reviewBody}
-              onChange={(e) => setReviewBody(e.target.value)}
-              placeholder="What did you think about this film?"
-              rows={4}
-              className="w-full bg-input text-foreground border border-border rounded-xl p-3 text-sm font-sans resize-none placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleSubmitReview} disabled={addReview.isPending}>
-                <Send size={13} />
-                Publish
+      <div className="max-w-5xl mx-auto px-4 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:gap-10">
+        <div>
+          {/* Title, synopsis, actions */}
+          <section className="py-4 flex flex-col gap-3">
+            <h1 className="k-display text-[30px] sm:text-[40px] uppercase">{film.title}</h1>
+            {film.description && <p className="text-[15px] leading-relaxed max-w-[65ch]">{film.description}</p>}
+            <div className="flex gap-2">
+              <Button variant="solid" className="flex-1" onClick={startPlayback}>
+                ▶ Play{film.runtime ? ` ${film.runtime} min` : ''}
+              </Button>
+              <Button
+                variant={saved ? 'accent' : 'outline'}
+                className="flex-1"
+                aria-pressed={saved}
+                onClick={() => {
+                  setSaved((s) => !s)
+                  toast.success(saved ? 'Removed from your watchlist.' : 'Saved to your watchlist.')
+                }}
+              >
+                {saved ? 'Saved ✓' : 'Save'}
               </Button>
             </div>
-          </motion.div>
-        )}
+          </section>
 
-        {/* Reviews */}
-        <div className="space-y-3 pb-8">
-          <h2 className="font-display text-2xl uppercase tracking-widest text-foreground">
-            Reviews
-          </h2>
-          {displayReviews.length === 0 ? (
-            <EmptyState icon={MessageSquare} title="No Reviews Yet" subtitle="Be the first critic on set." />
-          ) : (
-            displayReviews.map((review) => <ReviewCard key={review.id} review={review} />)
-          )}
+          {/* Credits block */}
+          <section aria-label="Credits" className="bg-k-red text-k-paper border-[1.5px] border-foreground p-3.5 flex flex-col gap-2">
+            <span className="k-label text-[10px] text-k-mustard">Credits</span>
+            <div className="flex items-center gap-3">
+              {film.uploader && <Avatar name={film.uploader.name} src={film.uploader.avatarUrl ?? film.uploader.avatar} size="md" className="border-k-paper" />}
+              <p className="k-label text-[11px] leading-relaxed min-w-0">
+                Directed by{' '}
+                {film.uploader ? (
+                  <Link to={`/profile/${film.uploader.id}`} className="font-semibold underline underline-offset-2">
+                    {film.uploader.name}
+                  </Link>
+                ) : (
+                  'Unknown'
+                )}
+                {film.uploader?.school ? ` · ${film.uploader.school}` : ''} · {film.year}
+              </p>
+            </div>
+            {!isOwn && film.uploader && (
+              <button
+                type="button"
+                onClick={askToCrew}
+                disabled={crewAsked}
+                className="press self-start mt-1 min-h-[40px] px-3 bg-k-ink text-k-paper k-label text-[10.5px] font-semibold disabled:opacity-70"
+              >
+                {crewAsked ? 'Call sheet sent ✓' : `Send ${film.uploader.name.split(' ')[0]} a call sheet`}
+              </button>
+            )}
+          </section>
+
+          {/* Vote + rating */}
+          <section className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Link
+              to="/vote"
+              className="press border-[1.5px] border-foreground bg-k-mustard text-k-ink p-3 flex flex-col gap-0.5"
+            >
+              <span className="k-label text-[10px] font-semibold">This week’s vote</span>
+              <span className="font-black text-[18px]" style={{ fontStretch: '115%' }}>
+                {(film.votes ?? 0).toLocaleString()} VOTES
+              </span>
+              <span className="k-label text-[10px]">Circle it on the contact sheet →</span>
+            </Link>
+            <div className="border-[1.5px] border-foreground bg-card p-3 flex flex-col gap-1">
+              <span className="k-label text-[10px] font-semibold">
+                Rate it{film.rating ? ` · avg ★ ${film.rating.toFixed(1)} (${film.ratingCount ?? 0})` : ''}
+              </span>
+              <StarRating
+                value={rating.displayRating}
+                interactive
+                onHover={(v) => rating.setHovered(v)}
+                onSelect={(v) => {
+                  rating.setHovered(null)
+                  rating.submit(v)
+                }}
+                size="md"
+                className="-ms-2.5"
+              />
+            </div>
+          </section>
         </div>
-      </motion.div>
+
+        {/* Notes on the cut */}
+        <section aria-label="Notes on the cut" className="pt-6 pb-4 flex flex-col gap-3 lg:pt-4">
+          <SectionHeader title="NOTES ON THE CUT" meta={`${notes.length} notes`} />
+          {notes.length === 0 ? (
+            <EmptyState icon={MessageSquare} title="No notes yet" subtitle="Be the first to say what works in this cut." className="py-6" />
+          ) : (
+            <ul className="flex flex-col">
+              {notes.map((n) => {
+                const { tc, text } = splitTimecodedNote(n.body)
+                return (
+                  <li key={n.id} className="flex flex-col gap-1.5 py-3 border-b border-rule">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {tc && (
+                        <button
+                          type="button"
+                          onClick={() => seek(tc)}
+                          aria-label={`Jump to ${tc}`}
+                          className="k-label text-[11px] font-semibold bg-k-ink text-k-mustard px-1.5 min-h-[26px] press"
+                        >
+                          {tc}
+                        </button>
+                      )}
+                      <b className="text-[13.5px]">{n.user?.name ?? 'Someone'}</b>
+                      <span className="text-[12px] text-muted-foreground">
+                        ★ {n.rating} · {formatTimeAgo(n.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-[14.5px] leading-relaxed">{text}</p>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              postNote()
+            }}
+          >
+            <label htmlFor="note" className="k-label text-[10.5px] font-semibold text-muted-foreground">
+              {playing ? `Add a note at ${timecode(now)}` : 'Add a note'}
+            </label>
+            <div className="flex">
+              <input
+                id="note"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="What works in this shot?"
+                className="input-k border-e-0"
+              />
+              <button
+                type="submit"
+                disabled={!draft.trim() || addReview.isPending}
+                className="min-w-[72px] bg-solid text-solid-foreground font-extrabold text-[13px] disabled:opacity-50 press"
+              >
+                POST
+              </button>
+            </div>
+            {playing && (
+              <label className="flex items-center gap-2 text-[13px] text-muted-foreground min-h-[32px]">
+                <input
+                  type="checkbox"
+                  checked={pinToTime}
+                  onChange={(e) => setPinToTime(e.target.checked)}
+                  className="w-4 h-4 accent-[#C42320]"
+                />
+                Pin this note to {timecode(now)}
+              </label>
+            )}
+          </form>
+        </section>
+      </div>
     </div>
   )
 }

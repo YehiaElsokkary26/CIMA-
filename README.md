@@ -1,6 +1,6 @@
-# 🎬 Cima
+# 🎬 Klaket · كلاكيت
 
-A mobile-first PWA for film students — built with React, Express, TypeScript, and Supabase.
+A mobile-first PWA for film and media students and young filmmakers: post films, vote on Film of the Week, and build a crew. Formerly called Cima. Built with React, Express, TypeScript and Supabase.
 
 ---
 
@@ -163,7 +163,7 @@ All endpoints are prefixed with `/api`.
 | GET | `/users/:id/films` | — | User's films |
 | PATCH | `/users/me` | ✓ | Update own profile |
 
-### Cima (creative circles)
+### Klaket (creative circles)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/cima/mine` | ✓ | My circle + pending requests |
@@ -191,7 +191,7 @@ All endpoints are prefixed with `/api`.
 CIMA/
 ├── src/                        # React frontend
 │   ├── components/
-│   │   ├── layout/             # AppShell, TabBar, CimaLogo
+│   │   ├── layout/             # AppShell, TabBar, NavBar, Sidebar
 │   │   └── ui/                 # Reusable UI components
 │   ├── hooks/                  # useAuth, useFilms, useCima, etc.
 │   ├── lib/

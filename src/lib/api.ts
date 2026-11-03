@@ -7,7 +7,7 @@ const api = axios.create({
 })
 
 // Attach the Supabase access_token (auto-refreshed by the Supabase client) to
-// every request. Falls back to the legacy cima_token stored in localStorage so
+// every request. Falls back to the legacy klaket_token stored in localStorage so
 // the demo fallback in OnboardingPage still works without a real Supabase project.
 api.interceptors.request.use(async (config) => {
   try {
@@ -21,7 +21,7 @@ api.interceptors.request.use(async (config) => {
   } catch { /* supabase not configured — fall through */ }
 
   // Legacy fallback
-  const token = localStorage.getItem('cima_token')
+  const token = localStorage.getItem('klaket_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -42,7 +42,7 @@ api.interceptors.response.use(
       } catch { /* ignore */ }
 
       // Couldn't refresh — clear everything and redirect to login
-      localStorage.removeItem('cima_token')
+      localStorage.removeItem('klaket_token')
       window.location.href = '/login'
     }
     return Promise.reject(err)
@@ -81,7 +81,7 @@ export const usersApi = {
   films: (id: string) => api.get<Film[]>(`/users/${id}/films`),
 }
 
-// ---- Cima -------------------------------------------------------------------
+// ---- Crew (server routes are still named /cima) ----------------------------
 export const cimaApi = {
   mine: () => api.get<{ members: CimaMember[]; requests: CimaRequest[] }>('/cima/mine'),
   sendRequest: (targetUserId: string) => api.post(`/cima/request/${targetUserId}`),

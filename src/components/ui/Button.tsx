@@ -1,58 +1,43 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
 import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'cima' | 'destructive' | 'outline'
+  /**
+   * primary: poster red · solid: ink (inverts in dark) · accent: mustard
+   * outline: ink line · ghost: text only · destructive: coral line
+   */
+  variant?: 'primary' | 'solid' | 'accent' | 'outline' | 'ghost' | 'destructive'
   size?: 'sm' | 'md' | 'lg'
   pulse?: boolean
 }
 
-// Rule 3: ALL buttons have minimum 44px touch target height
-// Rule 11: consistent styling — primary=cinema-red/cream, secondary=outline/red, destructive=burgundy
-// Rule 9: active:scale-[0.97] for tactile pressed feedback
+// Square, bold, expanded labels — like the text on a slate.
+// Every size keeps a 44px minimum touch target.
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', pulse = false, className, children, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          // Base: font-mono uppercase tracking for all buttons (Rule 11)
-          'inline-flex items-center justify-center gap-2 font-mono uppercase tracking-wider rounded-none',
-          'transition-all duration-150',
-          // Rule 9: tactile pressed feedback
-          'active:scale-[0.97]',
-          // Rule 3: never below 44px height — disabled state
-          'disabled:opacity-50 disabled:pointer-events-none',
-
-          // ── Variant colours ──────────────────────────────────────────────
-          // Rule 11 + Rule 1: cinema-red bg, paper-cream text (never gray on red)
-          variant === 'primary'     && 'bg-primary text-primary-foreground hover:brightness-110',
-          // Rule 11: secondary = transparent + cinema-red border + cinema-red text
-          variant === 'secondary'   && 'bg-transparent border border-primary text-primary hover:bg-primary/10',
-          variant === 'ghost'       && 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted',
-          variant === 'cima'        && 'bg-accent text-accent-foreground hover:brightness-110',
-          // Rule 11: destructive = burgundy bg (not just red)
-          variant === 'destructive' && 'bg-burgundy text-burgundy-foreground hover:brightness-110 border border-burgundy/20',
-          variant === 'outline'     && 'bg-transparent border border-border text-foreground hover:bg-muted',
-
-          // ── Sizes with explicit min-height for touch target (Rule 3) ────
-          // sm: min 44px → py-3 = 12px×2 + ~18px text line = 42px → use py-[11px]
-          size === 'sm' && 'text-[11px] px-4 py-[11px] min-h-[44px]',
-          // md: min 44px → py-3 = 12px×2 + ~18px = 42px, add 1px
-          size === 'md' && 'text-xs px-5 py-[13px] min-h-[44px]',
-          // lg: prominent action — 52px (Rule 3: vote/submit needs generous target)
-          size === 'lg' && 'text-xs px-7 py-[15px] min-h-[52px]',
-
-          pulse && 'cta-pulse',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </button>
-    )
-  }
+  ({ variant = 'primary', size = 'md', pulse = false, className, children, ...props }, ref) => (
+    <button
+      ref={ref}
+      className={cn(
+        'press inline-flex items-center justify-center gap-2 rounded-none font-extrabold uppercase tracking-[0.01em]',
+        'transition-colors duration-150 disabled:opacity-50 disabled:pointer-events-none',
+        variant === 'primary' && 'bg-k-red text-k-paper hover:brightness-110',
+        variant === 'solid' && 'bg-solid text-solid-foreground hover:opacity-90',
+        variant === 'accent' && 'bg-k-mustard text-k-ink hover:brightness-105',
+        variant === 'outline' && 'bg-transparent text-foreground border-[1.5px] border-foreground hover:bg-foreground/5',
+        variant === 'ghost' && 'bg-transparent text-muted-foreground hover:text-foreground',
+        variant === 'destructive' && 'bg-transparent text-hot border-[1.5px] border-hot hover:bg-hot/10',
+        size === 'sm' && 'text-[12px] px-3.5 min-h-[44px]',
+        size === 'md' && 'text-[14px] px-4 min-h-[48px]',
+        size === 'lg' && 'text-[16px] px-5 min-h-[52px]',
+        pulse && 'cta-pulse',
+        className,
+      )}
+      style={{ fontStretch: '110%', ...props.style }}
+      {...props}
+    >
+      {children}
+    </button>
+  ),
 )
 
 Button.displayName = 'Button'
