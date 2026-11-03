@@ -21,9 +21,9 @@ const BORDER_CLASS = {
 }
 
 const ICON_COLOR = {
-  success: 'hsl(var(--primary))',
-  error:   'hsl(var(--destructive))',
-  info:    'hsl(var(--secondary-foreground))',
+  success: '#F1B51C',
+  error:   '#F0614F',
+  info:    '#5FB3AC',
 }
 
 export default function ToastContainer() {
@@ -48,30 +48,31 @@ export default function ToastContainer() {
               initial={{ opacity: 0, y: -16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0,   scale: 1 }}
               exit={{   opacity: 0, y: -10,  scale: 0.95 }}
-              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
               className={cn(
                 'pointer-events-auto flex items-center gap-3 border-r border-t border-b border-border/30 px-4 py-3',
                 // Rule 9: ink-black bg, paper-cream text (never gray on dark)
                 BORDER_CLASS[t.type]
               )}
               style={{
-                background: 'hsl(var(--card))',
-                borderRadius: 12,
-                boxShadow: '0 4px 20px hsl(var(--background) / 0.6), 0 1px 4px hsl(var(--background) / 0.3)',
+                background: '#15120E',   /* Rule 12: ink-black, never pure black */
+                borderRadius: 0,
+                boxShadow: '0 4px 20px rgba(21,18,14,0.6), 0 1px 4px rgba(21,18,14,0.3)',
               }}
             >
               {/* Icon in matching accent color */}
               <Icon size={16} className="shrink-0" style={{ color: ICON_COLOR[t.type] }} />
 
-              <p className="text-sm flex-1 leading-snug text-foreground">
+              {/* Rule 1 + Rule 9: paper-cream text, font-mono text-sm */}
+              <p className="text-[14px] font-semibold flex-1 leading-snug" style={{ color: '#F1E8D3' }}>
                 {t.message}
               </p>
 
               {/* Rule 3: close button min 44×44px touch area */}
               <button
                 onClick={() => removeToast(t.id)}
-                className="shrink-0 flex items-center justify-center text-foreground/60 transition-opacity hover:opacity-70"
-                style={{ width: 44, height: 44 }}
+                className="shrink-0 flex items-center justify-center transition-opacity hover:opacity-70"
+                style={{ width: 44, height: 44, color: '#F1E8D3', opacity: 0.6 }}
                 aria-label="Dismiss notification"
               >
                 <X size={13} />

@@ -1,49 +1,48 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Edit2, MapPin, GraduationCap, Film, LogOut, Handshake, Loader2, AlertCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AlertCircle, Film as FilmIcon, GraduationCap, Handshake, Loader2, LogOut, MapPin, Pencil, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
-import { useProfile, useFilmsByUser } from '@/hooks/useFilms'
+import { useFilmsByUser, useProfile } from '@/hooks/useFilms'
 import { useCima, useSendCimaRequest } from '@/hooks/useCima'
+import { cn } from '@/lib/utils'
+import { toast } from '@/store/toastStore'
+import Still from '@/components/klaket/Still'
+import { Clap, Slate } from '@/components/klaket/primitives'
+import { FilmStill } from '@/components/klaket/FilmCards'
 import RoleBadge from '@/components/profile/RoleBadge'
-import FilmCard from '@/components/film/FilmCard'
-import CimaMemberChip from '@/components/cima/CimaMemberChip'
-import CimaButton from '@/components/cima/CimaButton'
 import Avatar from '@/components/ui/Avatar'
-import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
-import { useState } from 'react'
+import EmptyState from '@/components/ui/EmptyState'
+
+type Tab = 'Films' | 'Crew'
 
 export default function ProfilePage() {
-  const { id } = useParams<{ id: string }>()
+  const { id = 'me' } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const currentUser = useAuthStore((s) => s.user)
-  const logout = useAuthStore((s) => s.logout)
-  const { updateRole, updateProfile } = useAuth()
+  const { updateRole, updateProfile, logout } = useAuth()
   const isOwn = id === 'me' || id === currentUser?.id
   const profileId = isOwn ? currentUser?.id : id
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
-  const {
-    data: fetchedProfile,
-    isLoading: profileLoading,
-    isError: profileError,
-    refetch: refetchProfile,
-  } = useProfile(isOwn ? undefined : profileId)
-  const { data: fetchedFilms, isLoading: filmsLoading } = useFilmsByUser(profileId)
-  const { data: cimaData } = useCima()
-  const sendCimaRequest = useSendCimaRequest()
-  const [cimaStatus, setCimaStatus] = useState<'none' | 'pending' | 'member'>('none')
+  const { data: fetchedProfile, isPending: profileLoading, isError: profileError, refetch } = useProfile(isOwn ? undefined : profileId)
+  const { data: fetchedFilms, isPending: filmsLoading } = useFilmsByUser(profileId)
+  const { data: crewData } = useCima()
+  const sendRequest = useSendCimaRequest()
+
+  const [tab, setTab] = useState<Tab>('Films')
+  const [crewStatus, setCrewStatus] = useState<'none' | 'pending'>('none')
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   const profile = isOwn ? currentUser : fetchedProfile
   const films = fetchedFilms ?? []
-  const cimaMembers = isOwn ? (cimaData?.members ?? []) : []
+  const crew = isOwn ? (crewData?.members ?? []) : []
+  const laurels = films.filter((f) => f.isFilmOfTheWeek)
 
   if (!isOwn && profileLoading) {
     return (
-      <div className="flex justify-center py-24">
-        <Loader2 size={22} className="animate-spin text-muted-foreground" />
+      <div className="flex justify-center py-24" role="status" aria-label="Loading profile">
+        <Loader2 size={24} className="animate-spin text-muted-foreground" aria-hidden="true" />
       </div>
     )
   }
@@ -52,13 +51,9 @@ export default function ProfilePage() {
     return (
       <EmptyState
         icon={AlertCircle}
-        title="Couldn't load this profile."
+        title="Couldn’t load this profile"
         subtitle="Something went wrong reaching the server."
-        action={
-          <Button variant="ghost" size="sm" onClick={() => refetchProfile()}>
-            Retry
-          </Button>
-        }
+        action={<Button variant="solid" size="sm" onClick={() => refetch()}>Retry</Button>}
         className="py-24"
       />
     )
@@ -67,258 +62,319 @@ export default function ProfilePage() {
   if (!profile) return null
 
   const isFilmmaker = profile.role === 'filmmaker'
-  const openToCollab = profile.openToCollab ?? false
+  const openToCollab = profile.openToCollab ?? profile.lookingForCollaborators ?? false
 
-  const handleCimaRequest = () => {
-    if (!profileId) return
-    setCimaStatus('pending')
-    sendCimaRequest.mutate(profileId, {
-      onError: () => setCimaStatus('none'),
+  const ask = () => {
+    if (!profileId || crewStatus !== 'none') return
+    setCrewStatus('pending')
+    sendRequest.mutate(profileId, {
+      onSuccess: () => toast.success(`Call sheet sent to ${profile.name}.`),
+      onError: () => {
+        setCrewStatus('none')
+        toast.error('Couldn’t send the call sheet. Try again.')
+      },
     })
   }
 
-  const handleToggleCollab = () => {
-    if (!isOwn) return
-    updateProfile.mutate({ lookingForCollaborators: !openToCollab })
-  }
-
-  const handleBecomeFilmmaker = () => {
-    updateRole.mutate('filmmaker')
-  }
-
-  const handleLogout = () => {
-    logout()
-    navigate('/')
-  }
-
   return (
-    <motion.div
-      className="min-h-full"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      {/* Profile header */}
-      <div className="relative">
-        <div className="relative h-32 overflow-hidden bg-gradient-to-br from-secondary via-accent/40 to-background">
-          {profile.bannerUrl && (
-            <img
-              src={profile.bannerUrl}
-              alt="Banner"
-              className="w-full h-full object-cover"
-            />
-          )}
-        </div>
-
-        <div className="px-4 pb-4">
-          <div className="flex items-end justify-between -mt-8 mb-4">
-            <Avatar
-              src={profile.avatarUrl}
-              name={profile.name}
-              size="xl"
-              className="shadow-film border-4 border-background"
-            />
-            {isOwn ? (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate('/profile/me/edit')}>
-                  <Edit2 size={13} />
-                  Edit Profile
-                </Button>
-                <button
-                  onClick={() => setShowLogoutConfirm(true)}
-                  className="w-11 h-11 flex items-center justify-center rounded-xl border border-border transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Log out"
-                >
-                  <LogOut size={15} />
-                </button>
-              </div>
-            ) : (
-              <CimaButton status={cimaStatus} onClick={handleCimaRequest} />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="font-display text-3xl uppercase tracking-widest text-foreground">
-                {profile.name}
-              </h1>
+    <div className="min-h-full">
+      {/* Poster header: their banner photo, or the illustrated portrait */}
+      <section className="relative overflow-hidden bg-k-teal text-k-paper border-b-[1.5px] border-foreground">
+        {profile.bannerUrl ? (
+          <>
+            <img src={profile.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="halftone absolute inset-0 opacity-30 mix-blend-multiply" aria-hidden="true" />
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(21,18,14,.85) 20%, rgba(21,18,14,.15) 75%)' }} aria-hidden="true" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-y-0 end-0 w-[62%] sm:w-[40%]" aria-hidden="true">
+              <Still kind="portrait" className="absolute inset-0" />
+            </div>
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(90deg, #1A6A65 38%, rgba(26,106,101,0) 78%)' }} aria-hidden="true" />
+          </>
+        )}
+        <div className="relative max-w-5xl mx-auto px-4 pt-4 pb-5 min-h-[290px] flex flex-col gap-2">
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex gap-1.5 flex-wrap">
               <RoleBadge role={profile.role} />
               {openToCollab && (
-                <span className="genre-pill flex items-center gap-1 text-primary bg-primary/15 border border-primary/40">
-                  <Handshake size={9} />
-                  Open to Collab
+                <span className="inline-flex items-center gap-1 k-label text-[10px] font-semibold px-2 py-[3px] bg-k-mustard text-k-ink">
+                  <Handshake size={11} aria-hidden="true" /> Open to crew
                 </span>
               )}
             </div>
-
-            {profile.bio && (
-              <p className="font-sans text-sm text-muted-foreground leading-relaxed">{profile.bio}</p>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              {profile.city && (
-                <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
-                  <MapPin size={11} /> {profile.city}
-                </span>
-              )}
-              {profile.school && (
-                <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
-                  <GraduationCap size={11} /> {profile.school}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Own-profile actions */}
-      {isOwn && (
-        <div className="px-4 mb-4 space-y-2">
-          {/* Open to Collab toggle — filmmakers only */}
-          {isFilmmaker && (
-            <Button
-              variant={openToCollab ? 'primary' : 'outline'}
-              size="sm"
-              onClick={handleToggleCollab}
-              className="w-full rounded-full"
-            >
-              <Handshake size={13} />
-              {openToCollab ? 'Open to Collab ✓' : 'Open to Collab'}
-            </Button>
-          )}
-
-          {/* Become a Filmmaker — viewers only */}
-          {!isFilmmaker && (
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={handleBecomeFilmmaker}
-              className="w-full"
-              disabled={updateRole.isPending}
-            >
-              {updateRole.isPending ? (
-                <Loader2 size={15} className="animate-spin" />
-              ) : (
-                <>
-                  <Film size={15} />
-                  Become a Filmmaker
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      )}
-
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 mx-4 mb-6">
-        {[
-          { label: 'Films', value: films.length },
-          { label: 'Cima', value: cimaMembers.length },
-          { label: 'Reviews', value: profile.reviewsCount ?? 0 },
-        ].map(({ label, value }) => (
-          <div key={label} className="flex flex-col items-center py-4">
-            <span className="text-xl font-bold text-foreground">{value}</span>
-            <span className="text-xs text-muted-foreground">{label}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="px-4 space-y-8 pb-8">
-        {/* Cima section */}
-        {cimaMembers.length > 0 && (
-          <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}>
-            <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mt-4 mb-3">
-              Cima
-            </h2>
-            <div className="p-4 rounded-2xl bg-card border border-border">
-              <div className="flex flex-wrap gap-2">
-                {cimaMembers.map((m) => (
-                  <CimaMemberChip key={m.id} user={m.user} />
-                ))}
-              </div>
-              {isOwn && (
-                <Link to="/cima" className="interactive-lift block mt-3">
-                  <Button variant="ghost" size="sm">
-                    Manage Cima →
-                  </Button>
+            {isOwn && (
+              <div className="flex gap-1.5">
+                <Link to="/profile/me/edit" className="inline-flex items-center gap-1.5 k-label text-[10.5px] bg-k-ink text-k-paper px-2.5 min-h-[36px] press">
+                  <Pencil size={13} aria-hidden="true" /> Edit
                 </Link>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setConfirmLogout(true)}
+                  aria-label="Sign out"
+                  className="w-9 h-9 flex items-center justify-center bg-k-ink text-k-paper press"
+                >
+                  <LogOut size={15} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex-1" />
+          <Avatar name={profile.name} src={profile.avatarUrl} size="lg" className="border-k-paper" />
+          <h1 className="k-display text-[32px] sm:text-[44px] uppercase max-w-[14ch]">{profile.name}</h1>
+          {profile.bio && <p className="text-[14px] max-w-[34ch] sm:max-w-[48ch]">{profile.bio}</p>}
+          {(profile.city || profile.school) && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 k-label text-[10px]">
+              {profile.city && <span className="inline-flex items-center gap-1"><MapPin size={11} aria-hidden="true" />{profile.city}</span>}
+              {profile.school && <span className="inline-flex items-center gap-1"><GraduationCap size={11} aria-hidden="true" />{profile.school}</span>}
             </div>
-          </motion.section>
+          )}
+        </div>
+      </section>
+
+      <Clap className="h-2.5 border-b-[1.5px] border-foreground" />
+      <div className="border-b-[1.5px] border-foreground">
+        <Slate
+          className="max-w-5xl mx-auto"
+          cells={[
+            { label: 'Films', value: films.length },
+            { label: 'Laurels', value: laurels.length },
+            { label: 'Crew', value: isOwn ? crew.length : profile.cimaCount ?? 0 },
+            { label: 'Notes', value: profile.reviewsCount ?? 0 },
+          ]}
+        />
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4">
+        {/* Actions */}
+        <div className="flex flex-col gap-2 py-4">
+          {!isOwn && (
+            <button
+              type="button"
+              onClick={ask}
+              disabled={crewStatus !== 'none'}
+              className="press min-h-[48px] bg-k-red text-k-paper font-extrabold text-[14px] disabled:bg-k-teal"
+              style={{ fontStretch: '110%' }}
+            >
+              {crewStatus === 'pending' ? 'CALL SHEET SENT ✓' : 'SEND CALL SHEET'}
+            </button>
+          )}
+          {isOwn && isFilmmaker && (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={openToCollab}
+              onClick={() => updateProfile.mutate({ lookingForCollaborators: !openToCollab })}
+              disabled={updateProfile.isPending}
+              className={cn(
+                'press flex items-center justify-between gap-3 min-h-[52px] px-3 border-[1.5px] border-foreground text-start disabled:opacity-60',
+                openToCollab ? 'bg-k-mustard text-k-ink' : 'bg-field',
+              )}
+            >
+              <span className="flex flex-col">
+                <b className="text-[14px]">Open to crew</b>
+                <span className="text-[12px] opacity-80">Show up in Discover for people looking for a crew</span>
+              </span>
+              <span aria-hidden="true" className="w-[46px] h-[26px] border-[1.5px] border-k-ink relative shrink-0 bg-k-paper">
+                <span className={cn('absolute top-[2px] w-[19px] h-[19px] bg-k-ink transition-all', openToCollab ? 'left-[23px]' : 'left-[2px]')} />
+              </span>
+            </button>
+          )}
+          {isOwn && !isFilmmaker && (
+            <button
+              type="button"
+              onClick={() => updateRole.mutate('filmmaker')}
+              disabled={updateRole.isPending}
+              className="press flex items-center justify-between min-h-[52px] px-4 bg-k-red text-k-paper font-extrabold text-[14px] disabled:opacity-60"
+              style={{ fontStretch: '110%' }}
+            >
+              <span className="flex items-center gap-2"><FilmIcon size={16} aria-hidden="true" /> BECOME A FILMMAKER</span>
+              {updateRole.isPending ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <span className="k-label text-[10px] font-normal">Upload your own films</span>}
+            </button>
+          )}
+        </div>
+
+        {laurels.length > 0 && (
+          <section aria-label="Laurels" className="flex gap-2 flex-wrap">
+            {laurels.map((f) => (
+              <Link key={f.id} to={`/film/${f.id}`} className="press border-[1.5px] border-foreground bg-k-mustard text-k-ink px-2.5 py-2 flex flex-col">
+                <span className="k-label text-[9px]">★ Film of the week</span>
+                <b className="text-[13px]">{f.title}</b>
+              </Link>
+            ))}
+          </section>
         )}
 
-        {/* Films grid */}
-        {profile.role === 'filmmaker' && (
-          <section>
-            <h2 className="font-display font-extrabold text-xl uppercase tracking-wide text-foreground mt-4 mb-3">
-              Films
-            </h2>
-            {filmsLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 size={18} className="animate-spin text-muted-foreground" />
+        {(profile.crewRoles?.length || profile.favoriteGenres?.length) ? (
+          <section className="mt-4 flex flex-col gap-1.5">
+            {!!profile.crewRoles?.length && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="k-label text-[10px] text-muted-foreground w-16">Roles</span>
+                {profile.crewRoles.map((r) => <span key={r} className="k-label text-[10px] font-semibold px-1.5 py-0.5 bg-solid text-solid-foreground">{r}</span>)}
+              </div>
+            )}
+            {!!profile.favoriteGenres?.length && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="k-label text-[10px] text-muted-foreground w-16">Scenes</span>
+                {profile.favoriteGenres.map((g) => <span key={g} className="k-label text-[10px] font-semibold px-1.5 py-0.5 border border-foreground">{g}</span>)}
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        <div role="tablist" aria-label="Profile sections" className="mt-4 grid grid-cols-2 border-[1.5px] border-foreground sm:max-w-sm">
+          {(['Films', 'Crew'] as Tab[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={cn('min-h-[44px] k-label text-[11px] font-semibold', tab === t ? 'bg-solid text-solid-foreground' : 'hover:bg-foreground/5')}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        <section className="py-3">
+          {tab === 'Films' ? (
+            filmsLoading ? (
+              <div className="flex flex-col gap-2" aria-hidden="true">
+                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-16" />)}
               </div>
             ) : films.length === 0 ? (
               <EmptyState
-                icon={Film}
-                title="No films uploaded yet."
-                subtitle="Your audience is waiting — roll camera."
+                icon={FilmIcon}
+                title="No films yet"
+                subtitle={isOwn && isFilmmaker ? 'Slate your first film and release it to the week’s vote.' : 'Nothing released yet.'}
                 action={
-                  isOwn ? (
-                    <button onClick={() => navigate('/upload')} className="btn-cima">
-                      Upload Your Film
-                    </button>
+                  isOwn && isFilmmaker ? (
+                    <Link to="/upload" className="press inline-flex items-center min-h-[44px] px-4 bg-k-red text-k-paper font-extrabold text-[13px]">
+                      UPLOAD A FILM
+                    </Link>
                   ) : undefined
                 }
               />
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {films.map((f, i) => (
-                  <FilmCard key={f.id} film={f} index={i} compact />
+              <ul className="flex flex-col">
+                {films.map((f) => (
+                  <li key={f.id}>
+                    <Link
+                      to={`/film/${f.id}`}
+                      className="grid grid-cols-[64px_minmax(0,1fr)_auto] gap-3 items-center py-2.5 border-b border-rule hover:bg-foreground/5"
+                    >
+                      <FilmStill film={f} className="w-16 h-16 border-[1.5px] border-foreground" />
+                      <span className="min-w-0 flex flex-col gap-0.5">
+                        <b className="text-[15px] leading-tight truncate">{f.title}</b>
+                        <span className="k-label text-[9.5px] text-muted-foreground truncate">
+                          {f.genre.join(' · ')} · {f.year}
+                          {f.isFilmOfTheWeek ? ' · Film of the week' : ''}
+                        </span>
+                      </span>
+                      <span className="k-label text-[10px]">{f.runtime ? `${f.runtime}m` : ''}</span>
+                    </Link>
+                  </li>
                 ))}
-              </div>
-            )}
-          </section>
-        )}
+              </ul>
+            )
+          ) : !isOwn ? (
+            <p className="text-[14px] text-muted-foreground py-6">Crew lists are private. Send a call sheet to work together.</p>
+          ) : crew.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No crew yet"
+              subtitle="Send call sheets from films and profiles to build one."
+              action={<Link to="/discover?tab=people" className="k-label text-[11px] font-semibold underline underline-offset-4 min-h-[44px] inline-flex items-center">Find filmmakers →</Link>}
+            />
+          ) : (
+            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {crew.map((m) => (
+                <li key={m.id}>
+                  <Link to={`/profile/${m.user.id}`} className="press border-[1.5px] border-foreground bg-card p-2.5 flex items-center gap-2.5 min-w-0">
+                    <Avatar name={m.user.name} src={m.user.avatarUrl} size="sm" />
+                    <span className="min-w-0">
+                      <b className="block text-[13px] truncate">{m.user.name}</b>
+                      <span className="k-label text-[9px] text-muted-foreground">{m.user.crewRoles?.join(' · ') || 'Crew'}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+              <li className="col-span-2 sm:col-span-3">
+                <Link to="/crew" className="k-label text-[11px] font-semibold underline underline-offset-4 inline-flex items-center gap-1.5 min-h-[44px]">
+                  <Users size={14} aria-hidden="true" /> Manage your crew →
+                </Link>
+              </li>
+            </ul>
+          )}
+        </section>
       </div>
 
-      {/* Logout confirmation sheet */}
-      {showLogoutConfirm && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-sm"
-          onClick={() => setShowLogoutConfirm(false)}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: 'spring', damping: 22, stiffness: 260 }}
-            className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/15">
-                <LogOut size={16} className="text-primary" />
-              </div>
-              <div>
-                <p className="font-display text-lg uppercase tracking-widest text-foreground">Log Out</p>
-                <p className="font-sans text-xs text-muted-foreground">You'll need to sign in again.</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowLogoutConfirm(false)}>Cancel</Button>
-              <Button
-                variant="primary"
-                className="flex-1"
-                onClick={handleLogout}
-              >
-                <LogOut size={13} /> Log Out
-              </Button>
-            </div>
-          </motion.div>
-        </motion.div>
+      {confirmLogout && (
+        <ConfirmDialog
+          title="Sign out of Klaket?"
+          body="You’ll need your email and password to sign back in."
+          confirm="SIGN OUT"
+          onCancel={() => setConfirmLogout(false)}
+          onConfirm={() => {
+            setConfirmLogout(false)
+            logout()
+            navigate('/welcome')
+          }}
+        />
       )}
-    </motion.div>
+    </div>
+  )
+}
+
+/* ─── Centered confirmation dialog ──────────────────────────────────────── */
+
+function ConfirmDialog({
+  title,
+  body,
+  confirm,
+  onConfirm,
+  onCancel,
+}: {
+  title: string
+  body: string
+  confirm: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    cancelRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-body"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm border-[1.5px] border-foreground bg-background"
+      >
+        <div className="clap h-3" aria-hidden="true" />
+        <div className="p-4 flex flex-col gap-2">
+          <h2 id="confirm-title" className="k-display text-[24px]">{title}</h2>
+          <p id="confirm-body" className="text-[14px] text-muted-foreground">{body}</p>
+        </div>
+        <div className="grid grid-cols-2 border-t-[1.5px] border-foreground">
+          <button ref={cancelRef} type="button" onClick={onCancel} className="min-h-[48px] font-extrabold text-[13px] border-e-[1.5px] border-foreground hover:bg-foreground/5">
+            CANCEL
+          </button>
+          <button type="button" onClick={onConfirm} className="min-h-[48px] font-extrabold text-[13px] bg-k-red text-k-paper hover:brightness-110">
+            {confirm}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

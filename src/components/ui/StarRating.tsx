@@ -1,4 +1,3 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
 import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,7 +11,7 @@ interface StarRatingProps {
   className?: string
 }
 
-const starSizes = { sm: 12, md: 16, lg: 22 }
+const starSizes = { sm: 12, md: 16, lg: 24 }
 
 export default function StarRating({
   value,
@@ -25,28 +24,47 @@ export default function StarRating({
 }: StarRatingProps) {
   const px = starSizes[size]
 
+  if (!interactive) {
+    return (
+      <div className={cn('flex items-center gap-0.5', className)} role="img" aria-label={`${value} out of ${max}`}>
+        {Array.from({ length: max }).map((_, i) => (
+          <Star
+            key={i}
+            size={px}
+            className={i + 1 <= value ? 'text-k-mustard' : 'text-rule'}
+            fill={i + 1 <= value ? 'currentColor' : 'none'}
+            stroke={i + 1 <= value ? '#15120E' : 'currentColor'}
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className={cn('flex items-center gap-0.5', className)}>
+    <div className={cn('flex items-center', className)} role="radiogroup" aria-label="Your rating">
       {Array.from({ length: max }).map((_, i) => {
         const filled = i + 1 <= value
         return (
           <button
             key={i}
             type="button"
-            disabled={!interactive}
+            role="radio"
+            aria-checked={i + 1 === value}
+            aria-label={`${i + 1} star${i ? 's' : ''}`}
             onClick={() => onSelect?.(i + 1)}
             onMouseEnter={() => onHover?.(i + 1)}
             onMouseLeave={() => onHover?.(null)}
-            className={cn(
-              'transition-transform duration-75 flex items-center justify-center',
-              interactive && 'cursor-pointer hover:scale-110 active:scale-95 min-w-[44px] min-h-[44px]',
-              !interactive && 'pointer-events-none'
-            )}
+            className="w-11 h-11 flex items-center justify-center press"
           >
             <Star
               size={px}
-              className={cn(filled ? 'text-rating-star' : 'text-muted-foreground/40')}
+              className={filled ? 'text-k-mustard' : 'text-muted-foreground'}
               fill={filled ? 'currentColor' : 'none'}
+              stroke={filled ? '#15120E' : 'currentColor'}
+              strokeWidth={1.5}
+              aria-hidden="true"
             />
           </button>
         )

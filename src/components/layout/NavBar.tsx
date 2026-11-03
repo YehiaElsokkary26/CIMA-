@@ -1,142 +1,62 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
-import { useState, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { Search, Bell, X } from 'lucide-react'
-import { CimaIconMark } from './CimaLogo'
+import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Bell, Moon, Search, Sun } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useUIStore } from '@/store/uiStore'
 import { useSearchStore } from '@/store/searchStore'
+import { Wordmark } from '@/components/klaket/primitives'
+import Avatar from '@/components/ui/Avatar'
+import SearchField from './SearchField'
 
+// Mobile header: wordmark, then search / theme / notifications / profile.
+// Search opens as a full-width row under the wordmark.
 export default function NavBar() {
-  const navigate = useNavigate()
-  const location = useLocation()
   const user = useAuthStore((s) => s.user)
-  const { query, setQuery, clear } = useSearchStore()
-
-  const [searchOpen, setSearchOpen] = useState(false)
+  const { isDarkMode, toggleDarkMode } = useUIStore()
+  const query = useSearchStore((s) => s.query)
+  const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const showSearch = open || !!query
 
-  const openSearch = () => {
-    setSearchOpen(true)
-    setTimeout(() => inputRef.current?.focus(), 50)
-  }
-
-  const closeSearch = () => {
-    setSearchOpen(false)
-    clear()
-  }
-
-  const handleChange = (value: string) => {
-    setQuery(value)
-    // Navigate to home on first character so results are immediately visible
-    if (value && location.pathname !== '/home') {
-      navigate('/home')
-    }
-    // Clear URL ?q param if present (we now use the store, not the URL)
-    if (!value && location.search) {
-      navigate('/home', { replace: true })
-    }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (query.trim() && location.pathname !== '/home') {
-      navigate('/home')
-    }
-  }
+  const iconBtn =
+    'w-11 h-11 flex items-center justify-center border-[1.5px] border-foreground press hover:bg-foreground/5'
 
   return (
-    <header
-      className="sticky top-0 z-40 flex items-center gap-3 px-4 border-b border-border bg-background shrink-0"
-      style={{ height: 52 }}
-    >
-      {/* Logo — hidden on desktop (Sidebar already shows it) */}
-      <div className="lg:hidden shrink-0">
-        <CimaIconMark size={26} />
-      </div>
-
-      {/* Search bar — center on desktop, hidden on mobile until icon tapped */}
-      {searchOpen ? (
-        <form onSubmit={handleSubmit} className="flex-1 flex items-center gap-2">
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => handleChange(e.target.value)}
-            placeholder="Search films, filmmakers..."
-            className="flex-1 bg-transparent font-sans text-sm text-foreground placeholder:text-muted-foreground/50 outline-none border-b border-primary py-0.5"
-          />
-          {/* Rule 3: min 44×44px touch target for close button */}
+    <header className="lg:hidden shrink-0 flex flex-col gap-3 px-4 pt-4 pb-3 bg-background safe-area-top">
+      <div className="flex items-center justify-between gap-2">
+        <Link to="/home" aria-label="Klaket home" className="min-w-0 shrink">
+          <Wordmark size="sm" arClassName="text-hot hidden min-[390px]:inline" />
+        </Link>
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
-            onClick={closeSearch}
-            className="shrink-0 w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
-            aria-label="Close search"
+            onClick={() => {
+              setOpen(true)
+              requestAnimationFrame(() => inputRef.current?.focus())
+            }}
+            className={iconBtn}
+            aria-label="Search films"
+            aria-expanded={showSearch}
           >
-            <X size={15} />
+            <Search size={18} aria-hidden="true" />
           </button>
-        </form>
-      ) : (
-        <>
-          {/* Desktop search bar */}
-          <form
-            onSubmit={handleSubmit}
-            className="hidden md:flex flex-1 items-center gap-2 border-b border-border/60 focus-within:border-primary transition-colors max-w-xs mx-auto"
-          >
-            <Search size={13} className="text-muted-foreground shrink-0" />
-            <input
-              value={query}
-              onChange={(e) => handleChange(e.target.value)}
-              placeholder="Search films, filmmakers..."
-              className="flex-1 bg-transparent font-sans text-xs text-foreground placeholder:text-muted-foreground/40 outline-none py-1"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => handleChange('')}
-                className="shrink-0 text-muted-foreground hover:text-foreground active:scale-90 transition-all"
-                aria-label="Clear search"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </form>
-
-          {/* Spacer on mobile to push icons right */}
-          <div className="flex-1 md:hidden" />
-        </>
-      )}
-
-      {/* Right actions */}
-      {!searchOpen && (
-        <div className="flex items-center shrink-0">
-          {/* Rule 3: all icon buttons min 44×44px — use w-11 h-11 */}
           <button
-            onClick={openSearch}
-            className="md:hidden w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
-            aria-label="Search"
+            type="button"
+            onClick={toggleDarkMode}
+            className={iconBtn}
+            aria-label={isDarkMode ? 'Switch to newsprint (light) theme' : 'Switch to screening room (dark) theme'}
           >
-            <Search size={16} />
+            {isDarkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
           </button>
-
-          <button
-            onClick={() => navigate('/notifications')}
-            className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-90 transition-all"
-            aria-label="Notifications"
-          >
-            <Bell size={16} />
-          </button>
-
-          {/* Rule 3: profile avatar — 44×44px tap area, 32px visual circle */}
-          <button
-            onClick={() => navigate('/profile/me')}
-            className="w-11 h-11 flex items-center justify-center active:scale-90 transition-all"
-            aria-label="View profile"
-          >
-            <span className="w-8 h-8 rounded-full flex items-center justify-center bg-secondary text-secondary-foreground font-bold text-[11px]">
-              {user?.name?.charAt(0).toUpperCase() ?? '?'}
-            </span>
-          </button>
+          <Link to="/notifications" className={iconBtn} aria-label="Notifications">
+            <Bell size={18} aria-hidden="true" />
+          </Link>
+          <Link to="/profile/me" aria-label="Your profile" className="press">
+            <Avatar name={user?.name ?? '?'} src={user?.avatarUrl} size="md" />
+          </Link>
         </div>
-      )}
+      </div>
+      {showSearch && <SearchField ref={inputRef} id="mobile-search" onClose={() => setOpen(false)} />}
     </header>
   )
 }

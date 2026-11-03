@@ -70,7 +70,7 @@ export const usersApi = {
     api.post<User>('/users/me/role', { role }),
 }
 
-// ---- Cima -------------------------------------------------------------------
+// ---- Crew (server routes are still named /cima) ----------------------------
 export const cimaApi = {
   mine: () => api.get<{ members: CimaMember[]; requests: CimaRequest[] }>('/cima/mine'),
   sendRequest: (targetUserId: string) => api.post(`/cima/request/${targetUserId}`),

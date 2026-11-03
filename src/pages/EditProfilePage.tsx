@@ -1,17 +1,57 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, Check, Camera, Loader2 } from 'lucide-react'
+import { ArrowLeft, Camera, ImagePlus, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
 import { uploadFile } from '@/lib/storage'
-import Button from '@/components/ui/Button'
+import { CREW_ROLES } from '@/lib/crewRoles'
+import { cn } from '@/lib/utils'
+import { toast } from '@/store/toastStore'
+import Still from '@/components/klaket/Still'
 import Input from '@/components/ui/Input'
 import Avatar from '@/components/ui/Avatar'
-import { toast } from '@/store/toastStore'
-import { CREW_ROLES } from '@/lib/crewRoles'
 
 const ALL_GENRES = ['Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi', 'Thriller', 'Horror', 'Comedy', 'Animation']
+
+function Chips({
+  legend,
+  hint,
+  options,
+  selected,
+  onToggle,
+}: {
+  legend: string
+  hint: string
+  options: string[]
+  selected: string[]
+  onToggle: (v: string) => void
+}) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="k-label text-[10.5px] font-semibold mb-1">{legend}</legend>
+      <p className="text-[13px] text-muted-foreground -mt-1">{hint}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((o) => {
+          const on = selected.includes(o)
+          return (
+            <button
+              key={o}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onToggle(o)}
+              className={cn(
+                'k-label text-[11px] font-semibold px-3 min-h-[38px] border-[1.5px] border-foreground press',
+                on ? 'bg-solid text-solid-foreground' : 'hover:bg-foreground/5',
+              )}
+            >
+              {o}
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
 
 export default function EditProfilePage() {
   const navigate = useNavigate()
@@ -30,8 +70,8 @@ export default function EditProfilePage() {
   const [bannerFile, setBannerFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const avatarInputRef = useRef<HTMLInputElement>(null)
-  const bannerInputRef = useRef<HTMLInputElement>(null)
+  const avatarInput = useRef<HTMLInputElement>(null)
+  const bannerInput = useRef<HTMLInputElement>(null)
 
   const readFile = (file: File): Promise<string> =>
     new Promise((resolve) => {
@@ -40,40 +80,31 @@ export default function EditProfilePage() {
       reader.readAsDataURL(file)
     })
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const pickAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setAvatarFile(file)
-      setAvatarPreview(await readFile(file))
-    }
+    if (!file) return
+    setAvatarFile(file)
+    setAvatarPreview(await readFile(file))
   }
 
-  const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const pickBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setBannerFile(file)
-      setBannerPreview(await readFile(file))
-    }
+    if (!file) return
+    setBannerFile(file)
+    setBannerPreview(await readFile(file))
   }
 
-  const toggleGenre = (g: string) =>
-    setFavoriteGenres((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g])
+  const toggle = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (v: string) =>
+    setter((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
 
-  const toggleCrewRole = (r: string) =>
-    setCrewRoles((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
-
-  const handleSave = async () => {
+  const save = async () => {
     if (!user?.id) return
     setSaving(true)
     try {
       let avatarUrl = user.avatarUrl
       let bannerUrl = user.bannerUrl
-      if (avatarFile) {
-        avatarUrl = await uploadFile('avatars', avatarFile, `${user.id}/${Date.now()}-${avatarFile.name}`)
-      }
-      if (bannerFile) {
-        bannerUrl = await uploadFile('banners', bannerFile, `${user.id}/${Date.now()}-${bannerFile.name}`)
-      }
+      if (avatarFile) avatarUrl = await uploadFile('avatars', avatarFile, `${user.id}/${Date.now()}-${avatarFile.name}`)
+      if (bannerFile) bannerUrl = await uploadFile('banners', bannerFile, `${user.id}/${Date.now()}-${bannerFile.name}`)
       await updateProfile.mutateAsync({
         name: name.trim() || user.name,
         bio,
@@ -86,185 +117,105 @@ export default function EditProfilePage() {
       })
       navigate('/profile/me')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save profile')
+      toast.error(err instanceof Error ? err.message : 'Couldn’t save your profile. Try again.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <motion.div
-      className="min-h-full pb-24"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      {/* Sticky header */}
-      <div
-        className="sticky top-0 z-10 flex items-center gap-3 px-4 border-b border-border bg-background"
-        style={{ height: 52 }}
-      >
-        <button
-          onClick={() => navigate('/profile/me')}
-          className="w-11 h-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-          aria-label="Back"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <h1 className="font-display text-xl uppercase tracking-widest text-foreground flex-1">Edit Profile</h1>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />} Save
-        </Button>
-      </div>
-
-      {/* Banner + Avatar upload zone */}
-      <div className="relative mb-16">
-        {/* Banner */}
-        <div className="relative h-36 overflow-hidden bg-gradient-to-br from-secondary via-accent/40 to-background">
-          {bannerPreview && (
-            <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
-          )}
+    <div className="min-h-full">
+      <header className="sticky top-0 z-10 bg-background border-b-[1.5px] border-foreground">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => bannerInputRef.current?.click()}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/30 hover:bg-black/45 transition-colors cursor-pointer"
-            aria-label="Change banner photo"
+            onClick={() => navigate('/profile/me')}
+            aria-label="Back to your profile"
+            className="w-11 h-11 shrink-0 flex items-center justify-center border-[1.5px] border-foreground press"
           >
-            <Camera size={20} className="text-white/80" />
-            <span className="font-mono text-[10px] text-white/70 uppercase tracking-wider">Change Banner</span>
+            <ArrowLeft size={20} aria-hidden="true" />
           </button>
-          <input
-            ref={bannerInputRef}
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={handleBannerChange}
-            aria-label="Upload banner image"
-          />
+          <h1 className="k-display text-[22px] flex-1">EDIT PROFILE</h1>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="press min-h-[44px] px-4 bg-k-red text-k-paper font-extrabold text-[13px] inline-flex items-center gap-2 disabled:opacity-60"
+          >
+            {saving && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+            {saving ? 'SAVING…' : 'SAVE'}
+          </button>
         </div>
+      </header>
 
-        {/* Avatar — overlaps bottom of banner */}
-        <div className="absolute left-4 -bottom-14">
-          <div className="relative">
-            <Avatar
-              src={avatarPreview}
-              name={name || user?.name || '?'}
-              size="xl"
-              className="border-4 border-background shadow-film"
-            />
+      <div className="max-w-2xl mx-auto px-4 pt-4 pb-10 flex flex-col gap-6">
+        {/* Banner + photo */}
+        <section aria-label="Photos" className="flex flex-col">
+          <div className="relative h-36 border-[1.5px] border-foreground overflow-hidden bg-k-teal">
+            {bannerPreview ? (
+              <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+            ) : (
+              <Still kind="portrait" />
+            )}
             <button
               type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/55 transition-colors cursor-pointer"
-              aria-label="Change profile photo"
+              onClick={() => bannerInput.current?.click()}
+              className="press absolute end-2 bottom-2 inline-flex items-center gap-1.5 min-h-[40px] px-2.5 bg-k-ink text-k-paper k-label text-[10px] font-semibold"
             >
-              <Camera size={16} className="text-white" />
+              <ImagePlus size={14} aria-hidden="true" /> {bannerPreview ? 'Change banner' : 'Add banner'}
             </button>
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={handleAvatarChange}
-              aria-label="Upload profile photo"
-            />
+            <input ref={bannerInput} type="file" accept="image/*" onChange={pickBanner} className="sr-only" aria-label="Upload banner image" />
           </div>
-        </div>
-      </div>
+          <div className="flex items-end gap-3 -mt-8 ms-3">
+            <div className="relative">
+              <Avatar name={name || user?.name || '?'} src={avatarPreview} size="xl" className="border-[3px] border-background" />
+              <button
+                type="button"
+                onClick={() => avatarInput.current?.click()}
+                aria-label="Change profile photo"
+                className="press absolute -end-1 -bottom-1 w-9 h-9 flex items-center justify-center bg-k-red text-k-paper border-2 border-background"
+              >
+                <Camera size={15} aria-hidden="true" />
+              </button>
+              <input ref={avatarInput} type="file" accept="image/*" onChange={pickAvatar} className="sr-only" aria-label="Upload profile photo" />
+            </div>
+          </div>
+        </section>
 
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="px-4 pt-4 space-y-6"
-      >
-        {/* Name */}
-        <Input
-          label="Name"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        {/* Bio */}
-        <div className="space-y-1.5">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Bio</label>
+        <Input label="Name on your credits" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={60} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="bio" className="k-label text-[10.5px] font-semibold">Bio</label>
           <textarea
+            id="bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder="Tell the community about your work…"
-            rows={4}
-            className="input-cima w-full resize-none mt-1.5"
-            style={{ paddingTop: 8, paddingBottom: 8 }}
+            rows={3}
+            maxLength={280}
+            placeholder="What kind of films do you make? What are you working on?"
+            className="input-k py-3 resize-none leading-relaxed"
           />
+          <span className="k-label text-[9.5px] text-muted-foreground self-end">{bio.length}/280</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input label="School or collective" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="e.g. Cairo Film Institute" />
+          <Input label="City" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Alexandria" />
         </div>
 
-        {/* School + City */}
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="School"
-            value={school}
-            onChange={(e) => setSchool(e.target.value)}
-          />
-          <Input
-            label="City"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
-        </div>
-
-        {/* Favourite Genres */}
-        <div className="space-y-2">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Favourite Genres</label>
-          <div className="flex flex-wrap gap-2">
-            {ALL_GENRES.map((g) => {
-              const active = favoriteGenres.includes(g)
-              return (
-                <button
-                  key={g}
-                  onClick={() => toggleGenre(g)}
-                  className={`font-mono text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    active
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-transparent text-secondary border-secondary/30'
-                  }`}
-                >
-                  {g}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Crew Roles */}
-        <div className="space-y-2">
-          <label className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Crew Roles
-          </label>
-          <p className="font-sans text-xs text-muted-foreground">
-            Roles you've held on film sets — used for collaboration discovery.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {CREW_ROLES.map((r) => {
-              const active = crewRoles.includes(r)
-              return (
-                <button
-                  key={r}
-                  onClick={() => toggleCrewRole(r)}
-                  className={`font-mono text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                    active
-                      ? 'bg-accent text-card border-accent font-bold'
-                      : 'bg-transparent text-secondary border-secondary/30'
-                  }`}
-                >
-                  {r}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
+        <Chips
+          legend="Crew roles"
+          hint="What you do on set. People searching for crew see these."
+          options={CREW_ROLES}
+          selected={crewRoles}
+          onToggle={toggle(setCrewRoles)}
+        />
+        <Chips
+          legend="Favourite scenes (genres)"
+          hint="Used to pick films for you on Home."
+          options={ALL_GENRES}
+          selected={favoriteGenres}
+          onToggle={toggle(setFavoriteGenres)}
+        />
+      </div>
+    </div>
   )
 }

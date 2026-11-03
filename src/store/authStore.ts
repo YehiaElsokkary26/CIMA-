@@ -32,7 +32,7 @@ export const useAuthStore = create<AuthStore>()(
       hasSelectedRole: false,
 
       setAuth: (token, user) => {
-        localStorage.setItem('cima_token', token)
+        localStorage.setItem('klaket_token', token)
         const hasRole = !!user.role
         set({
           token,
@@ -62,12 +62,12 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
-        localStorage.removeItem('cima_token')
+        localStorage.removeItem('klaket_token')
         set({ token: null, user: null, role: null, isLoggedIn: false, hasSelectedRole: false })
       },
     }),
     {
-      name: 'cima-auth',
+      name: 'klaket-auth',
       partialize: (state) => ({
         token: state.token,
         user: state.user,

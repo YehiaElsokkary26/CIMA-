@@ -1,123 +1,63 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Loader2, AlertCircle } from 'lucide-react'
-import { CimaIconMark } from '@/components/layout/CimaLogo'
-import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
+import AuthFrame, { FormError } from '@/components/klaket/AuthFrame'
+import { Clap } from '@/components/klaket/primitives'
+import Input from '@/components/ui/Input'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useAuth()
 
-  const [email, setEmail]       = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    setLoading(true)
-
     try {
       await login.mutateAsync({ email, password })
       navigate('/home', { replace: true })
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Login failed.'
-      setError(msg)
-    } finally {
-      setLoading(false)
+      const msg = err instanceof Error ? err.message : ''
+      setError(
+        /credential|invalid/i.test(msg)
+          ? 'That email and password don’t match. Check them and try again.'
+          : /confirm/i.test(msg)
+            ? 'Confirm your email first. Check your inbox for the link.'
+            : msg || 'Couldn’t sign you in. Check your connection and try again.',
+      )
     }
   }
 
   return (
-    <motion.div
-      className="min-h-full bg-background flex flex-col items-center justify-center px-6 py-12 overflow-y-auto"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-xs space-y-8"
-      >
-        {/* Logo + tagline */}
-        <div className="flex flex-col items-center">
-          <CimaIconMark size={72} />
-          <p className="text-sm text-center mt-2 text-muted-foreground">
-            Where student cinema comes to life.
-          </p>
-        </div>
+    <AuthFrame mode="in" eyebrow="Welcome back" heading="Back on set.">
+      <form onSubmit={submit} className="flex flex-col gap-3.5 pt-5" noValidate>
+        {error && <FormError message={error} />}
+        <Input label="Email" type="email" autoComplete="email" placeholder="you@school.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input label="Password" type="password" autoComplete="current-password" placeholder="Your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 
-        {/* Rule 7: form error summary banner at top of form */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/40 border-l-[3px] border-l-destructive"
-          >
-            <AlertCircle size={14} className="shrink-0 mt-0.5 text-destructive" />
-            <p className="text-xs text-destructive">{error}</p>
-          </motion.div>
-        )}
-
-        {/* Rule 7: single-column form, labels above inputs, min 48px inputs */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@film.school"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            showRequired
-            autoComplete="email"
-          />
-          {/* Rule 7: password field with show/hide toggle (handled in Input component) */}
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            showRequired
-            autoComplete="current-password"
-          />
-
-          {/* Rule 11 + Rule 3: full-width primary button, min 52px (lg size) */}
-          <Button
+        <div className="mt-3 flex flex-col">
+          <Clap className="h-2.5 border-[1.5px] border-b-0 border-foreground" />
+          <button
             type="submit"
-            size="lg"
-            className="w-full"
-            disabled={loading || login.isPending}
-            pulse
+            disabled={login.isPending || !email || !password}
+            className="press flex justify-between items-center min-h-[52px] px-4 bg-solid text-solid-foreground font-black text-[16px] disabled:opacity-60"
+            style={{ fontStretch: '115%' }}
           >
-            {loading || login.isPending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              'Sign In'
-            )}
-          </Button>
-        </form>
-
-        {/* Rule 3: Register link has py-1 to increase tap area */}
-        <p className="text-center font-mono text-xs text-muted-foreground">
-          Don't have an account?{' '}
-          <Link
-            to="/register"
-            className="text-primary underline underline-offset-4 hover:text-primary/80 transition-colors py-1"
-          >
-            Register
+            <span>{login.isPending ? 'SIGNING IN…' : 'SIGN IN'}</span>
+            {login.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <span aria-hidden="true">→</span>}
+          </button>
+        </div>
+        <p className="text-[13.5px] text-muted-foreground">
+          New here?{' '}
+          <Link to="/register" className="font-semibold text-foreground underline underline-offset-4">
+            Create an account
           </Link>
         </p>
-      </motion.div>
-    </motion.div>
+      </form>
+    </AuthFrame>
   )
 }

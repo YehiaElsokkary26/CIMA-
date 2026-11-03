@@ -1,175 +1,99 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Loader2, AlertCircle, Camera, Eye } from 'lucide-react'
-import { CimaIconMark } from '@/components/layout/CimaLogo'
-import Button from '@/components/ui/Button'
-import Input from '@/components/ui/Input'
+import { useNavigate } from 'react-router-dom'
+import { Camera, Eye, Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import type { UserRole } from '@/types'
+import AuthFrame, { FormError } from '@/components/klaket/AuthFrame'
+import { Clap } from '@/components/klaket/primitives'
+import Input from '@/components/ui/Input'
 
-const ROLE_CARDS: { role: UserRole; label: string; desc: string; icon: typeof Camera }[] = [
-  { role: 'filmmaker', label: 'Filmmaker', desc: 'Share your films', icon: Camera },
-  { role: 'viewer', label: 'Viewer', desc: 'Discover and review', icon: Eye },
+const ROLES: { role: UserRole; label: string; desc: string; icon: typeof Camera }[] = [
+  { role: 'filmmaker', label: 'I make films', desc: 'Upload and enter the vote', icon: Camera },
+  { role: 'viewer', label: 'I watch films', desc: 'Discover, vote, leave notes', icon: Eye },
 ]
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { register } = useAuth()
 
-  const [name, setName]         = useState('')
-  const [email, setEmail]       = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [selectedRole, setSelectedRole] = useState<UserRole>('viewer')
-  const [error, setError]       = useState('')
+  const [role, setRole] = useState<UserRole>('viewer')
+  const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    // Rule 7: validate on submit, not every keystroke
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError('Use at least 6 characters for your password.')
       return
     }
-
     try {
-      const result = await register.mutateAsync({ name, email, password, role: selectedRole })
+      const result = await register.mutateAsync({ name, email, password, role })
       navigate(result.user.role ? '/home' : '/onboarding', { replace: true })
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed.'
+      const msg = err instanceof Error ? err.message : ''
       setError(
-        msg.includes('fetch') || msg.includes('network') || msg.includes('Failed')
-          ? "Couldn't reach Cima right now. Check your connection and try again."
-          : msg
+        /fetch|network|failed/i.test(msg)
+          ? 'Can’t reach Klaket right now. Check your connection and try again.'
+          : msg || 'Couldn’t create your account. Try again.',
       )
     }
   }
 
   return (
-    <motion.div
-      className="min-h-full bg-background flex flex-col items-center justify-center px-6 py-12 overflow-y-auto"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-xs space-y-8"
-      >
-        {/* Logo + tagline */}
-        <div className="flex flex-col items-center">
-          <CimaIconMark size={72} />
-          <p className="text-sm text-center mt-2 text-muted-foreground">
-            Every voice deserves a screen.
-          </p>
-        </div>
+    <AuthFrame mode="up" eyebrow="Take 01 · New roll" heading="Slate your name.">
+      <form onSubmit={submit} className="flex flex-col gap-3.5 pt-5" noValidate>
+        {error && <FormError message={error} />}
+        <Input label="Name on your credits" autoComplete="name" placeholder="e.g. Hana Bakkali" value={name} onChange={(e) => setName(e.target.value)} required />
+        <Input label="Email" type="email" autoComplete="email" placeholder="you@school.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <Input label="Password" type="password" autoComplete="new-password" placeholder="At least 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
 
-        {/* Rule 7: form error summary banner */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-2 px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/40 border-l-[3px] border-l-destructive"
-          >
-            <AlertCircle size={14} className="shrink-0 mt-0.5 text-destructive" />
-            <p className="text-xs text-destructive">{error}</p>
-          </motion.div>
-        )}
-
-        {/* Rule 7: single-column form, all labels above inputs */}
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
-            label="Full Name"
-            placeholder="Jane Doe"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            showRequired
-            autoComplete="name"
-          />
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@film.school"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            showRequired
-            autoComplete="email"
-          />
-          {/* Rule 7: password with show/hide toggle (in Input component) */}
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Min 6 characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            showRequired
-            minLength={6}
-            autoComplete="new-password"
-          />
-
-          {/* Role selection cards */}
-          <div className="space-y-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">I am a…</label>
-            <div className="grid grid-cols-2 gap-3">
-              {ROLE_CARDS.map(({ role, label, desc, icon: Icon }) => {
-                const selected = selectedRole === role
-                return (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setSelectedRole(role)}
-                    className={cn(
-                      'rounded-2xl p-4 text-left border transition-colors',
-                      selected
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border bg-card hover:border-primary/40',
-                    )}
-                  >
-                    <Icon size={18} className="text-primary mb-2" />
-                    <p className="text-sm font-bold text-foreground">{label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-                  </button>
-                )
-              })}
-            </div>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="k-label text-[10.5px] font-semibold mb-1">Which side of the camera?</legend>
+          <div role="radiogroup" aria-label="Your role" className="grid grid-cols-2 gap-2">
+            {ROLES.map(({ role: r, label, desc, icon: Icon }) => {
+              const on = role === r
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setRole(r)}
+                  className={cn(
+                    'press text-start border-[1.5px] border-foreground p-3 flex flex-col gap-1',
+                    on ? (r === 'filmmaker' ? 'bg-k-red text-k-paper' : 'bg-k-teal text-k-paper') : 'bg-card hover:bg-muted',
+                  )}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <b className="text-[14px]">{label}</b>
+                  <span className={cn('text-[12px]', on ? 'opacity-90' : 'text-muted-foreground')}>{desc}</span>
+                </button>
+              )
+            })}
           </div>
+          <span className="text-[12.5px] text-muted-foreground">You can switch to filmmaker later from your profile.</span>
+        </fieldset>
 
-          {/* Rule 11 + Rule 3: full-width lg button = min 52px */}
-          <Button
+        <div className="mt-2 flex flex-col">
+          <Clap className="h-2.5 border-[1.5px] border-b-0 border-foreground" />
+          <button
             type="submit"
-            size="lg"
-            className="w-full"
-            disabled={register.isPending}
-            pulse
+            disabled={register.isPending || !name || !email || !password}
+            className="press flex justify-between items-center min-h-[52px] px-4 bg-k-red text-k-paper font-black text-[16px] disabled:opacity-60"
+            style={{ fontStretch: '115%' }}
           >
-            {register.isPending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              'Create Account'
-            )}
-          </Button>
-        </form>
-
-        {/* Rule 3: link has py-1 for enlarged tap area */}
-        <p className="text-center text-xs text-muted-foreground">
-          Already have an account?{' '}
-          <Link
-            to="/login"
-            className="text-primary underline underline-offset-4 hover:text-primary/80 transition-colors py-1"
-          >
-            Sign In
-          </Link>
+            <span>{register.isPending ? 'CREATING…' : 'CREATE ACCOUNT'}</span>
+            {register.isPending ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <span aria-hidden="true">→</span>}
+          </button>
+        </div>
+        <p className="text-[12.5px] text-muted-foreground">
+          By continuing you agree to the community rules: credit your crew and only upload work you made.
         </p>
-      </motion.div>
-    </motion.div>
+      </form>
+    </AuthFrame>
   )
 }

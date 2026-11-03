@@ -1,23 +1,27 @@
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { useUIStore } from '@/store/uiStore'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { supabase } from '@/lib/supabase'
 import { usersApi } from '@/lib/api'
 import ToastContainer from '@/components/ui/Toast'
 import AppShell from '@/components/layout/AppShell'
+import WelcomePage from '@/pages/WelcomePage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
 import OnboardingPage from '@/pages/OnboardingPage'
 import HomePage from '@/pages/HomePage'
+import VotePage from '@/pages/VotePage'
 import FilmDetailPage from '@/pages/FilmDetailPage'
 import UploadPage from '@/pages/UploadPage'
 import ProfilePage from '@/pages/ProfilePage'
-import CimaHubPage from '@/pages/CimaHubPage'
+import EditProfilePage from '@/pages/EditProfilePage'
+import CrewPage from '@/pages/CrewPage'
 import DiscoverPage from '@/pages/DiscoverPage'
 import NotificationsPage from '@/pages/NotificationsPage'
+import RevealPage from '@/pages/RevealPage'
 import SettingsPage from '@/pages/SettingsPage'
-import EditProfilePage from '@/pages/EditProfilePage'
 
 // ─── Route guards ────────────────────────────────────────────────────────────
 
@@ -30,7 +34,7 @@ function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
 function OnboardingRoute({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const hasSelectedRole = useAuthStore((s) => s.hasSelectedRole)
-  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (!isLoggedIn) return <Navigate to="/welcome" replace />
   if (hasSelectedRole) return <Navigate to="/home" replace />
   return <>{children}</>
 }
@@ -38,7 +42,7 @@ function OnboardingRoute({ children }: { children: React.ReactNode }) {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
   const hasSelectedRole = useAuthStore((s) => s.hasSelectedRole)
-  if (!isLoggedIn) return <Navigate to="/login" replace />
+  if (!isLoggedIn) return <Navigate to="/welcome" replace />
   if (!hasSelectedRole) return <Navigate to="/onboarding" replace />
   return <>{children}</>
 }
@@ -49,7 +53,7 @@ function FilmmakerRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (role !== 'filmmaker') {
-      toast.error('Only filmmakers can upload films.')
+      toast.error('Only filmmakers can upload films. You can switch on your profile.')
       navigate('/home', { replace: true })
     }
   }, [role, navigate])
@@ -61,11 +65,15 @@ function FilmmakerRoute({ children }: { children: React.ReactNode }) {
 // ─── App ─────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { isDarkMode } = useUIStore()
   const { setAuth, logout } = useAuthStore()
 
-  // ─── Supabase session restoration + auth state sync ──────────────────────
   useEffect(() => {
-    // Restore any existing session on mount (handles page reload)
+    document.documentElement.classList.toggle('dark', isDarkMode)
+  }, [isDarkMode])
+
+  // Supabase session restoration + auth state sync
+  useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         try {
@@ -75,79 +83,47 @@ export default function App() {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          logout()
-        } else if (session && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) {
-          try {
-            const profile = (await usersApi.get(session.user.id)).data
-            setAuth(session.access_token, profile)
-          } catch { /* profile row may not exist yet right after signup */ }
-        }
-      },
-    )
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        logout()
+      } else if (session && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) {
+        try {
+          const profile = (await usersApi.get(session.user.id)).data
+          setAuth(session.access_token, profile)
+        } catch { /* profile row may not exist yet right after signup */ }
+      }
+    })
 
     return () => subscription.unsubscribe()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
     <>
       <ToastContainer />
       <Routes>
-        {/* Public routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicOnlyRoute>
-              <LoginPage />
-            </PublicOnlyRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicOnlyRoute>
-              <RegisterPage />
-            </PublicOnlyRoute>
-          }
-        />
+        {/* Public */}
+        <Route path="/welcome" element={<PublicOnlyRoute><WelcomePage /></PublicOnlyRoute>} />
+        <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+        <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 
-        {/* Role selection — needs auth but no role yet */}
-        <Route
-          path="/onboarding"
-          element={
-            <OnboardingRoute>
-              <OnboardingPage />
-            </OnboardingRoute>
-          }
-        />
+        {/* Role selection: signed in, no role yet */}
+        <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
 
-        {/* Legacy redirect so any bookmarks still work */}
         <Route path="/" element={<Navigate to="/home" replace />} />
+        {/* Old name for the crew screen */}
+        <Route path="/cima" element={<Navigate to="/crew" replace />} />
 
-        {/* Protected app shell */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <AppShell />
-            </ProtectedRoute>
-          }
-        >
+        {/* App */}
+        <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
           <Route path="/home" element={<HomePage />} />
+          <Route path="/vote" element={<VotePage />} />
+          <Route path="/reveal" element={<RevealPage />} />
           <Route path="/film/:id" element={<FilmDetailPage />} />
-          <Route
-            path="/upload"
-            element={
-              <FilmmakerRoute>
-                <UploadPage />
-              </FilmmakerRoute>
-            }
-          />
-          <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/upload" element={<FilmmakerRoute><UploadPage /></FilmmakerRoute>} />
           <Route path="/profile/me/edit" element={<EditProfilePage />} />
-          <Route path="/cima" element={<CimaHubPage />} />
+          <Route path="/profile/:id" element={<ProfilePage />} />
+          <Route path="/crew" element={<CrewPage />} />
           <Route path="/discover" element={<DiscoverPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />

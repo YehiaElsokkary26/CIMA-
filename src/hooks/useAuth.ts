@@ -81,7 +81,7 @@ export function useAuth() {
         isLoggedIn: true,
         hasSelectedRole: !!user.role,
       })
-      localStorage.setItem('cima_token', token)
+      localStorage.setItem('klaket_token', token)
     },
     onError: (err) => {
       const msg = err instanceof Error ? err.message : 'Registration failed'
@@ -94,7 +94,7 @@ export function useAuth() {
   const handleLogout = async () => {
     try { await supabase.auth.signOut() } catch { /* ignore */ }
     logout()
-    navigate('/login')
+    navigate('/welcome')
   }
 
   // Sync role selection to the profiles table via Express

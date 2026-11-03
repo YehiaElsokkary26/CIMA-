@@ -1,311 +1,216 @@
-// UI/UX audit applied — WCAG 2.1 AA compliant
-import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import { Search, Filter, MapPin, GraduationCap, Users, Film as FilmIcon, Loader2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import Masonry from 'react-masonry-css'
-import Avatar from '@/components/ui/Avatar'
-import RoleBadge from '@/components/profile/RoleBadge'
-import CimaButton from '@/components/cima/CimaButton'
-import FilmCard from '@/components/film/FilmCard'
-import EmptyState from '@/components/ui/EmptyState'
-import Button from '@/components/ui/Button'
-import { useFilms, useFilmmakers } from '@/hooks/useFilms'
+import { useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { AlertCircle, Film as FilmIcon, Search, Users } from 'lucide-react'
+import { useFilmmakers, useFilms } from '@/hooks/useFilms'
 import { useSendCimaRequest } from '@/hooks/useCima'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
+import { toast } from '@/store/toastStore'
+import type { User } from '@/types'
+import { Band, PageTitle } from '@/components/klaket/primitives'
+import { PosterCard, PosterCardSkeleton } from '@/components/klaket/FilmCards'
+import Avatar from '@/components/ui/Avatar'
+import Badge from '@/components/ui/Badge'
+import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
+import { CallSheetSkeleton } from '@/components/ui/Skeleton'
 
-const GENRE_FILTERS = ['All', 'Drama', 'Documentary', 'Experimental', 'Neo-Noir', 'Romance', 'Sci-Fi']
-
-const MASONRY_COLS = { default: 3, 1024: 3, 640: 2, 480: 1 }
-
-type TabMode = 'filmmakers' | 'films'
+type Tab = 'films' | 'people'
 
 export default function DiscoverPage() {
-  const user = useAuthStore((s) => s.user)
-  const role = useAuthStore((s) => s.role)
-  const isFilmmaker = role === 'filmmaker'
+  const me = useAuthStore((s) => s.user)
+  const [params, setParams] = useSearchParams()
+  const [query, setQuery] = useState(params.get('q') ?? '')
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'people' ? 'people' : 'films')
+  const [scene, setScene] = useState('All')
+  const [asked, setAsked] = useState<Record<string, boolean>>({})
 
-  const [tab, setTab] = useState<TabMode>('filmmakers')
-  const [query, setQuery] = useState('')
-  const [activeGenre, setActiveGenre] = useState('All')
-  const [cimaStates, setCimaStates] = useState<Record<string, 'none' | 'pending' | 'member'>>({})
+  const films = useFilms()
+  const people = useFilmmakers()
+  const sendRequest = useSendCimaRequest()
 
-  const { data: films, isLoading: filmsLoading, isError: filmsError, refetch: refetchFilms } = useFilms()
-  const { data: filmmakers, isLoading: filmmakersLoading, isError: filmmakersError, refetch: refetchFilmmakers } = useFilmmakers()
-  const sendCimaRequest = useSendCimaRequest()
+  const allFilms = useMemo(() => films.data ?? [], [films.data])
+  const allPeople = useMemo(() => (people.data ?? []).filter((p) => p.id !== me?.id), [people.data, me?.id])
 
-  const allFilms = films ?? []
-  const allFilmmakers = filmmakers ?? []
+  const scenes = useMemo(() => {
+    const src = tab === 'films' ? allFilms.flatMap((f) => f.genre) : allPeople.map((p) => p.topGenre ?? '')
+    return ['All', ...Array.from(new Set(src.filter(Boolean))).slice(0, 10)]
+  }, [allFilms, allPeople, tab])
 
-  const filteredFilmmakers = allFilmmakers.filter((f) => {
-    const q = query.toLowerCase()
-    const matchQuery = !query || f.name.toLowerCase().includes(q) || f.city?.toLowerCase().includes(q) || f.school?.toLowerCase().includes(q)
-    const matchGenre = activeGenre === 'All' || f.topGenre === activeGenre
-    return matchQuery && matchGenre
+  const q = query.trim().toLowerCase()
+
+  const filmResults = allFilms.filter((f) => {
+    const hay = [f.title, f.description, f.uploader?.name, f.uploader?.school, ...f.genre].join(' ').toLowerCase()
+    return (!q || hay.includes(q)) && (scene === 'All' || f.genre.includes(scene))
   })
 
-  const filteredFilms = useMemo(() => {
-    if (!query && activeGenre === 'All') return allFilms
-    return allFilms.filter((f) => {
-      const q = query.toLowerCase()
-      const matchQuery = !query ||
-        f.title.toLowerCase().includes(q) ||
-        (f.uploader?.name ?? '').toLowerCase().includes(q) ||
-        (f.description ?? '').toLowerCase().includes(q)
-      const matchGenre = activeGenre === 'All' || f.genre.some((g) => g.toLowerCase() === activeGenre.toLowerCase())
-      return matchQuery && matchGenre
-    })
-  }, [allFilms, query, activeGenre])
+  const peopleResults = allPeople.filter((p) => {
+    const hay = [p.name, p.city, p.school, p.bio, p.topGenre, ...(p.crewRoles ?? [])].join(' ').toLowerCase()
+    return (!q || hay.includes(q)) && (scene === 'All' || p.topGenre === scene)
+  })
+  const openToCrew = peopleResults.filter((p) => p.lookingForCollaborators || p.openToCollab)
 
-  const featured = allFilmmakers.filter((f) => f.lookingForCollaborators)
+  const switchTab = (t: Tab) => {
+    setTab(t)
+    setScene('All')
+    setParams(t === 'people' ? { tab: 'people' } : {}, { replace: true })
+  }
 
-  const handleCima = (userId: string) => {
-    setCimaStates((prev) => ({ ...prev, [userId]: 'pending' }))
-    sendCimaRequest.mutate(userId, {
-      onError: () => setCimaStates((prev) => ({ ...prev, [userId]: 'none' })),
+  const ask = (p: User) => {
+    if (asked[p.id]) return
+    setAsked((a) => ({ ...a, [p.id]: true }))
+    sendRequest.mutate(p.id, {
+      onSuccess: () => toast.success(`Call sheet sent to ${p.name}.`),
+      onError: () => {
+        setAsked((a) => ({ ...a, [p.id]: false }))
+        toast.error('Couldn’t send the call sheet. Try again.')
+      },
     })
   }
 
-  const placeholder = tab === 'films'
-    ? 'Search films, genres, filmmakers…'
-    : 'Search filmmakers, schools, cities…'
+  const active = tab === 'films' ? films : people
+  const count = tab === 'films' ? filmResults.length : peopleResults.length
 
   return (
-    <motion.div
-      className="min-h-full"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      {/* Header */}
-      <div className="px-4 pt-6 pb-3 space-y-4 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
-        <h1 className="font-display text-4xl uppercase tracking-widest text-foreground">Discover</h1>
+    <div className="min-h-full">
+      <div className="max-w-6xl mx-auto px-4 pt-2 pb-3 flex flex-col gap-3">
+        <PageTitle en="DISCOVER" ar="اكتشف" />
 
-        {/* Tab toggle — Filmmakers / Films */}
-        <div className="flex gap-1 p-1 bg-secondary rounded-xl">
-          {(['filmmakers', 'films'] as TabMode[]).map((t) => (
+        <div role="tablist" aria-label="What to discover" className="grid grid-cols-2 border-[1.5px] border-foreground sm:max-w-sm">
+          {(['films', 'people'] as Tab[]).map((t) => (
             <button
               key={t}
-              onClick={() => { setTab(t); setQuery(''); setActiveGenre('All') }}
-              className={`flex-1 flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider py-2 rounded-lg transition-colors ${
-                tab === t
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              type="button"
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => switchTab(t)}
+              className={cn(
+                'min-h-[44px] font-extrabold text-[13px] flex items-center justify-center gap-2',
+                tab === t ? 'bg-solid text-solid-foreground' : 'hover:bg-foreground/5',
+              )}
             >
-              {t === 'filmmakers' ? <Users size={11} /> : <FilmIcon size={11} />}
-              {t}
+              {t === 'films' ? <FilmIcon size={15} aria-hidden="true" /> : <Users size={15} aria-hidden="true" />}
+              {t === 'films' ? 'FILMS' : 'FILMMAKERS'}
             </button>
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative flex items-center bg-input border border-border rounded-2xl px-4 py-3 gap-2">
-          <Search size={15} className="text-muted-foreground shrink-0" />
+        <label htmlFor="discover-q" className="k-label text-[10px] text-muted-foreground -mb-1.5">
+          {tab === 'films' ? 'Search films, directors, schools' : 'Search people, crew roles, schools, cities'}
+        </label>
+        <div className="flex items-center gap-2 border-[1.5px] border-foreground bg-field px-3 min-h-[48px]">
+          <Search size={18} aria-hidden="true" />
           <input
+            id="discover-q"
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={placeholder}
-            aria-label={placeholder}
-            className="flex-1 bg-transparent text-foreground placeholder:text-muted-foreground outline-none text-sm"
+            placeholder={tab === 'films' ? 'Try “documentary” or “Cairo”' : 'Try “editor” or “Tunis”'}
+            className="flex-1 bg-transparent outline-none text-[15px] min-w-0 placeholder:text-muted-foreground"
           />
         </div>
 
-        {/* Genre filters — shared between both tabs */}
-        <div className="scroll-x flex gap-2 pb-1">
-          {GENRE_FILTERS.map((g) => (
-            <button
-              key={g}
-              onClick={() => setActiveGenre(g)}
-              style={{ minHeight: 44 }}
-              className={`shrink-0 text-xs px-3 py-2.5 rounded-full transition-colors ${
-                activeGenre === g
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'bg-secondary text-secondary-foreground'
-              }`}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
-
+        {scenes.length > 1 && (
+          <div className="scroll-x flex gap-1.5 -mx-4 px-4" role="group" aria-label="Filter by scene (genre)">
+            {scenes.map((s) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={scene === s}
+                onClick={() => setScene(s)}
+                className={cn(
+                  'shrink-0 k-label text-[11px] font-semibold px-3 min-h-[36px] border-[1.5px] border-foreground press',
+                  scene === s ? 'bg-solid text-solid-foreground' : 'hover:bg-foreground/5',
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="px-4 space-y-8 pb-8">
+      <Band tone="solid" left={`Scene: ${scene}`} right={`${count} ${tab === 'films' ? 'films' : 'people'}`} />
 
-        {/* ── Films tab ───────────────────────────────────────────── */}
-        {tab === 'films' && (
-          <section>
-            <h2 className="text-lg font-bold text-foreground mb-4">
-              {query
-                ? `${filteredFilms.length} result${filteredFilms.length !== 1 ? 's' : ''}`
-                : activeGenre === 'All' ? 'All Films' : activeGenre}
-            </h2>
-
-            {filmsLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 size={20} className="animate-spin text-muted-foreground" />
-              </div>
-            ) : filmsError ? (
-              <EmptyState
-                icon={FilmIcon}
-                title="Couldn't load films."
-                subtitle="Something went wrong reaching the server."
-                action={
-                  <Button variant="ghost" size="sm" onClick={() => refetchFilms()}>
-                    Retry
-                  </Button>
-                }
-              />
-            ) : filteredFilms.length === 0 ? (
-              <EmptyState
-                icon={FilmIcon}
-                title="No films found."
-                subtitle="Try a different title, genre, or filmmaker name."
-              />
-            ) : (
-              <Masonry
-                breakpointCols={MASONRY_COLS}
-                className="cima-masonry-grid"
-                columnClassName="cima-masonry-column"
-              >
-                {filteredFilms.map((film, i) => (
-                  <FilmCard
-                    key={film.id}
-                    film={film}
-                    index={i}
-                    isOwner={isFilmmaker && film.uploaderId === user?.id}
-                  />
-                ))}
-              </Masonry>
-            )}
-          </section>
-        )}
-
-        {/* ── Filmmakers tab ──────────────────────────────────────── */}
-        {tab === 'filmmakers' && (
-          <>
-            {/* Featured spotlight — only when no query */}
-            {!query && featured.length > 0 && (
-              <section>
-                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-1.5">
-                  <Filter size={16} className="text-primary" /> Open to Collab
-                </h2>
-                <div className="scroll-x flex gap-3 pb-2">
-                  {featured.map((f, i) => (
-                    <motion.div
-                      key={f.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.07 }}
-                      className="shrink-0 w-48 p-4 space-y-3 rounded-2xl bg-card border border-border"
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        {active.isError ? (
+          <EmptyState
+            icon={AlertCircle}
+            title={tab === 'films' ? 'Couldn’t load films' : 'Couldn’t load filmmakers'}
+            subtitle="Something went wrong reaching the server."
+            action={<Button variant="solid" size="sm" onClick={() => active.refetch()}>Retry</Button>}
+          />
+        ) : tab === 'films' ? (
+          films.isPending ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => <PosterCardSkeleton key={i} />)}
+            </div>
+          ) : filmResults.length === 0 ? (
+            <EmptyState icon={FilmIcon} title="No matches" subtitle="Try a different word or scene." />
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filmResults.map((f) => <PosterCard key={f.id} film={f} />)}
+            </div>
+          )
+        ) : people.isPending ? (
+          <div className="grid gap-3 sm:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <CallSheetSkeleton key={i} />)}</div>
+        ) : peopleResults.length === 0 ? (
+          <EmptyState icon={Users} title="No matches" subtitle="Try a different word or scene." />
+        ) : (
+          <div className="flex flex-col gap-6">
+            {openToCrew.length > 0 && !q && scene === 'All' && (
+              <section aria-label="Open to crew" className="flex flex-col gap-2">
+                <span className="k-label text-[10.5px] font-semibold">Open to crew right now · {openToCrew.length}</span>
+                <div className="scroll-x flex gap-2 -mx-4 px-4 pb-1">
+                  {openToCrew.map((p) => (
+                    <Link
+                      key={p.id}
+                      to={`/profile/${p.id}`}
+                      className="press shrink-0 w-40 border-[1.5px] border-foreground bg-k-teal text-k-paper p-2.5 flex flex-col gap-1.5"
                     >
-                      <Avatar name={f.name} size="md" />
-                      <div>
-                        <p className="font-semibold text-sm text-foreground line-clamp-1">{f.name}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{f.topGenre}</p>
-                      </div>
-                      <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full inline-block bg-primary/15 text-primary">
-                        Collab Open
-                      </span>
-                      <CimaButton
-                        status={cimaStates[f.id] ?? 'none'}
-                        onClick={() => handleCima(f.id)}
-                        className="w-full text-xs py-1.5 justify-center"
-                      />
-                    </motion.div>
+                      <Avatar name={p.name} src={p.avatarUrl} size="md" className="border-k-paper" />
+                      <b className="text-[13.5px] leading-tight truncate">{p.name}</b>
+                      <span className="k-label text-[9px] truncate">{p.crewRoles?.join(' · ') || p.topGenre || 'Filmmaker'}</span>
+                    </Link>
                   ))}
                 </div>
               </section>
             )}
 
-            {/* All filmmakers list */}
-            <section>
-              <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-1.5">
-                <Users size={16} className="text-primary" />
-                {query
-                  ? `${filteredFilmmakers.length} result${filteredFilmmakers.length !== 1 ? 's' : ''}`
-                  : 'All Filmmakers'}
-              </h2>
-
-              {filmmakersLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 size={20} className="animate-spin text-muted-foreground" />
-                </div>
-              ) : filmmakersError ? (
-                <EmptyState
-                  icon={Users}
-                  title="Couldn't load filmmakers."
-                  subtitle="Something went wrong reaching the server."
-                  action={
-                    <Button variant="ghost" size="sm" onClick={() => refetchFilmmakers()}>
-                      Retry
-                    </Button>
-                  }
-                />
-              ) : filteredFilmmakers.length === 0 ? (
-                <EmptyState icon={Users} title="No Results" subtitle="Try a different search or filter." />
-              ) : (
-                <div className="space-y-3">
-                  {filteredFilmmakers.map((filmmaker, i) => (
-                    <motion.div
-                      key={filmmaker.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="p-4 rounded-2xl bg-card border border-border transition-colors hover:border-primary/30"
-                    >
-                      <div className="flex items-start gap-3">
-                        <Link to={`/profile/${filmmaker.id}`} className="transition-opacity active:opacity-70">
-                          <Avatar name={filmmaker.name} size="md" />
-                        </Link>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Link to={`/profile/${filmmaker.id}`}>
-                              <span className="font-semibold text-sm text-foreground hover:underline active:opacity-70 transition-colors">
-                                {filmmaker.name}
-                              </span>
-                            </Link>
-                            <RoleBadge role={filmmaker.role} />
-                            {filmmaker.lookingForCollaborators && (
-                              <span className="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                                Collab Open
-                              </span>
-                            )}
-                          </div>
-                          {filmmaker.bio && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{filmmaker.bio}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                            {filmmaker.city && (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                <MapPin size={9} /> {filmmaker.city}
-                              </span>
-                            )}
-                            {filmmaker.school && (
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                <GraduationCap size={9} /> {filmmaker.school}
-                              </span>
-                            )}
-                            <span className="text-[10px] text-muted-foreground">
-                              {filmmaker.filmsCount} films
-                            </span>
-                          </div>
-                        </div>
-                        <CimaButton
-                          status={cimaStates[filmmaker.id] ?? 'none'}
-                          onClick={() => handleCima(filmmaker.id)}
-                        />
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {peopleResults.map((p) => (
+                <li key={p.id} className="border-[1.5px] border-foreground bg-card flex flex-col">
+                  <div className="flex items-start gap-3 p-3">
+                    <Link to={`/profile/${p.id}`} aria-label={`${p.name}’s profile`}>
+                      <Avatar name={p.name} src={p.avatarUrl} size="lg" />
+                    </Link>
+                    <div className="min-w-0 flex-1 flex flex-col gap-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link to={`/profile/${p.id}`} className="font-bold text-[16px] hover:text-hot">{p.name}</Link>
+                        {(p.lookingForCollaborators || p.openToCollab) && <Badge variant="crew">Open to crew</Badge>}
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </>
+                      {p.bio && <p className="text-[13.5px] text-muted-foreground line-clamp-2">{p.bio}</p>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 border-t-[1.5px] border-foreground">
+                    <div className="slate-cell border-e-[1.5px] border-foreground">Role<b>{p.crewRoles?.[0] ?? '—'}</b></div>
+                    <div className="slate-cell border-e-[1.5px] border-foreground">City<b>{p.city ?? '—'}</b></div>
+                    <div className="slate-cell">Films<b>{p.filmsCount ?? 0}</b></div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => ask(p)}
+                    disabled={asked[p.id]}
+                    className="press min-h-[46px] border-t-[1.5px] border-foreground font-extrabold text-[13px] bg-k-red text-k-paper disabled:bg-k-teal hover:brightness-110"
+                  >
+                    {asked[p.id] ? 'CALL SHEET SENT ✓' : 'SEND A CALL SHEET'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }

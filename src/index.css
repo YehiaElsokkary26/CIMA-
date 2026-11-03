@@ -1,60 +1,91 @@
+/* Klaket — Afeesh × Klaket design system.
+ * Light "newsprint" theme by default, dark "screening room" theme via .dark.
+ * Poster colours (red, mustard, teal) stay the same in both themes.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* ─── CIMA — single dark theme, near-black + cinema red ───────────────
-     * Matches the current Figma mockup exactly. One theme only — no
-     * separate light/.dark variants.
-     * ─────────────────────────────────────────────────────────────────── */
+    /* ─── Newsprint (light) ─────────────────────────────────────────── */
+    --background: 42 52% 89%;          /* Newsprint   #F1E8D3 */
+    --foreground: 34 20% 7%;           /* Slate ink   #15120E */
 
-    --background: 240 8% 5%;           /* #0C0C0E near-black */
-    --foreground: 0 0% 94%;
+    --card: 42 58% 92%;                /* Card paper  #F7F0E0 */
+    --card-foreground: 34 20% 7%;
+    --popover: 42 58% 92%;
+    --popover-foreground: 34 20% 7%;
 
-    --card: 240 6% 9%;
-    --card-foreground: 0 0% 90%;
+    --primary: 1 72% 45%;              /* Poster red  #C42320 */
+    --primary-foreground: 42 52% 89%;
 
-    --popover: 240 6% 12%;
-    --popover-foreground: 0 0% 90%;
+    --secondary: 176 61% 26%;          /* Nile teal   #1A6A65 */
+    --secondary-foreground: 42 52% 89%;
 
-    --primary: 354 63% 48%;            /* Cinema Red #C8313A */
-    --primary-foreground: 0 0% 100%;
+    --muted: 41 41% 82%;               /* #E4D8BE */
+    --muted-foreground: 33 12% 33%;    /* #5E554A — 6.1:1 on newsprint */
 
-    --secondary: 240 5% 14%;
-    --secondary-foreground: 0 0% 75%;
+    --accent: 43 88% 53%;              /* Mustard     #F1B51C */
+    --accent-foreground: 34 20% 7%;
 
-    --muted: 240 5% 12%;
-    --muted-foreground: 0 0% 45%;
+    --destructive: 1 72% 45%;
+    --destructive-foreground: 42 52% 89%;
 
-    --accent: 354 63% 48%;
-    --accent-foreground: 0 0% 100%;
+    --border: 34 20% 7%;               /* slate lines are ink */
+    --input: 42 68% 95%;
+    --ring: 1 72% 45%;
+    --radius: 0px;
 
-    /* Secondary-toned aliases — kept so existing components referencing
-       these tokens (badges, record LED) render as flat dark neutrals
-       instead of resolving to nothing. */
-    --film-burn: 240 5% 14%;
-    --film-burn-foreground: 0 0% 90%;
+    --hot: 1 72% 45%;                  /* red as text on the ground */
+    --rule: 42 29% 74%;                /* #CFC3A8 hairlines */
+    --field: 42 68% 95%;               /* #FBF6EA */
+    --solid: 34 20% 7%;
+    --solid-foreground: 42 52% 89%;
+    --bar: 34 20% 7%;
+    --skeleton: 41 41% 82%;
 
-    --burgundy: 240 6% 9%;
-    --burgundy-foreground: 0 0% 90%;
+    color-scheme: light;
+  }
 
-    --cta: 354 63% 48%;
+  .dark {
+    /* ─── Screening room (dark) ─────────────────────────────────────── */
+    --background: 34 20% 7%;           /* #15120E */
+    --foreground: 42 52% 89%;          /* #F1E8D3 */
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --card: 33 17% 10%;                /* #1F1B16 */
+    --card-foreground: 42 52% 89%;
+    --popover: 33 17% 10%;
+    --popover-foreground: 42 52% 89%;
 
-    --border: 240 4% 16%;
-    --input: 240 5% 13%;
-    --ring: 354 63% 48%;
-    --radius: 14px;
+    --primary: 1 72% 45%;
+    --primary-foreground: 42 52% 89%;
 
-    --film-badge: 240 5% 14%;
-    --film-badge-foreground: 0 0% 75%;
-    --rating-star: 354 63% 48%;        /* filled stars = primary */
-    --cima-tag: 354 63% 48%;
-    --cima-tag-foreground: 0 0% 100%;
-    --record-led: 354 63% 48%;
+    --secondary: 176 61% 26%;
+    --secondary-foreground: 42 52% 89%;
+
+    --muted: 30 16% 15%;               /* #2C2620 */
+    --muted-foreground: 39 17% 67%;    /* #B8AE9C */
+
+    --accent: 43 88% 53%;
+    --accent-foreground: 34 20% 7%;
+
+    --destructive: 7 84% 63%;
+    --destructive-foreground: 34 20% 7%;
+
+    --border: 42 52% 89%;
+    --input: 33 17% 13%;
+    --ring: 7 84% 63%;
+
+    --hot: 7 84% 63%;                  /* #F0614F — 5.7:1 on ink */
+    --rule: 36 15% 20%;                /* #3A342B */
+    --field: 33 17% 13%;               /* #26211B */
+    --solid: 42 52% 89%;
+    --solid-foreground: 34 20% 7%;
+    --bar: 30 20% 4%;                  /* #0B0907 */
+    --skeleton: 30 16% 15%;
+
+    color-scheme: dark;
   }
 
   html,
@@ -71,107 +102,100 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-size: 15px;
-    line-height: 1.65;
+    line-height: 1.55;
   }
 
-  @screen sm {
-    body { font-size: 1rem; }
+  h1, h2, h3 { text-wrap: balance; }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--hot));
+    outline-offset: 2px;
   }
 
   ::-webkit-scrollbar { width: 3px; height: 3px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; }
-  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--secondary)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--rule)); }
 
   .safe-area-top    { padding-top:    env(safe-area-inset-top); }
   .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-  /* Brand logo: no filters, no shadow */
-  .logo {
-    background: transparent;
-    border: none;
-    outline: none;
-    filter: none;
-    box-shadow: none;
-  }
 }
 
 @layer components {
-  /* ─── Card grain — neutralized; new design uses flat dark cards ──────── */
-  .card-grain {
-    position: relative;
+  /* ─── Type helpers ─────────────────────────────────────────────────── */
+  .k-display {
+    font-family: Archivo, 'Arial Narrow', Arial, sans-serif;
+    font-weight: 900;
+    font-stretch: 125%;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
   }
-
-  /* ─── Cinematic button ──────────────────────────────────────────────── */
-  .btn-cima {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+  .k-label {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
-    border-radius: 8px;
-    padding: 10px 24px;
-    border: none;
-    cursor: pointer;
-    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    letter-spacing: 0.06em;
   }
-  .btn-cima:hover {
-    background: hsl(var(--primary) / 0.85);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px hsl(var(--primary) / 0.35);
+  .k-poster {
+    font-family: Lalezar, 'IBM Plex Sans Arabic', sans-serif;
+    font-weight: 400;
+    line-height: 1.05;
   }
-  .btn-cima:active { transform: translateY(0); }
 
-  /* ─── Cinematic input (bottom border only) ───────────────────────────── */
-  .input-cima {
-    background: hsl(var(--input));
-    border: 1px solid hsl(var(--border));
-    border-radius: 12px;
-    color: hsl(var(--foreground));
-    font-family: 'Inter', sans-serif;
+  /* ─── Clapperboard stripes ─────────────────────────────────────────── */
+  .clap {
+    background: repeating-linear-gradient(
+      135deg,
+      hsl(var(--foreground)) 0 12px,
+      hsl(var(--background)) 12px 24px
+    );
+  }
+  .clap-live {
+    background: repeating-linear-gradient(135deg, #15120E 0 12px, #F1B51C 12px 24px);
+  }
+  .clap-fixed {
+    background: repeating-linear-gradient(135deg, #15120E 0 12px, #F1E8D3 12px 24px);
+  }
+  [dir='rtl'] .clap,
+  [dir='rtl'] .clap-live,
+  [dir='rtl'] .clap-fixed { transform: scaleX(-1); }
+
+  /* ─── Halftone dot screen for photos and stills ───────────────────── */
+  .halftone {
+    background-image: radial-gradient(rgba(21, 18, 14, 0.55) 1.1px, transparent 1.5px);
+    background-size: 5px 5px;
+  }
+
+  /* ─── Slate cells ──────────────────────────────────────────────────── */
+  .slate-cell {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 9px;
+    line-height: 1.4;
+    padding: 5px 8px;
+  }
+  .slate-cell b {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── Inputs ───────────────────────────────────────────────────────── */
+  .input-k {
+    @apply w-full bg-field text-foreground font-sans;
+    border: 1.5px solid hsl(var(--foreground));
+    min-height: 48px;
+    padding: 0 12px;
     font-size: 15px;
-    padding: 12px 16px;
+    border-radius: 0;
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    width: 100%;
   }
-  .input-cima:focus {
-    border-color: transparent;
-    box-shadow: 0 0 0 2px hsl(var(--ring));
-  }
-  .input-cima::placeholder { color: hsl(var(--muted-foreground)); }
+  .input-k:focus { outline: 2px solid hsl(var(--hot)); outline-offset: 1px; }
+  .input-k::placeholder { color: hsl(var(--muted-foreground) / 0.8); }
 
-  /* ─── Interactive utilities ──────────────────────────────────────────── */
-  .interactive-lift {
-    @apply transition-transform duration-150 ease-out;
-  }
-  .interactive-lift:hover { @apply -translate-y-0.5; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .interactive-lift:hover { transform: none; }
-  }
-
-  .icon-lift {
-    @apply transition-all duration-100 ease-out;
-  }
-  .icon-lift:hover { @apply scale-110 opacity-80; }
-
-  /* ─── Tab bar ────────────────────────────────────────────────────────── */
-  .tab-bar {
-    @apply bg-card/95 border-t border-border backdrop-blur-md;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  /* ─── Poster overlays ─────────────────────────────────────────────────── */
-  .film-card-overlay {
-    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
-  }
-  .hero-overlay {
-    background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
-  }
-
-  /* ─── Scroll containers ──────────────────────────────────────────────── */
+  /* ─── Scroll containers ────────────────────────────────────────────── */
   .scroll-container {
     @apply overflow-y-auto overflow-x-hidden;
     -webkit-overflow-scrolling: touch;
@@ -183,189 +207,36 @@
   }
   .scroll-x::-webkit-scrollbar { display: none; }
 
-  /* ─── Review card ────────────────────────────────────────────────────── */
-  .review-card {
-    @apply bg-card rounded-xl border border-border relative overflow-hidden;
-  }
-  .review-card::before {
-    content: '';
-    @apply absolute left-0 top-0 bottom-0 w-1;
-    background: hsl(var(--primary));
-  }
+  /* ─── Press feedback ───────────────────────────────────────────────── */
+  .press { transition: transform 0.12s ease; }
+  .press:active { transform: translateY(1px); }
 
-  /* ─── Genre / crew badges ────────────────────────────────────────────── */
-  .film-badge {
-    @apply bg-film-badge text-film-badge-foreground font-mono text-[10px] uppercase tracking-wider px-2 py-0.5;
-  }
-  .cima-tag-pill {
-    @apply bg-cima-tag/20 text-cima-tag border border-cima-tag/30 font-mono text-xs px-2 py-0.5;
-  }
-
-  /* ─── Section label ─────────────────────────────────────────────────── */
-  .section-label {
-    @apply flex items-center gap-3 px-4 py-3;
-  }
-  .section-label-bar {
-    @apply w-1 h-5 shrink-0;
-    background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--film-burn)));
-    border-radius: 2px;
-  }
-  .section-label-text {
-    @apply font-mono text-[11px] uppercase tracking-[0.25em] font-medium;
-    color: hsl(var(--foreground));
-  }
-  .section-label-rule {
-    @apply flex-1 h-px;
-    background: linear-gradient(to right, hsl(var(--border) / 0.6), transparent);
-  }
-
-  /* ─── Film gradient helpers ──────────────────────────────────────────── */
-  .gradient-film-burn {
-    background: linear-gradient(
-      to right,
-      hsl(var(--background) / 0.9) 0%,
-      hsl(var(--background) / 0.6) 50%,
-      transparent 100%
-    );
-  }
-  .gradient-dark-bottom {
-    background: linear-gradient(
-      to top,
-      hsl(var(--background)) 0%,
-      hsl(var(--background) / 0.6) 50%,
-      transparent 100%
-    );
-  }
-
-  /* ─── Projector glow ──────────────────────────────────────────────────── */
-  .crt-glow {
-    text-shadow: 0 0 14px hsl(var(--foreground) / 0.3);
-  }
-
-  /* ─── Bottom sheet ───────────────────────────────────────────────────── */
-  .bottom-sheet {
-    @apply bg-card rounded-t-2xl border-t border-border;
-  }
-
-  /* ─── Film card ─────────────────────────────────────────────────────── */
-  .film-card {
-    border-radius: 16px;
-    overflow: hidden;
-    transition: box-shadow 0.25s ease, transform 0.2s ease;
-    will-change: transform;
-  }
-  .film-card:hover {
-    box-shadow: 0 12px 40px hsl(var(--background) / 0.5), 0 0 0 1px hsl(var(--primary) / 0.15);
-    transform: translateY(-3px);
-  }
-
-  /* ─── Genre pill ─────────────────────────────────────────────────────── */
-  .genre-pill {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    border-radius: 999px;
-    padding: 3px 9px;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  /* ─── Filmmaker avatar initial ───────────────────────────────────────── */
-  .avatar-initial {
-    width: 20px;
-    height: 20px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    font-weight: bold;
-    text-transform: uppercase;
-    flex-shrink: 0;
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--film-burn)));
-    color: hsl(var(--primary-foreground));
-  }
-
-  /* ─── Skeleton shimmer ──────────────────────────────────────────────── */
+  /* ─── Skeleton ─────────────────────────────────────────────────────── */
   .skeleton {
-    @apply animate-pulse;
-    background-color: hsl(var(--muted));
-    border-radius: 4px;
+    background: hsl(var(--skeleton));
+    animation: skeleton-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes skeleton-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
   }
 
-  /* ─── Toast border accents ───────────────────────────────────────────── */
-  .toast-success { border-left: 4px solid hsl(var(--primary)); }
-  .toast-error   { border-left: 4px solid hsl(var(--destructive)); }
-  .toast-info    { border-left: 4px solid hsl(var(--secondary-foreground)); }
+  /* ─── Toasts ───────────────────────────────────────────────────────── */
+  .toast-success { border-left: 6px solid #F1B51C; }
+  .toast-error   { border-left: 6px solid #F0614F; }
+  .toast-info    { border-left: 6px solid #1A6A65; }
 
-  /* ─── Creator card ───────────────────────────────────────────────────── */
-  .creator-card {
-    border-radius: 16px;
-    overflow: hidden;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .creator-card:hover {
-    box-shadow: 0 8px 28px hsl(var(--background) / 0.4);
-    transform: translateY(-2px);
-  }
-
-  /* ─── Animations ─────────────────────────────────────────────────────── */
   .cta-pulse    { animation: cta-pulse 2.5s ease-in-out infinite; }
   .record-blink { animation: record-blink 2s ease-in-out infinite; }
-  .projector-flicker { animation: projector-flicker 8s ease-in-out infinite; }
-  .animate-logo-flicker { animation: logo-flicker 6s ease-in-out infinite; }
 
   @media (prefers-reduced-motion: reduce) {
-    .cta-pulse, .record-blink, .projector-flicker, .animate-logo-flicker {
-      animation: none;
-    }
-    .interactive-lift:hover { transform: none; }
+    .cta-pulse, .record-blink, .skeleton { animation: none; }
+    .press:active { transform: none; }
+    .animate-circle-draw { animation: none; stroke-dashoffset: 0 !important; }
   }
 }
 
-@layer utilities {
-  .text-balance { text-wrap: balance; }
-
-  .font-display { font-family: 'Bebas Neue', sans-serif; }
-
-  /* Legacy CSS-columns masonry (kept for compatibility) */
-  .masonry-grid {
-    columns: 1;
-    column-gap: 12px;
-  }
-  @media (min-width: 640px) {
-    .masonry-grid { columns: 2; column-gap: 14px; }
-  }
-  @media (min-width: 1024px) {
-    .masonry-grid { columns: 3; column-gap: 16px; }
-  }
-  @media (min-width: 1280px) {
-    .masonry-grid { columns: 4; column-gap: 16px; }
-  }
-  .masonry-item { break-inside: avoid; margin-bottom: 12px; }
-  @media (min-width: 640px) { .masonry-item { margin-bottom: 14px; } }
-  @media (min-width: 1024px) { .masonry-item { margin-bottom: 16px; } }
-
-  /* react-masonry-css grid */
-  .cima-masonry-grid {
-    display: flex;
-    gap: 14px;
-    width: 100%;
-  }
-  .cima-masonry-column {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  @media (min-width: 640px) {
-    .cima-masonry-grid { gap: 18px; }
-    .cima-masonry-column { gap: 18px; }
-  }
-}
-
-/* Ken Burns poster animation (no-video hover fallback) */
+/* Slow push-in on hover for posters without a video preview */
 @keyframes ken-burns {
   from { transform: scale(1); }
   to   { transform: scale(1.06); }
@@ -373,4 +244,7 @@
 .ken-burns-active {
   animation: ken-burns 3s ease-in-out forwards;
   transform-origin: center center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ken-burns-active { animation: none; }
 }
