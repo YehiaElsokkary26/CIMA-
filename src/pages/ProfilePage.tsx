@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const profile = isOwn ? currentUser : fetchedProfile
   const films = fetchedFilms ?? []
   const crew = isOwn ? (crewData?.members ?? []) : []
-  const laurels = films.filter((f) => f.isFilmOfTheWeek)
+  const laurels = films.filter((f) => (f.laurels ?? 0) > 0 || f.isFilmOfTheWeek)
 
   if (!isOwn && profileLoading) {
     return (
@@ -139,7 +139,7 @@ export default function ProfilePage() {
           className="max-w-5xl mx-auto"
           cells={[
             { label: 'Films', value: films.length },
-            { label: 'Laurels', value: laurels.length },
+            { label: 'Laurels', value: films.reduce((n, f) => n + (f.laurels ?? (f.isFilmOfTheWeek ? 1 : 0)), 0) },
             { label: 'Crew', value: isOwn ? crew.length : profile.cimaCount ?? 0 },
             { label: 'Notes', value: profile.reviewsCount ?? 0 },
           ]}

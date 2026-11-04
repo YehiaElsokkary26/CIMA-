@@ -35,15 +35,43 @@ export function errorHandler(
     return
   }
 
-  // Postgres unique violation
-  if (err.code === '23505') {
+  // Body parser: malformed JSON or a body over the size limit
+  if (err?.type === 'entity.parse.failed') {
+    res.status(400).json({ message: 'Request body is not valid JSON', code: 'BAD_JSON' })
+    return
+  }
+  if (err?.type === 'entity.too.large') {
+    res.status(413).json({ message: 'Request body is too large', code: 'TOO_LARGE' })
+    return
+  }
+
+  // CORS rejection from the cors() origin callback
+  if (typeof err?.message === 'string' && err.message.startsWith('CORS:')) {
+    res.status(403).json({ message: 'Origin not allowed', code: 'CORS' })
+    return
+  }
+
+  // Postgres: unique violation
+  if (err?.code === '23505') {
     res.status(409).json({ message: 'Resource already exists', code: 'CONFLICT' })
     return
   }
 
-  // Postgres foreign key violation
-  if (err.code === '23503') {
+  // Postgres: foreign key violation
+  if (err?.code === '23503') {
     res.status(400).json({ message: 'Referenced resource does not exist', code: 'FK_VIOLATION' })
+    return
+  }
+
+  // Postgres: invalid text representation (e.g. a malformed UUID)
+  if (err?.code === '22P02') {
+    res.status(400).json({ message: 'Invalid id or value', code: 'INVALID_INPUT' })
+    return
+  }
+
+  // Postgres: check constraint violation
+  if (err?.code === '23514') {
+    res.status(422).json({ message: 'Value not allowed', code: 'CHECK_VIOLATION' })
     return
   }
 
