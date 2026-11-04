@@ -85,7 +85,7 @@ const FILMS_DATA = [
 // ---- Main seed function -----------------------------------------------------
 
 async function seed() {
-  console.log('🌱  Seeding Cima database via Supabase Admin…\n')
+  console.log('🌱  Seeding Klaket database via Supabase Admin…\n')
 
   // 1. Create / find users in Supabase Auth
   const emailToId: Record<string, string> = {}
@@ -237,21 +237,21 @@ async function seed() {
   if (demoId && fatimaId && karimId && sanaId) {
     for (const memberId of [fatimaId, karimId, sanaId]) {
       await pool.query(
-        `INSERT INTO cima_members (owner_id, member_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+        `INSERT INTO cima_members (owner_id, member_id) VALUES ($1,$2), ($2,$1) ON CONFLICT DO NOTHING`,
         [demoId, memberId]
       )
     }
-    console.log('  ✓ Cima circle seeded (3 members for demo@cima.film)')
+    console.log('  ✓ Crew seeded (demo@cima.film + 3 filmmakers, both ways)')
   }
 
   // 8. Demo notifications
   if (demoId && fatimaId && karimId) {
     const staticId = filmIds['STATIC']
     const notifs = [
-      [demoId, 'review',        'Fatima El-Riad left a review on STATIC',            fatimaId, staticId ?? null],
-      [demoId, 'cima_request',  'Yasmine wants to join your Cima',                   sanaId ?? null, null],
-      [demoId, 'rating',        'Karim Nassar rated STATIC 5 stars',                 karimId, staticId ?? null],
-      [demoId, 'cima_accepted', 'Omar Hadid accepted your Cima request',             emailToId['omar@cima.film'] ?? null, null],
+      [demoId, 'review',        'Fatima El-Riad left a note on "STATIC"',            fatimaId, staticId ?? null],
+      [demoId, 'cima_request',  'Sana Younis sent you a call sheet',                   sanaId ?? null, null],
+      [demoId, 'rating',        'Karim Nassar rated "STATIC" 5 stars',                 karimId, staticId ?? null],
+      [demoId, 'cima_accepted', 'Omar Hadid signed on to your crew',             emailToId['omar@cima.film'] ?? null, null],
     ]
     for (const [uid, type, msg, from, film] of notifs) {
       if (!uid) continue
