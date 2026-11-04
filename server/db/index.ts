@@ -49,7 +49,10 @@ export const pool = new Pool({
   ssl: { rejectUnauthorized: false },
   max: 20,
   idleTimeoutMillis:    30_000,
-  connectionTimeoutMillis: 5_000,
+  // The Supabase pooler can take several seconds to accept a new connection on
+  // slower networks (7s observed), so 5s was too tight and made sign-in fail.
+  connectionTimeoutMillis: Number(process.env.DB_CONNECT_TIMEOUT_MS) || 20_000,
+  keepAlive: true,
 })
 
 pool.on('error', (err) => {
