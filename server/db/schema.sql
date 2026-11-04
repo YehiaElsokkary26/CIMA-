@@ -1,5 +1,5 @@
 -- ============================================================
--- CIMA — PostgreSQL Schema (Supabase compatible)
+-- KLAKET — PostgreSQL Schema (Supabase compatible). Safe to re-run.
 -- Run in the Supabase SQL Editor, or via: npm run migrate
 -- ============================================================
 
@@ -39,12 +39,16 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Sign-up metadata comes from the browser, so treat it as untrusted:
+  -- any role other than 'filmmaker' becomes 'viewer' (an unexpected value
+  -- would otherwise fail the CHECK constraint and break the whole sign-up),
+  -- and the name is trimmed and capped.
   INSERT INTO public.profiles (id, name, email, role)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    LEFT(COALESCE(NULLIF(BTRIM(NEW.raw_user_meta_data->>'name'), ''), split_part(NEW.email, '@', 1)), 100),
     COALESCE(NEW.email, ''),
-    COALESCE(NEW.raw_user_meta_data->>'role', 'viewer')
+    CASE WHEN NEW.raw_user_meta_data->>'role' = 'filmmaker' THEN 'filmmaker' ELSE 'viewer' END
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -256,18 +260,22 @@ CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE
 -- user write a films row claiming to be anyone else. Also fixed: these
 -- referenced a "filmmaker_id" column that was never the real column name
 -- (public.films.uploader_id), so they could never have worked as written.
+DROP POLICY IF EXISTS "Films are publicly readable" ON public.films;
 CREATE POLICY "Films are publicly readable"        ON public.films FOR SELECT USING (true);
 
 -- Ratings/reviews: public read only, same reasoning as films above —
 -- all writes go through Express (POST /api/films/:id/rate and
 -- /api/films/:id/review), which sets user_id from the verified JWT.
+DROP POLICY IF EXISTS "Ratings are publicly readable" ON public.ratings;
 CREATE POLICY "Ratings are publicly readable"      ON public.ratings  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Reviews are publicly readable" ON public.reviews;
 CREATE POLICY "Reviews are publicly readable"      ON public.reviews  FOR SELECT USING (true);
 
 -- Votes: public read (vote counts are shown on every film card),
 -- no direct-client write policy — POST /api/films/:id/vote is the only
 -- way to cast a vote, enforced server-side with the caller's verified id.
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Votes are publicly readable" ON public.votes;
 CREATE POLICY "Votes are publicly readable"        ON public.votes FOR SELECT USING (true);
 
 -- Cima
@@ -300,28 +308,75 @@ DROP POLICY IF EXISTS "Featured films are public"         ON public.featured_fil
 CREATE POLICY "Featured films are public"          ON public.featured_films FOR SELECT USING (true);
 
 -- -----------------------------------------------
--- FILM EXTRA COLUMNS (idempotent additions)
+-- STORAGE  (films, thumbnails, trailers, avatars, banners)
 -- -----------------------------------------------
-ALTER TABLE public.films
-  ADD COLUMN IF NOT EXISTS trailer_url      TEXT,
-  ADD COLUMN IF NOT EXISTS votes            INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS aspect_ratio     TEXT    NOT NULL DEFAULT '4:5',
-  ADD COLUMN IF NOT EXISTS is_film_of_week  BOOLEAN NOT NULL DEFAULT FALSE;
+-- Files are uploaded straight from the browser with the user's own session,
+-- always to "<bucket>/<their user id>/<file>". Buckets are public, so anyone
+-- can view a file by URL; these policies decide who may write.
+-- Wrapped in DO blocks: on projects where the migration role does not own
+-- storage.objects, this logs a notice instead of aborting the migration
+-- (create the same policies in Dashboard → Storage → Policies instead).
+DO $$
+BEGIN
+  INSERT INTO storage.buckets (id, name, public) VALUES
+    ('films', 'films', true),
+    ('thumbnails', 'thumbnails', true),
+    ('trailers', 'trailers', true),
+    ('avatars', 'avatars', true),
+    ('banners', 'banners', true)
+  ON CONFLICT (id) DO NOTHING;
+EXCEPTION WHEN insufficient_privilege OR undefined_table THEN
+  RAISE NOTICE 'Skipped bucket setup: %', SQLERRM;
+END $$;
+
+DO $$
+BEGIN
+  DROP POLICY IF EXISTS "Klaket: read own uploads"      ON storage.objects;
+  DROP POLICY IF EXISTS "Klaket: upload to own folder"  ON storage.objects;
+  DROP POLICY IF EXISTS "Klaket: replace own uploads"   ON storage.objects;
+  DROP POLICY IF EXISTS "Klaket: delete own uploads"    ON storage.objects;
+
+  CREATE POLICY "Klaket: read own uploads" ON storage.objects
+    FOR SELECT TO authenticated
+    USING (bucket_id IN ('films','thumbnails','trailers','avatars','banners')
+           AND (storage.foldername(name))[1] = auth.uid()::text);
+
+  CREATE POLICY "Klaket: upload to own folder" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (bucket_id IN ('films','thumbnails','trailers','avatars','banners')
+                AND (storage.foldername(name))[1] = auth.uid()::text);
+
+  CREATE POLICY "Klaket: replace own uploads" ON storage.objects
+    FOR UPDATE TO authenticated
+    USING (bucket_id IN ('films','thumbnails','trailers','avatars','banners')
+           AND (storage.foldername(name))[1] = auth.uid()::text)
+    WITH CHECK (bucket_id IN ('films','thumbnails','trailers','avatars','banners')
+                AND (storage.foldername(name))[1] = auth.uid()::text);
+
+  CREATE POLICY "Klaket: delete own uploads" ON storage.objects
+    FOR DELETE TO authenticated
+    USING (bucket_id IN ('films','thumbnails','trailers','avatars','banners')
+           AND (storage.foldername(name))[1] = auth.uid()::text);
+EXCEPTION WHEN insufficient_privilege OR undefined_table OR undefined_function THEN
+  RAISE NOTICE 'Skipped storage policies: %', SQLERRM;
+END $$;
 
 -- -----------------------------------------------
--- FILM VOTES  (one vote per user per week)
+-- REALTIME  (live notifications in the app)
 -- -----------------------------------------------
-CREATE TABLE IF NOT EXISTS public.film_votes (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  film_id    UUID        NOT NULL REFERENCES public.films(id) ON DELETE CASCADE,
-  user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  week_start DATE        NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id, week_start)
-);
-CREATE INDEX IF NOT EXISTS idx_film_votes_film ON public.film_votes(film_id);
-CREATE INDEX IF NOT EXISTS idx_film_votes_user ON public.film_votes(user_id);
-
-ALTER TABLE public.film_votes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can see own votes"    ON public.film_votes FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Auth users can vote"        ON public.film_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+-- The Notifications screen listens for new rows over Supabase Realtime,
+-- which only sees tables in the supabase_realtime publication. Row-level
+-- security still applies, so people only receive their own notifications.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_publication_tables
+       WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'notifications'
+     )
+  THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+EXCEPTION WHEN insufficient_privilege THEN
+  RAISE NOTICE 'Skipped realtime publication: %', SQLERRM;
+END $$;

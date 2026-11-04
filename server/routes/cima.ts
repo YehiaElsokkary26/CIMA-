@@ -1,22 +1,42 @@
+/**
+ * Crew ("Cima" in the database and URLs). A request goes from one filmmaker
+ * to another; when it is accepted, both people are added to each other's crew.
+ */
 import { Router, Response, NextFunction } from 'express'
-import { z } from 'zod'
 import { query, transaction } from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { validUuid } from '../lib/validators'
 import { notFound, conflict, AppError } from '../lib/errors'
 import { createNotification } from '../lib/notify'
 
 const router = Router()
 
-const targetUserIdSchema = z.object({ targetUserId: z.string().uuid() })
+// Emails are never included here: crew lists and requests only need public profile fields.
+const PUBLIC_PROFILE = `p.id AS uid, p.name, p.role, p.bio, p.school, p.city,
+                        p.avatar_url, p.top_genre, p.crew_roles, p.created_at AS ucreated`
+
+function mapPerson(r: any) {
+  return {
+    id:        r.uid,
+    name:      r.name,
+    email:     '',
+    role:      r.role,
+    bio:       r.bio ?? undefined,
+    school:    r.school ?? undefined,
+    city:      r.city ?? undefined,
+    avatarUrl: r.avatar_url ?? undefined,
+    topGenre:  r.top_genre ?? undefined,
+    crewRoles: r.crew_roles ?? [],
+    createdAt: r.ucreated,
+  }
+}
 
 // ---- GET /api/cima/mine -----------------------------------------------------
 router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const [membersRes, requestsRes] = await Promise.all([
       query(
-        `SELECT cm.id, cm.joined_at,
-                p.id AS uid, p.name, p.email, p.role, p.bio, p.school,
-                p.city, p.avatar_url, p.top_genre, p.created_at
+        `SELECT cm.id, cm.joined_at, ${PUBLIC_PROFILE}
          FROM   cima_members cm
          JOIN   profiles p ON p.id = cm.member_id
          WHERE  cm.owner_id = $1
@@ -24,9 +44,7 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
         [req.userId]
       ),
       query(
-        `SELECT cr.id, cr.status, cr.created_at,
-                p.id AS uid, p.name, p.email, p.role, p.bio,
-                p.school, p.avatar_url, p.created_at AS ucreated
+        `SELECT cr.id, cr.status, cr.created_at, ${PUBLIC_PROFILE}
          FROM   cima_requests cr
          JOIN   profiles p ON p.id = cr.from_user_id
          WHERE  cr.to_user_id = $1 AND cr.status = 'pending'
@@ -36,40 +54,38 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
     ])
 
     res.json({
-      members: membersRes.rows.map((m) => ({
-        id: m.id, joinedAt: m.joined_at,
-        user: { id: m.uid, name: m.name, email: m.email, role: m.role, bio: m.bio, school: m.school, city: m.city, avatarUrl: m.avatar_url, topGenre: m.top_genre, createdAt: m.created_at },
-      })),
+      members: membersRes.rows.map((m) => ({ id: m.id, joinedAt: m.joined_at, user: mapPerson(m) })),
       requests: requestsRes.rows.map((r) => ({
         id: r.id, fromUserId: r.uid, toUserId: req.userId, status: r.status, createdAt: r.created_at,
-        from: { id: r.uid, name: r.name, email: r.email, role: r.role, bio: r.bio, school: r.school, avatarUrl: r.avatar_url, createdAt: r.ucreated },
+        from: mapPerson(r),
       })),
     })
   } catch (err) { next(err) }
 })
 
 // ---- POST /api/cima/request/:targetUserId -----------------------------------
-router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const parsed = targetUserIdSchema.safeParse(req.params)
-  if (!parsed.success) {
-    next(new AppError('Invalid user id', 422, 'VALIDATION_ERROR')); return
-  }
-  const { targetUserId } = parsed.data
+router.post('/request/:targetUserId', validUuid('targetUserId'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const targetUserId = req.params.targetUserId as string
   if (targetUserId === req.userId) {
-    next(new AppError('You cannot send a Cima request to yourself', 400)); return
+    next(new AppError('You can’t send a call sheet to yourself', 400, 'SELF_REQUEST')); return
   }
   try {
-    const targetRes = await query('SELECT id, name FROM profiles WHERE id = $1', [targetUserId])
+    const targetRes = await query('SELECT id FROM profiles WHERE id = $1', [targetUserId])
     if (!targetRes.rowCount) throw notFound('User')
 
-    // Only a currently-pending request blocks a resend — a previously
-    // declined (or cancelled) request should be sendable again.
-    const existing = await query(
-      'SELECT id, status FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2',
+    const already = await query(
+      'SELECT 1 FROM cima_members WHERE owner_id = $1 AND member_id = $2',
       [req.userId, targetUserId]
     )
-    if (existing.rowCount! > 0 && existing.rows[0].status === 'pending') {
-      throw conflict('Cima request already sent')
+    if (already.rowCount) throw conflict('You are already on each other’s crew')
+
+    // Only a pending request blocks a resend; declined ones can be sent again.
+    const existing = await query(
+      'SELECT status FROM cima_requests WHERE from_user_id = $1 AND to_user_id = $2',
+      [req.userId, targetUserId]
+    )
+    if (existing.rowCount && existing.rows[0].status === 'pending') {
+      throw conflict('Call sheet already sent')
     }
 
     const result = await query(
@@ -84,7 +100,7 @@ router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, r
     await createNotification({
       userId:     targetUserId,
       type:       'cima_request',
-      message:    `${fromRes.rows[0]?.name ?? 'Someone'} wants to join your Cima`,
+      message:    `${fromRes.rows[0]?.name ?? 'Someone'} sent you a call sheet`,
       fromUserId: req.userId,
     })
 
@@ -93,33 +109,34 @@ router.post('/request/:targetUserId', authMiddleware, async (req: AuthRequest, r
 })
 
 // ---- POST /api/cima/accept/:requestId ---------------------------------------
-router.post('/accept/:requestId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/accept/:requestId', validUuid('requestId'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const reqRes = await query(
-      'SELECT * FROM cima_requests WHERE id = $1 AND to_user_id = $2',
+      `SELECT * FROM cima_requests WHERE id = $1 AND to_user_id = $2 AND status = 'pending'`,
       [req.params.requestId, req.userId]
     )
-    if (!reqRes.rowCount) throw notFound('Cima request')
-    const cimaReq = reqRes.rows[0]
+    if (!reqRes.rowCount) throw notFound('Call sheet')
+    const crewReq = reqRes.rows[0]
 
+    // Crew is mutual: add each person to the other's crew in one transaction.
     await transaction(async (client) => {
       await client.query(
         `UPDATE cima_requests SET status = 'accepted', updated_at = NOW() WHERE id = $1`,
-        [cimaReq.id]
+        [crewReq.id]
       )
       await client.query(
         `INSERT INTO cima_members (owner_id, member_id)
-         VALUES ($1,$2)
-         ON CONFLICT DO NOTHING`,
-        [req.userId, cimaReq.from_user_id]
+         VALUES ($1,$2), ($2,$1)
+         ON CONFLICT (owner_id, member_id) DO NOTHING`,
+        [req.userId, crewReq.from_user_id]
       )
     })
 
     const toRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
     await createNotification({
-      userId:     cimaReq.from_user_id,
+      userId:     crewReq.from_user_id,
       type:       'cima_accepted',
-      message:    `${toRes.rows[0]?.name ?? 'Someone'} accepted your Cima request`,
+      message:    `${toRes.rows[0]?.name ?? 'Someone'} signed on to your crew`,
       fromUserId: req.userId,
     })
 
@@ -128,15 +145,15 @@ router.post('/accept/:requestId', authMiddleware, async (req: AuthRequest, res: 
 })
 
 // ---- POST /api/cima/decline/:requestId --------------------------------------
-router.post('/decline/:requestId', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/decline/:requestId', validUuid('requestId'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query(
       `UPDATE cima_requests SET status = 'declined', updated_at = NOW()
-       WHERE id = $1 AND to_user_id = $2
+       WHERE id = $1 AND to_user_id = $2 AND status = 'pending'
        RETURNING id`,
       [req.params.requestId, req.userId]
     )
-    if (!result.rowCount) throw notFound('Cima request')
+    if (!result.rowCount) throw notFound('Call sheet')
     res.json({ ok: true })
   } catch (err) { next(err) }
 })

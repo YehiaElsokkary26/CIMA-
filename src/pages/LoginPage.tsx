@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import AuthFrame, { FormError } from '@/components/klaket/AuthFrame'
@@ -8,27 +8,45 @@ import Input from '@/components/ui/Input'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const location = useLocation()
+  const { login, resendConfirmation } = useAuth()
+  const prefill = (location.state as { email?: unknown } | null)?.email
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(typeof prefill === 'string' ? prefill : '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resent, setResent] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setUnconfirmed(false)
+    setResent(false)
     try {
       await login.mutateAsync({ email, password })
       navigate('/home', { replace: true })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''
+      if (/not confirmed|confirm/i.test(msg)) {
+        setUnconfirmed(true)
+        setError('Confirm your email first. Click the link we sent you, then sign in.')
+        return
+      }
       setError(
         /credential|invalid/i.test(msg)
           ? 'That email and password don’t match. Check them and try again.'
-          : /confirm/i.test(msg)
-            ? 'Confirm your email first. Check your inbox for the link.'
-            : msg || 'Couldn’t sign you in. Check your connection and try again.',
+          : msg || 'Couldn’t sign you in. Check your connection and try again.',
       )
+    }
+  }
+
+  const resend = async () => {
+    try {
+      await resendConfirmation.mutateAsync(email)
+      setResent(true)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Couldn’t resend the email. Try again in a minute.')
     }
   }
 
@@ -36,6 +54,19 @@ export default function LoginPage() {
     <AuthFrame mode="in" eyebrow="Welcome back" heading="Back on set.">
       <form onSubmit={submit} className="flex flex-col gap-3.5 pt-5" noValidate>
         {error && <FormError message={error} />}
+        {unconfirmed && (
+          <div className="-mt-1.5 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={resend}
+              disabled={resendConfirmation.isPending || !email}
+              className="press min-h-[44px] px-3 border-[1.5px] border-foreground font-extrabold text-[12px] hover:bg-foreground/5 disabled:opacity-60"
+            >
+              {resendConfirmation.isPending ? 'SENDING…' : 'RESEND CONFIRMATION EMAIL'}
+            </button>
+            {resent && <span className="k-label text-[10.5px] font-semibold" role="status">✓ Sent</span>}
+          </div>
+        )}
         <Input label="Email" type="email" autoComplete="email" placeholder="you@school.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Input label="Password" type="password" autoComplete="current-password" placeholder="Your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
 

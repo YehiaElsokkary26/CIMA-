@@ -38,6 +38,8 @@ export interface Film {
   uploaderId: string
   uploader?: User
   isFilmOfTheWeek?: boolean
+  /** How many weeks this film has won Film of the Week */
+  laurels?: number
   votes?: number
   weekKey?: string
   createdAt: string

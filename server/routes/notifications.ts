@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from 'express'
 import { query } from '../db'
 import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { validUuid } from '../lib/validators'
 
 const router = Router()
 
@@ -51,7 +52,7 @@ router.patch('/read-all', authMiddleware, async (req: AuthRequest, res: Response
 })
 
 // ---- PATCH /api/notifications/:id/read --------------------------------------
-router.patch('/:id/read', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.patch('/:id/read', validUuid('id'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     await query(
       'UPDATE notifications SET is_read = TRUE WHERE id = $1 AND user_id = $2',

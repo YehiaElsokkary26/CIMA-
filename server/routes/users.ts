@@ -1,12 +1,13 @@
 import { Router, Response, NextFunction } from 'express'
 import { query } from '../db'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/auth'
-import { validate, updateUserSchema, roleChangeSchema } from '../lib/validators'
+import { validate, validUuid, updateUserSchema, roleChangeSchema } from '../lib/validators'
 import { notFound } from '../lib/errors'
+import { listFilms } from '../lib/films'
 
 const router = Router()
 
-function mapUser(u: any, counts?: { films: number; cima: number; reviews: number }, includeEmail = false) {
+export function mapUser(u: any, counts?: { films: number; cima: number; reviews: number }, includeEmail = false) {
   return {
     id:                      u.id,
     name:                    u.name,
@@ -30,23 +31,22 @@ function mapUser(u: any, counts?: { films: number; cima: number; reviews: number
 }
 
 async function getUserCounts(userId: string) {
-  const [films, cima, reviews] = await Promise.all([
+  const [films, crew, reviews] = await Promise.all([
     query('SELECT COUNT(*)::int AS c FROM films        WHERE uploader_id = $1', [userId]),
     query('SELECT COUNT(*)::int AS c FROM cima_members WHERE owner_id    = $1', [userId]),
     query('SELECT COUNT(*)::int AS c FROM reviews      WHERE user_id     = $1', [userId]),
   ])
   return {
     films:   films.rows[0].c,
-    cima:    cima.rows[0].c,
+    cima:    crew.rows[0].c,
     reviews: reviews.rows[0].c,
   }
 }
 
 // ---- GET /api/users/:id ------------------------------------------------------
-// Public profile view — email is included only when the caller is looking
-// at their own profile (checked via optionalAuth, never trusted from the
-// client). Everyone else only ever sees the public fields.
-router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
+// Public profile. The email is only included when you are looking at your own
+// profile (checked from the verified token, never from the request).
+router.get('/:id', validUuid('id'), optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query('SELECT * FROM profiles WHERE id = $1', [req.params.id])
     if (!result.rowCount) throw notFound('User')
@@ -56,31 +56,13 @@ router.get('/:id', optionalAuth, async (req: AuthRequest, res: Response, next: N
 })
 
 // ---- GET /api/users/:id/films -----------------------------------------------
-router.get('/:id/films', async (req, res: Response, next: NextFunction) => {
+router.get('/:id/films', validUuid('id'), async (req, res: Response, next: NextFunction) => {
   try {
-    const result = await query(
-      `SELECT f.*,
-              ROUND(AVG(r.rating)::numeric, 1)::float AS avg_rating,
-              COUNT(r.id)::int AS rating_count
-       FROM   films f
-       LEFT   JOIN ratings r ON r.film_id = f.id
-       WHERE  f.uploader_id = $1
-       GROUP  BY f.id
-       ORDER  BY f.created_at DESC`,
-      [req.params.id]
-    )
-    res.json(result.rows.map((f) => ({
-      id: f.id, title: f.title, thumbnailUrl: f.thumbnail_url,
-      videoUrl: f.video_url, trailerUrl: f.trailer_url ?? undefined, aspectRatio: f.aspect_ratio ?? undefined,
-      genre: f.genre, runtime: f.runtime_min, year: f.release_year,
-      rating: f.avg_rating, ratingCount: f.rating_count,
-      uploaderId: f.uploader_id, description: f.description, createdAt: f.created_at,
-    })))
+    res.json(await listFilms({ uploaderId: req.params.id as string }))
   } catch (err) { next(err) }
 })
 
 // ---- PATCH /api/users/me ----------------------------------------------------
-// Note: this route must be defined BEFORE /:id to avoid "me" being treated as an ID
 router.patch('/me', authMiddleware, validate(updateUserSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
   const {
     name, bio, school, city, topGenre, lookingForCollaborators,
@@ -114,7 +96,7 @@ router.patch('/me', authMiddleware, validate(updateUserSchema), async (req: Auth
   } catch (err) { next(err) }
 })
 
-// ---- POST /api/users/me/role  (the ONLY way to change role) ----------------
+// ---- POST /api/users/me/role  (the only way to change role) -----------------
 router.post('/me/role', authMiddleware, validate(roleChangeSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const result = await query(

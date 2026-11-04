@@ -71,7 +71,8 @@ export async function query<T extends QueryResultRow = any>(
     }
     return res
   } catch (err) {
-    console.error('DB query error:', { text: text.slice(0, 120), params })
+    // Parameters are left out on purpose: they can contain user data.
+    console.error('DB query error:', { text: text.slice(0, 120), code: (err as any)?.code, message: (err as Error)?.message })
     throw err
   }
 }
