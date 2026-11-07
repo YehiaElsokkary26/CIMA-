@@ -286,7 +286,7 @@ describe('films', () => {
     it('picks last week’s most-voted film and stores it', async () => {
       let stored: string | null = null
       db.on(/SELECT film_id FROM featured_films/, () => ({ rows: stored ? [{ film_id: stored }] : [] }))
-      db.on(/FROM\s+votes\s+WHERE\s+week_start = date_trunc\('week', CURRENT_DATE\)::date - 7/, [{ film_id: ids.film }])
+      db.on(/FROM\s+votes\s+WHERE\s+week_start = date_trunc\('week', now\(\) AT TIME ZONE 'UTC'\)::date - 7/, [{ film_id: ids.film }])
       db.on(/INSERT INTO featured_films/, (p) => { stored = p[0] as string; return { rows: [] } })
       db.on(/FROM\s+films f/, [filmRow()])
       const res = await request(app).get('/api/films/featured/week')
@@ -419,6 +419,7 @@ describe('crew', () => {
   it('accepting adds both people to each other’s crew', async () => {
     const headers = signIn('t', { id: ids.me })
     db.on(/SELECT \* FROM cima_requests/, [{ id: ids.request, from_user_id: ids.other, to_user_id: ids.me, status: 'pending' }])
+    db.on(/UPDATE cima_requests SET status = 'accepted'/, () => ({ rows: [], rowCount: 1 }))
     const res = await request(app).post(`/api/cima/accept/${ids.request}`).set(headers)
     expect(res.status).toBe(200)
     const insert = db.called(/INSERT INTO cima_members/)[0]

@@ -46,7 +46,8 @@ export const supabaseAdmin = createClient(
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  // DATABASE_SSL=false for a local Postgres (tests); Supabase needs SSL.
+  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
   max: 20,
   idleTimeoutMillis:    30_000,
   // The Supabase pooler can take several seconds to accept a new connection on

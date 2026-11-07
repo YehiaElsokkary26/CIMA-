@@ -164,7 +164,7 @@ export default function EditProfilePage() {
             >
               <ImagePlus size={14} aria-hidden="true" /> {bannerPreview ? 'Change banner' : 'Add banner'}
             </button>
-            <input ref={bannerInput} type="file" accept="image/*" onChange={pickBanner} className="sr-only" aria-label="Upload banner image" />
+            <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={pickBanner} className="sr-only" aria-label="Upload banner image" />
           </div>
           <div className="flex items-end gap-3 -mt-8 ms-3">
             <div className="relative">
@@ -177,7 +177,7 @@ export default function EditProfilePage() {
               >
                 <Camera size={15} aria-hidden="true" />
               </button>
-              <input ref={avatarInput} type="file" accept="image/*" onChange={pickAvatar} className="sr-only" aria-label="Upload profile photo" />
+              <input ref={avatarInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={pickAvatar} className="sr-only" aria-label="Upload profile photo" />
             </div>
           </div>
         </section>
