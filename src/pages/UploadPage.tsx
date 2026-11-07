@@ -283,7 +283,7 @@ export default function UploadPage() {
                 >
                   <ImagePlus size={15} aria-hidden="true" />
                   {thumbFile ? 'Change image' : 'Add image'}
-                  <input id="thumb-file" type="file" accept="image/*" onChange={pickThumb} className="sr-only" />
+                  <input id="thumb-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={pickThumb} className="sr-only" />
                 </label>
               </div>
             </div>

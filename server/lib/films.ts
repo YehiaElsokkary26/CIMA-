@@ -5,8 +5,8 @@
  */
 import { query } from '../db'
 
-/** Monday of the current voting week, in the database's time zone. */
-export const VOTE_WEEK_SQL = `date_trunc('week', CURRENT_DATE)::date`
+/** Monday of the current voting week, in UTC (the same week the app shows). */
+export const VOTE_WEEK_SQL = `date_trunc('week', now() AT TIME ZONE 'UTC')::date`
 
 const FILM_SELECT = `
   SELECT f.*,
@@ -16,17 +16,21 @@ const FILM_SELECT = `
          p.bio         AS uploader_bio,
          p.avatar_url  AS uploader_avatar,
          p.created_at  AS uploader_created_at,
-         to_char(f.created_at, 'IYYY-"W"IW')                                        AS week_key,
-         ROUND(AVG(r.rating)::numeric, 1)::float                                     AS avg_rating,
-         COUNT(DISTINCT r.id)::int                                                   AS rating_count,
-         COUNT(DISTINCT v.id) FILTER (WHERE v.week_start = ${VOTE_WEEK_SQL})::int    AS votes,
-         COUNT(DISTINCT ff_all.id)::int                                              AS laurels,
-         BOOL_OR(ff_all.week_start = ${VOTE_WEEK_SQL})                               AS is_film_of_the_week
+         to_char(f.created_at AT TIME ZONE 'UTC', 'IYYY-"W"IW') AS week_key,
+         r.avg_rating, r.rating_count, v.votes, ff.laurels, ff.is_film_of_the_week
   FROM   films f
   JOIN   profiles p ON p.id = f.uploader_id
-  LEFT   JOIN ratings r         ON r.film_id = f.id
-  LEFT   JOIN votes   v         ON v.film_id = f.id
-  LEFT   JOIN featured_films ff_all ON ff_all.film_id = f.id
+  -- Each count is taken on its own (one index lookup per film). Joining the
+  -- tables together first multiplied rows: 30 ratings x 1,500 votes = 45,000.
+  LEFT   JOIN LATERAL (
+           SELECT ROUND(AVG(rating)::numeric, 1)::float AS avg_rating, COUNT(*)::int AS rating_count
+           FROM ratings WHERE film_id = f.id) r ON true
+  LEFT   JOIN LATERAL (
+           SELECT COUNT(*)::int AS votes
+           FROM votes WHERE film_id = f.id AND week_start = ${VOTE_WEEK_SQL}) v ON true
+  LEFT   JOIN LATERAL (
+           SELECT COUNT(*)::int AS laurels, BOOL_OR(week_start = ${VOTE_WEEK_SQL}) AS is_film_of_the_week
+           FROM featured_films WHERE film_id = f.id) ff ON true
 `
 
 export function mapFilm(f: any) {
@@ -77,7 +81,7 @@ export async function listFilms(opts: { genre?: string; sort?: string; uploaderI
   }
   let sql = FILM_SELECT
   if (where.length) sql += ` WHERE ${where.join(' AND ')}`
-  sql += ' GROUP BY f.id, p.id'
+
   sql += opts.sort === 'top'
     ? ' ORDER BY avg_rating DESC NULLS LAST, f.created_at DESC'
     : ' ORDER BY f.created_at DESC'
@@ -86,7 +90,7 @@ export async function listFilms(opts: { genre?: string; sort?: string; uploaderI
 }
 
 export async function getFilm(id: string) {
-  const result = await query(`${FILM_SELECT} WHERE f.id = $1 GROUP BY f.id, p.id`, [id])
+  const result = await query(`${FILM_SELECT} WHERE f.id = $1`, [id])
   return mapFilm(result.rows[0] ?? null)
 }
 

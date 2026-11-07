@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS public.ratings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ratings_film ON public.ratings(film_id);
+CREATE INDEX IF NOT EXISTS idx_featured_film ON public.featured_films(film_id);
 
 -- -----------------------------------------------
 -- VOTES  (Film of the Week — one vote per user per calendar week)
@@ -122,12 +123,14 @@ CREATE TABLE IF NOT EXISTS public.votes (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   film_id    UUID        NOT NULL REFERENCES public.films(id) ON DELETE CASCADE,
   user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  week_start DATE        NOT NULL DEFAULT (date_trunc('week', CURRENT_DATE)::date),
+  week_start DATE        NOT NULL DEFAULT (date_trunc('week', now() AT TIME ZONE 'UTC')::date),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, week_start)
 );
 
 CREATE INDEX IF NOT EXISTS idx_votes_film_week ON public.votes(film_id, week_start);
+-- Weeks run Monday to Sunday in UTC, matching the app (older databases used the server's zone).
+ALTER TABLE public.votes ALTER COLUMN week_start SET DEFAULT (date_trunc('week', now() AT TIME ZONE 'UTC')::date);
 
 -- -----------------------------------------------
 -- REVIEWS
@@ -250,7 +253,7 @@ DROP POLICY IF EXISTS "Users can update own profile"             ON public.profi
 DROP POLICY IF EXISTS "Profiles are publicly readable"           ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile"       ON public.profiles;
 CREATE POLICY "Profiles are publicly readable"     ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+-- No direct-client UPDATE on profiles: PATCH /api/users/me validates every field.
 
 -- Films: public read only. All writes go through Express with the
 -- service-role key (which bypasses RLS entirely), so there is deliberately
@@ -271,12 +274,12 @@ CREATE POLICY "Ratings are publicly readable"      ON public.ratings  FOR SELECT
 DROP POLICY IF EXISTS "Reviews are publicly readable" ON public.reviews;
 CREATE POLICY "Reviews are publicly readable"      ON public.reviews  FOR SELECT USING (true);
 
--- Votes: public read (vote counts are shown on every film card),
--- no direct-client write policy — POST /api/films/:id/vote is the only
--- way to cast a vote, enforced server-side with the caller's verified id.
+-- Votes: a secret ballot. The API returns counts only; each person can see
+-- just their own votes. POST /api/films/:id/vote is the only way to vote.
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Votes are publicly readable" ON public.votes;
-CREATE POLICY "Votes are publicly readable"        ON public.votes FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users see own votes"         ON public.votes;
+CREATE POLICY "Users see own votes"                ON public.votes FOR SELECT USING (auth.uid() = user_id);
 
 -- Cima
 DROP POLICY IF EXISTS "Cima requests visible to sender or recipient" ON public.cima_requests;
@@ -286,8 +289,7 @@ DROP POLICY IF EXISTS "Cima requests visible to involved"            ON public.c
 DROP POLICY IF EXISTS "Auth users can send cima requests"            ON public.cima_requests;
 DROP POLICY IF EXISTS "Recipients can update cima request"           ON public.cima_requests;
 CREATE POLICY "Cima requests visible to involved"  ON public.cima_requests FOR SELECT USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
-CREATE POLICY "Auth users can send cima requests"  ON public.cima_requests FOR INSERT WITH CHECK (auth.uid() = from_user_id);
-CREATE POLICY "Recipients can update cima request" ON public.cima_requests FOR UPDATE USING (auth.uid() = to_user_id);
+-- No direct-client writes on crew tables: the API sends notifications and keeps both sides in sync.
 
 DROP POLICY IF EXISTS "Cima members publicly readable" ON public.cima_members;
 DROP POLICY IF EXISTS "Owner manages own cima members" ON public.cima_members;
@@ -300,7 +302,7 @@ DROP POLICY IF EXISTS "Users see own notifications"              ON public.notif
 DROP POLICY IF EXISTS "Users update own notifications"           ON public.notifications;
 DROP POLICY IF EXISTS "Users can update own notifications"       ON public.notifications;
 CREATE POLICY "Users see own notifications"        ON public.notifications FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
+-- Marking notifications read goes through PATCH /api/notifications/*.
 
 -- Featured films: publicly readable
 DROP POLICY IF EXISTS "Featured films publicly readable" ON public.featured_films;
@@ -361,6 +363,22 @@ EXCEPTION WHEN insufficient_privilege OR undefined_table OR undefined_function T
   RAISE NOTICE 'Skipped storage policies: %', SQLERRM;
 END $$;
 
+-- Size and type limits, enforced by Supabase Storage on every upload.
+DO $$
+BEGIN
+  UPDATE storage.buckets SET file_size_limit = 524288000,  -- 500 MB
+         allowed_mime_types = ARRAY['video/mp4','video/quicktime','video/webm']
+   WHERE id = 'films';
+  UPDATE storage.buckets SET file_size_limit = 104857600,  -- 100 MB
+         allowed_mime_types = ARRAY['video/mp4','video/quicktime','video/webm']
+   WHERE id = 'trailers';
+  UPDATE storage.buckets SET file_size_limit = 5242880,    -- 5 MB
+         allowed_mime_types = ARRAY['image/jpeg','image/png','image/webp','image/gif']
+   WHERE id IN ('thumbnails','avatars','banners');
+EXCEPTION WHEN insufficient_privilege OR undefined_table OR undefined_column THEN
+  RAISE NOTICE 'Skipped bucket limits: %', SQLERRM;
+END $$;
+
 -- -----------------------------------------------
 -- REALTIME  (live notifications in the app)
 -- -----------------------------------------------
@@ -379,4 +397,27 @@ BEGIN
   END IF;
 EXCEPTION WHEN insufficient_privilege THEN
   RAISE NOTICE 'Skipped realtime publication: %', SQLERRM;
+END $$;
+
+-- -----------------------------------------------
+-- LEAST PRIVILEGE  (what the browser's anon key can touch)
+-- -----------------------------------------------
+-- Supabase grants anon/authenticated ALL on every public table by default,
+-- so RLS was the only guard and anyone with the public anon key could read
+-- columns such as profiles.email over the REST API. The app never reads or
+-- writes these tables from the browser: everything goes through the Express
+-- API (service role). The one exception is the live notifications feed, which
+-- needs SELECT on notifications (RLS still limits it to the owner's rows).
+DO $$
+DECLARE t text;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+     AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+      EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', t);
+    END LOOP;
+    GRANT SELECT ON public.notifications TO authenticated;
+    -- Tables created later by this role start locked down too.
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+  END IF;
 END $$;

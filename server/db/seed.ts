@@ -178,7 +178,7 @@ async function seed() {
   if (featuredFilmId) {
     await pool.query(
       `INSERT INTO featured_films (film_id, week_start)
-       VALUES ($1, date_trunc('week', CURRENT_DATE)::date)
+       VALUES ($1, date_trunc('week', now() AT TIME ZONE 'UTC')::date)
        ON CONFLICT (week_start) DO NOTHING`,
       [featuredFilmId]
     )

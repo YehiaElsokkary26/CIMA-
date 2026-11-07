@@ -119,18 +119,23 @@ router.post('/accept/:requestId', validUuid('requestId'), authMiddleware, async 
     const crewReq = reqRes.rows[0]
 
     // Crew is mutual: add each person to the other's crew in one transaction.
-    await transaction(async (client) => {
-      await client.query(
-        `UPDATE cima_requests SET status = 'accepted', updated_at = NOW() WHERE id = $1`,
+    // The status check in the UPDATE makes a double-click accept only once.
+    const accepted = await transaction(async (client) => {
+      const flip = await client.query(
+        `UPDATE cima_requests SET status = 'accepted', updated_at = NOW()
+         WHERE id = $1 AND status = 'pending'`,
         [crewReq.id]
       )
+      if (!flip.rowCount) return false
       await client.query(
         `INSERT INTO cima_members (owner_id, member_id)
          VALUES ($1,$2), ($2,$1)
          ON CONFLICT (owner_id, member_id) DO NOTHING`,
         [req.userId, crewReq.from_user_id]
       )
+      return true
     })
+    if (!accepted) throw notFound('Call sheet')
 
     const toRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
     await createNotification({
