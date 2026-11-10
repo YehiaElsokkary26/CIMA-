@@ -34,7 +34,7 @@ function mapPerson(r: any) {
 // ---- GET /api/cima/mine -----------------------------------------------------
 router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const [membersRes, requestsRes] = await Promise.all([
+    const [membersRes, requestsRes, sentRes] = await Promise.all([
       query(
         `SELECT cm.id, cm.joined_at, ${PUBLIC_PROFILE}
          FROM   cima_members cm
@@ -51,6 +51,14 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
          ORDER  BY cr.created_at DESC`,
         [req.userId]
       ),
+      // Call sheets you sent that are still waiting, so buttons can say "Pending".
+      query(
+        `SELECT id, to_user_id, created_at
+         FROM   cima_requests
+         WHERE  from_user_id = $1 AND status = 'pending'
+         ORDER  BY created_at DESC`,
+        [req.userId]
+      ),
     ])
 
     res.json({
@@ -59,6 +67,7 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
         id: r.id, fromUserId: r.uid, toUserId: req.userId, status: r.status, createdAt: r.created_at,
         from: mapPerson(r),
       })),
+      sent: sentRes.rows.map((s) => ({ id: s.id, toUserId: s.to_user_id, createdAt: s.created_at })),
     })
   } catch (err) { next(err) }
 })

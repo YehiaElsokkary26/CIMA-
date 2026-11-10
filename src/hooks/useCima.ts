@@ -34,3 +34,28 @@ export function useDeclineCimaRequest() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cima'] }),
   })
 }
+
+export type CrewStatus = 'self' | 'crew' | 'sent' | 'received' | 'none'
+type CrewData = ReturnType<typeof useCima>['data']
+
+/**
+ * Where you stand with someone, from your crew data: already crew,
+ * call sheet sent, call sheet waiting for you (with its id), or nothing yet.
+ */
+export function crewStatusFor(
+  data: CrewData,
+  userId: string | undefined,
+  meId: string | undefined,
+): { status: CrewStatus; requestId?: string } {
+  if (!userId || userId === meId) return { status: 'self' }
+  if (data?.members.some((m) => m.user.id === userId)) return { status: 'crew' }
+  if (data?.sent?.some((s) => s.toUserId === userId)) return { status: 'sent' }
+  const incoming = data?.requests.find((r) => r.fromUserId === userId)
+  if (incoming) return { status: 'received', requestId: incoming.id }
+  return { status: 'none' }
+}
+
+export function useCrewStatus(userId: string | undefined, meId: string | undefined) {
+  const { data, isPending } = useCima()
+  return { ...crewStatusFor(data, userId, meId), isPending }
+}

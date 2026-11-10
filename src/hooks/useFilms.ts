@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/authStore'
 import { filmsApi, usersApi, discoverApi } from '@/lib/api'
 import { uploadFile } from '@/lib/storage'
 import { toast } from '@/store/toastStore'
+import type { Film } from '@/types'
 
 function apiErrorMessage(err: unknown, fallback: string): string {
   if (err && typeof err === 'object' && 'response' in err) {
@@ -90,10 +91,39 @@ export function useFilmReviews(filmId: string) {
 export function useAddReview(filmId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { rating: number; body: string }) =>
+    mutationFn: (data: { rating?: number; body: string }) =>
       filmsApi.addReview(filmId, data).then((res) => res.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['film-reviews', filmId] }),
+    onSuccess: (_res, data) => {
+      qc.invalidateQueries({ queryKey: ['film-reviews', filmId] })
+      if (data.rating) {
+        qc.invalidateQueries({ queryKey: ['film', filmId] })
+        qc.invalidateQueries({ queryKey: ['films'] })
+      }
+    },
     onError: (err) => toast.error(apiErrorMessage(err, 'Failed to post review')),
+  })
+}
+
+/** Saves your stars for a film (one rating per person; tapping again changes it). */
+export function useRateFilm(filmId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (rating: number) => filmsApi.rate(filmId, rating),
+    onMutate: async (rating) => {
+      // Show the new stars straight away; roll back if the save fails.
+      await qc.cancelQueries({ queryKey: ['film', filmId] })
+      const before = qc.getQueryData<Film>(['film', filmId])
+      if (before) qc.setQueryData<Film>(['film', filmId], { ...before, myRating: rating })
+      return { before }
+    },
+    onError: (err, _rating, ctx) => {
+      if (ctx?.before) qc.setQueryData(['film', filmId], ctx.before)
+      toast.error(apiErrorMessage(err, 'Couldn’t save your rating. Try again.'))
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['film', filmId] })
+      qc.invalidateQueries({ queryKey: ['films'] })
+    },
   })
 }
 

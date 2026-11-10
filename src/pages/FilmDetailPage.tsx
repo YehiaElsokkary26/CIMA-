@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Loader2, MessageSquare, Play, Share2 } from 'lucide-react'
-import { useAddReview, useFilm, useFilmReviews, useMyVoteThisWeek, useVoteFilm } from '@/hooks/useFilms'
-import { useRating } from '@/hooks/useRating'
-import { useSendCimaRequest } from '@/hooks/useCima'
+import { useAddReview, useFilm, useFilmReviews, useMyVoteThisWeek, useRateFilm, useVoteFilm } from '@/hooks/useFilms'
+import { useAcceptCimaRequest, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
 import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -31,14 +30,16 @@ export default function FilmDetailPage() {
   const sendCrewRequest = useSendCimaRequest()
   const { data: myVote, isLoading: checkingVote } = useMyVoteThisWeek()
   const vote = useVoteFilm()
-  const rating = useRating(id, undefined)
+  const rate = useRateFilm(id)
+  const acceptCrew = useAcceptCimaRequest()
+  const crew = useCrewStatus(film?.uploader?.id, user?.id)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
   const [now, setNow] = useState(0)
   const [mediaDuration, setMediaDuration] = useState(0)
   const [saved, setSaved] = useState(false)
-  const [crewStatus, setCrewStatus] = useState<'none' | 'pending'>('none')
+  const [hoveredStar, setHoveredStar] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [pinToTime, setPinToTime] = useState(true)
 
@@ -107,15 +108,30 @@ export default function FilmDetailPage() {
   }
 
   const askToCrew = () => {
-    if (!film.uploader?.id || crewStatus !== 'none') return
-    setCrewStatus('pending')
+    if (!film.uploader?.id || sendCrewRequest.isPending || acceptCrew.isPending) return
+    const name = film.uploader.name
+    if (crew.status === 'received' && crew.requestId) {
+      acceptCrew.mutate(crew.requestId, {
+        onSuccess: () => toast.success(`Signed on. ${name} is in your crew.`),
+        onError: () => toast.error('Couldn’t accept the call sheet. Try again.'),
+      })
+      return
+    }
+    if (crew.status !== 'none') return
     sendCrewRequest.mutate(film.uploader.id, {
-      onSuccess: () => toast.success(`Call sheet sent to ${film.uploader?.name}.`),
-      onError: () => {
-        setCrewStatus('none')
-        toast.error('Couldn’t send the call sheet. Try again.')
-      },
+      onSuccess: () => toast.success(`Call sheet sent to ${name}.`),
+      onError: () => toast.error('Couldn’t send the call sheet. Try again.'),
     })
+  }
+
+  const myStars = film.myRating ?? 0
+  const rateFilm = (stars: number) => {
+    setHoveredStar(null)
+    if (!user) {
+      toast.info('Sign in to rate films.')
+      return
+    }
+    rate.mutate(stars, { onSuccess: () => toast.success(`Rated ${stars} star${stars === 1 ? '' : 's'}.`) })
   }
 
   const castVote = () => {
@@ -128,7 +144,8 @@ export default function FilmDetailPage() {
     if (!text) return
     const body = pinToTime && playing ? `[${timecode(now)}] ${text}` : text
     try {
-      await addReview.mutateAsync({ rating: rating.selected || 4, body })
+      // Stars are saved on their own; a note only carries them if you gave some.
+      await addReview.mutateAsync({ rating: film.myRating, body })
       setDraft('')
       toast.success('Note posted.')
     } catch {
@@ -253,14 +270,20 @@ export default function FilmDetailPage() {
                 {film.uploader?.school ? ` · ${film.uploader.school}` : ''} · {film.year}
               </p>
             </div>
-            {!isOwn && film.uploader && (
+            {!isOwn && film.uploader && user && (
               <button
                 type="button"
                 onClick={askToCrew}
-                disabled={crewStatus !== 'none'}
+                disabled={crew.isPending || crew.status === 'crew' || crew.status === 'sent' || sendCrewRequest.isPending || acceptCrew.isPending}
                 className="press self-start mt-1 min-h-[40px] px-3 bg-k-ink text-k-paper k-label text-[10.5px] font-semibold disabled:opacity-70"
               >
-                {crewStatus === 'pending' ? 'Call sheet sent ✓' : `Send ${film.uploader.name.split(' ')[0]} a call sheet`}
+                {crew.status === 'crew'
+                  ? '✓ In your crew'
+                  : crew.status === 'sent'
+                    ? 'Call sheet sent ✓'
+                    : crew.status === 'received'
+                      ? `Accept ${film.uploader.name.split(' ')[0]}’s call sheet`
+                      : `Send ${film.uploader.name.split(' ')[0]} a call sheet`}
               </button>
             )}
           </section>
@@ -294,17 +317,22 @@ export default function FilmDetailPage() {
                 Rate it{film.rating ? ` · avg ★ ${film.rating.toFixed(1)} (${film.ratingCount ?? 0})` : ''}
               </span>
               <StarRating
-                value={rating.displayRating}
-                interactive
-                onHover={(v) => rating.setHovered(v)}
-                onSelect={(v) => {
-                  rating.setHovered(null)
-                  rating.submit(v)
-                }}
+                value={hoveredStar ?? myStars}
+                interactive={!isOwn}
+                onHover={(v) => setHoveredStar(v)}
+                onSelect={rateFilm}
                 size="md"
                 className="-ms-2.5"
               />
-              <span className="text-[12px] text-muted-foreground">Your stars are sent with your next note.</span>
+              <span className="text-[12px] text-muted-foreground" aria-live="polite">
+                {isOwn
+                  ? 'You can’t rate your own film.'
+                  : rate.isPending
+                    ? 'Saving…'
+                    : myStars
+                      ? `You gave it ${myStars} star${myStars === 1 ? '' : 's'}. Tap to change.`
+                      : 'Tap a star to rate it.'}
+              </span>
             </div>
           </section>
         </div>
@@ -332,7 +360,9 @@ export default function FilmDetailPage() {
                         </button>
                       )}
                       <b className="text-[13.5px]">{n.user?.name ?? 'Someone'}</b>
-                      <span className="text-[12px] text-muted-foreground">★ {n.rating} · {formatTimeAgo(n.createdAt)}</span>
+                      <span className="text-[12px] text-muted-foreground">
+                        {n.rating ? `★ ${n.rating} · ` : ''}{formatTimeAgo(n.createdAt)}
+                      </span>
                     </div>
                     <p className="text-[14.5px] leading-relaxed">{text}</p>
                   </li>

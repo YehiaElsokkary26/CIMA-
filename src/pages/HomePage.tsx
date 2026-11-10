@@ -307,7 +307,7 @@ function FilmOfTheWeekPoster({ film }: { film: Film }) {
       <div className="bg-k-red text-k-paper border-[1.5px] border-foreground overflow-hidden">
         <div className="flex justify-between gap-2 px-3 py-2.5 k-label text-[10.5px]">
           <span className="font-semibold">★ Film of the week</span>
-          <span>{(film.votes ?? 0).toLocaleString()} votes</span>
+          <span>{(film.winningVotes ?? film.votes ?? 0).toLocaleString()} votes</span>
         </div>
         <FilmStill film={film} className="mx-3 h-[250px] sm:h-[300px] border-[1.5px] border-k-ink" />
         <div className="px-3 pt-3 pb-1">

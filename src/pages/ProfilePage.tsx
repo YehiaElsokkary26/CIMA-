@@ -4,7 +4,7 @@ import { AlertCircle, Film as FilmIcon, GraduationCap, Handshake, Loader2, LogOu
 import { useAuthStore } from '@/store/authStore'
 import { useAuth } from '@/hooks/useAuth'
 import { useFilmsByUser, useProfile } from '@/hooks/useFilms'
-import { useCima, useSendCimaRequest } from '@/hooks/useCima'
+import { useAcceptCimaRequest, useCima, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { cn } from '@/lib/utils'
 import { toast } from '@/store/toastStore'
 import Still from '@/components/klaket/Still'
@@ -29,9 +29,10 @@ export default function ProfilePage() {
   const { data: fetchedFilms, isPending: filmsLoading } = useFilmsByUser(profileId)
   const { data: crewData } = useCima()
   const sendRequest = useSendCimaRequest()
+  const acceptRequest = useAcceptCimaRequest()
+  const crewStatus = useCrewStatus(isOwn ? undefined : profileId, currentUser?.id)
 
   const [tab, setTab] = useState<Tab>('Films')
-  const [crewStatus, setCrewStatus] = useState<'none' | 'pending'>('none')
   const [confirmLogout, setConfirmLogout] = useState(false)
 
   const profile = isOwn ? currentUser : fetchedProfile
@@ -65,16 +66,22 @@ export default function ProfilePage() {
   const openToCollab = profile.openToCollab ?? profile.lookingForCollaborators ?? false
 
   const ask = () => {
-    if (!profileId || crewStatus !== 'none') return
-    setCrewStatus('pending')
+    if (!profileId || sendRequest.isPending || acceptRequest.isPending) return
+    if (crewStatus.status === 'received' && crewStatus.requestId) {
+      acceptRequest.mutate(crewStatus.requestId, {
+        onSuccess: () => toast.success(`Signed on. ${profile.name} is in your crew.`),
+        onError: () => toast.error('Couldn’t accept the call sheet. Try again.'),
+      })
+      return
+    }
+    if (crewStatus.status !== 'none') return
     sendRequest.mutate(profileId, {
       onSuccess: () => toast.success(`Call sheet sent to ${profile.name}.`),
-      onError: () => {
-        setCrewStatus('none')
-        toast.error('Couldn’t send the call sheet. Try again.')
-      },
+      onError: () => toast.error('Couldn’t send the call sheet. Try again.'),
     })
   }
+  const canAsk = !crewStatus.isPending && !sendRequest.isPending && !acceptRequest.isPending &&
+    (crewStatus.status === 'none' || crewStatus.status === 'received')
 
   return (
     <div className="min-h-full">
@@ -153,11 +160,17 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={ask}
-              disabled={crewStatus !== 'none'}
+              disabled={!canAsk}
               className="press min-h-[48px] bg-k-red text-k-paper font-extrabold text-[14px] disabled:bg-k-teal"
               style={{ fontStretch: '110%' }}
             >
-              {crewStatus === 'pending' ? 'CALL SHEET SENT ✓' : 'SEND CALL SHEET'}
+              {crewStatus.status === 'crew'
+                ? '✓ IN YOUR CREW'
+                : crewStatus.status === 'sent'
+                  ? 'CALL SHEET SENT ✓'
+                  : crewStatus.status === 'received'
+                    ? 'ACCEPT THEIR CALL SHEET'
+                    : 'SEND CALL SHEET'}
             </button>
           )}
           {isOwn && isFilmmaker && (

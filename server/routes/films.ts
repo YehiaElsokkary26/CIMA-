@@ -1,6 +1,6 @@
 import { Router, Response, NextFunction } from 'express'
 import { query } from '../db'
-import { authMiddleware, AuthRequest } from '../middleware/auth'
+import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/auth'
 import { isFilmmaker } from '../middleware/role'
 import { validate, validUuid, rateFilmSchema, addReviewSchema, createFilmSchema } from '../lib/validators'
 import { notFound, AppError } from '../lib/errors'
@@ -20,7 +20,19 @@ router.get('/featured/week', async (_req, res: Response, next: NextFunction) => 
     if (!filmId) throw new AppError('No film of the week yet', 404, 'NO_WINNER')
     const film = await getFilm(filmId)
     if (!film) throw new AppError('No film of the week yet', 404, 'NO_WINNER')
-    res.json(film)
+    // `votes` counts this week; the win was decided by last week's votes,
+    // so report those, plus the next two films from the same ballot.
+    const ballot = await query<{ id: string; title: string; votes: number }>(
+      `SELECT f.id, f.title, COUNT(*)::int AS votes
+       FROM   votes v JOIN films f ON f.id = v.film_id
+       WHERE  v.week_start = ${VOTE_WEEK_SQL} - 7
+       GROUP  BY f.id, f.title
+       ORDER  BY COUNT(*) DESC, MIN(v.created_at) ASC
+       LIMIT  3`
+    )
+    const winningVotes = ballot.rows.find((r) => r.id === filmId)?.votes ?? 0
+    const runnerUps = ballot.rows.filter((r) => r.id !== filmId).slice(0, 2)
+    res.json({ ...film, winningVotes, runnerUps })
   } catch (err) { next(err) }
 })
 
@@ -45,11 +57,20 @@ router.get('/', async (req, res: Response, next: NextFunction) => {
 })
 
 // ---- GET /api/films/:id -----------------------------------------------------
-router.get('/:id', validUuid('id'), async (req, res: Response, next: NextFunction) => {
+router.get('/:id', validUuid('id'), optionalAuth, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const film = await getFilm(req.params.id as string)
     if (!film) throw notFound('Film')
-    res.json(film)
+    // Signed-in viewers also get their own stars back.
+    let myRating: number | undefined
+    if (req.userId) {
+      const mine = await query<{ rating: number }>(
+        'SELECT rating FROM ratings WHERE film_id = $1 AND user_id = $2',
+        [film.id, req.userId]
+      )
+      myRating = mine.rows[0]?.rating
+    }
+    res.json({ ...film, myRating })
   } catch (err) { next(err) }
 })
 
@@ -164,20 +185,23 @@ router.post('/:id/review', validUuid('id'), authMiddleware, validate(addReviewSc
     if (!filmRes.rowCount) throw notFound('Film')
     const film = filmRes.rows[0]
 
+    // A note can come without stars; only then does it leave the rating alone.
     const result = await query(
       `INSERT INTO reviews (film_id, user_id, rating, body)
        VALUES ($1,$2,$3,$4)
        RETURNING *`,
-      [req.params.id, req.userId, rating, body]
+      [req.params.id, req.userId, rating ?? null, body]
     )
     const rv = result.rows[0]
 
-    await query(
-      `INSERT INTO ratings (film_id, user_id, rating)
-       VALUES ($1,$2,$3)
-       ON CONFLICT (film_id, user_id) DO UPDATE SET rating = $3, updated_at = NOW()`,
-      [req.params.id, req.userId, rating]
-    )
+    if (rating) {
+      await query(
+        `INSERT INTO ratings (film_id, user_id, rating)
+         VALUES ($1,$2,$3)
+         ON CONFLICT (film_id, user_id) DO UPDATE SET rating = $3, updated_at = NOW()`,
+        [req.params.id, req.userId, rating]
+      )
+    }
 
     if (film.uploader_id !== req.userId) {
       const fromRes = await query('SELECT name FROM profiles WHERE id = $1', [req.userId])
