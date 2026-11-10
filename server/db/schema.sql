@@ -200,6 +200,18 @@ CREATE INDEX IF NOT EXISTS idx_notif_user   ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notif_unread ON public.notifications(user_id, is_read) WHERE is_read = FALSE;
 
 -- -----------------------------------------------
+-- SAVED FILMS  (each person's private watchlist)
+-- -----------------------------------------------
+CREATE TABLE IF NOT EXISTS public.saved_films (
+  user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  film_id    UUID        NOT NULL REFERENCES public.films(id)    ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, film_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_films_user ON public.saved_films(user_id, created_at DESC);
+
+-- -----------------------------------------------
 -- updated_at trigger helper
 -- -----------------------------------------------
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -231,6 +243,8 @@ ALTER TABLE public.cima_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cima_members  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.featured_films ENABLE ROW LEVEL SECURITY;
+-- Watchlists are private and only reached through the API: no policies at all.
+ALTER TABLE public.saved_films   ENABLE ROW LEVEL SECURITY;
 
 -- Every CREATE POLICY below is preceded by DROP POLICY IF EXISTS for both
 -- its own name and any name an earlier iteration of this script used, so

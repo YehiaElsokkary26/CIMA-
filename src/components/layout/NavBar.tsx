@@ -6,6 +6,8 @@ import { useUIStore } from '@/store/uiStore'
 import { useSearchStore } from '@/store/searchStore'
 import { Wordmark } from '@/components/klaket/primitives'
 import Avatar from '@/components/ui/Avatar'
+import UnreadBadge, { notificationsLabel } from '@/components/ui/UnreadBadge'
+import { useUnreadCount } from '@/hooks/useNotifications'
 import SearchField from './SearchField'
 
 // Mobile header: wordmark, then search / theme / notifications / profile.
@@ -18,6 +20,7 @@ export default function NavBar() {
   const inputRef = useRef<HTMLInputElement>(null)
   const showSearch = open || !!query
 
+  const unread = useUnreadCount()
   const iconBtn =
     'w-11 h-11 flex items-center justify-center border-[1.5px] border-foreground press hover:bg-foreground/5'
 
@@ -48,8 +51,9 @@ export default function NavBar() {
           >
             {isDarkMode ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
           </button>
-          <Link to="/notifications" className={iconBtn} aria-label="Notifications">
+          <Link to="/notifications" className={`${iconBtn} relative`} aria-label={notificationsLabel(unread)}>
             <Bell size={18} aria-hidden="true" />
+            <UnreadBadge count={unread} />
           </Link>
           <Link to="/profile/me" aria-label="Your profile" className="press">
             <Avatar name={user?.name ?? '?'} src={user?.avatarUrl} size="md" />

@@ -1,13 +1,9 @@
-import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Bell, MessageSquare, Star, UserPlus, Users } from 'lucide-react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { notificationsApi } from '@/lib/api'
-import { supabase } from '@/lib/supabase'
+import { useMarkAllRead, useMarkRead, useNotifications } from '@/hooks/useNotifications'
 import { useFeaturedFilm } from '@/hooks/useFilms'
 import { weekNumber } from '@/lib/klaket'
 import { formatTimeAgo } from '@/lib/utils'
-import { useAuthStore } from '@/store/authStore'
 import type { Notification } from '@/types'
 import { Clap } from '@/components/klaket/primitives'
 import { FilmStill } from '@/components/klaket/FilmCards'
@@ -25,36 +21,11 @@ const KIND: Record<Notification['type'], { icon: React.ElementType; bg: string; 
 
 export default function NotificationsPage() {
   const navigate = useNavigate()
-  const user = useAuthStore((s) => s.user)
-  const qc = useQueryClient()
   const { data: winner } = useFeaturedFilm()
-
-  const { data, isPending: isLoading, isError, refetch } = useQuery({
-    queryKey: ['notifications', user?.id],
-    queryFn: async () => (await notificationsApi.list()).data,
-    enabled: !!user?.id,
-  })
-
-  // New notifications arrive live while this screen is open.
-  useEffect(() => {
-    if (!user?.id) return
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        () => qc.invalidateQueries({ queryKey: ['notifications', user.id] }),
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user?.id, qc])
-
-  const markAll = useMutation({
-    mutationFn: () => notificationsApi.markAllRead(),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications', user?.id] }),
-  })
+  // Live updates come from useLiveNotifications in the app shell.
+  const { data, isPending: isLoading, isError, refetch } = useNotifications()
+  const markAll = useMarkAllRead()
+  const markRead = useMarkRead()
 
   const items: Notification[] = data ?? []
   const unread = items.filter((n) => !n.read).length
@@ -117,7 +88,7 @@ export default function NotificationsPage() {
                 const Icon = k.icon
                 return (
                   <li key={n.id}>
-                    <Link to={k.href(n)} className="grid grid-cols-[40px_minmax(0,1fr)_10px] gap-3 items-start py-3 border-b border-rule hover:bg-foreground/5">
+                    <Link to={k.href(n)} onClick={() => !n.read && markRead.mutate(n.id)} className="grid grid-cols-[40px_minmax(0,1fr)_10px] gap-3 items-start py-3 border-b border-rule hover:bg-foreground/5">
                       <span className="w-10 h-10 flex items-center justify-center border-[1.5px] border-foreground" style={{ background: k.bg, color: k.fg }}>
                         <Icon size={17} aria-hidden="true" />
                       </span>

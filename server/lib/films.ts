@@ -68,7 +68,7 @@ export function mapFilm(f: any) {
   }
 }
 
-export async function listFilms(opts: { genre?: string; sort?: string; uploaderId?: string } = {}) {
+export async function listFilms(opts: { genre?: string; sort?: string; uploaderId?: string; savedBy?: string } = {}) {
   const where: string[] = []
   const params: unknown[] = []
   if (opts.genre) {
@@ -79,12 +79,21 @@ export async function listFilms(opts: { genre?: string; sort?: string; uploaderI
     params.push(opts.uploaderId)
     where.push(`f.uploader_id = $${params.length}`)
   }
+  let savedRef = ''
+  if (opts.savedBy) {
+    params.push(opts.savedBy)
+    savedRef = `$${params.length}`
+  }
   let sql = FILM_SELECT
+  // A watchlist: only films this person saved, most recently saved first.
+  if (savedRef) sql += ` JOIN saved_films s ON s.film_id = f.id AND s.user_id = ${savedRef}`
   if (where.length) sql += ` WHERE ${where.join(' AND ')}`
 
-  sql += opts.sort === 'top'
-    ? ' ORDER BY avg_rating DESC NULLS LAST, f.created_at DESC'
-    : ' ORDER BY f.created_at DESC'
+  sql += savedRef
+    ? ' ORDER BY s.created_at DESC'
+    : opts.sort === 'top'
+      ? ' ORDER BY avg_rating DESC NULLS LAST, f.created_at DESC'
+      : ' ORDER BY f.created_at DESC'
   const result = await query(sql, params)
   return result.rows.map(mapFilm)
 }

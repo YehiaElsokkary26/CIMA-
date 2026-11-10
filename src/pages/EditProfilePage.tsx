@@ -64,6 +64,7 @@ export default function EditProfilePage() {
   const [city, setCity] = useState(user?.city ?? '')
   const [favoriteGenres, setFavoriteGenres] = useState<string[]>(user?.favoriteGenres ?? [])
   const [crewRoles, setCrewRoles] = useState<string[]>(user?.crewRoles ?? [])
+  const [topGenre, setTopGenre] = useState(user?.topGenre ?? '')
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(user?.avatarUrl)
   const [bannerPreview, setBannerPreview] = useState<string | undefined>(user?.bannerUrl)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -112,6 +113,7 @@ export default function EditProfilePage() {
         city,
         favoriteGenres,
         crewRoles,
+        topGenre,
         avatarUrl,
         bannerUrl,
       })
@@ -214,6 +216,13 @@ export default function EditProfilePage() {
           options={ALL_GENRES}
           selected={favoriteGenres}
           onToggle={toggle(setFavoriteGenres)}
+        />
+        <Chips
+          legend="Your main genre"
+          hint="Pick one. People can find you by it in Discover. Tap it again to clear."
+          options={ALL_GENRES}
+          selected={topGenre ? [topGenre] : []}
+          onToggle={(g) => setTopGenre((current) => (current === g ? '' : g))}
         />
       </div>
     </div>

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, Film as FilmIcon, GraduationCap, Handshake, Loader2, LogOut, MapPin, Pencil, Users } from 'lucide-react'
+import { AlertCircle, Bookmark, Film as FilmIcon, GraduationCap, Handshake, Loader2, LogOut, MapPin, Pencil, Users } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import type { Film } from '@/types'
 import { useAuth } from '@/hooks/useAuth'
-import { useFilmsByUser, useProfile } from '@/hooks/useFilms'
+import { useFilmsByUser, useProfile, useSavedFilms } from '@/hooks/useFilms'
 import { useAcceptCimaRequest, useCima, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { cn } from '@/lib/utils'
 import { toast } from '@/store/toastStore'
@@ -15,7 +16,7 @@ import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 
-type Tab = 'Films' | 'Crew'
+type Tab = 'Films' | 'Saved' | 'Crew'
 
 export default function ProfilePage() {
   const { id = 'me' } = useParams<{ id: string }>()
@@ -28,11 +29,15 @@ export default function ProfilePage() {
   const { data: fetchedProfile, isPending: profileLoading, isError: profileError, refetch } = useProfile(isOwn ? undefined : profileId)
   const { data: fetchedFilms, isPending: filmsLoading } = useFilmsByUser(profileId)
   const { data: crewData } = useCima()
+  // Watchlists are private: only your own profile shows one.
+  const { data: savedFilms, isPending: savedLoading } = useSavedFilms(isOwn)
   const sendRequest = useSendCimaRequest()
   const acceptRequest = useAcceptCimaRequest()
   const crewStatus = useCrewStatus(isOwn ? undefined : profileId, currentUser?.id)
 
   const [tab, setTab] = useState<Tab>('Films')
+  // Each profile opens on its films (Saved only exists on your own).
+  useEffect(() => setTab('Films'), [profileId])
   const [confirmLogout, setConfirmLogout] = useState(false)
 
   const profile = isOwn ? currentUser : fetchedProfile
@@ -236,8 +241,8 @@ export default function ProfilePage() {
           </section>
         ) : null}
 
-        <div role="tablist" aria-label="Profile sections" className="mt-4 grid grid-cols-2 border-[1.5px] border-foreground sm:max-w-sm">
-          {(['Films', 'Crew'] as Tab[]).map((t) => (
+        <div role="tablist" aria-label="Profile sections" className={cn('mt-4 grid border-[1.5px] border-foreground sm:max-w-sm', isOwn ? 'grid-cols-3' : 'grid-cols-2')}>
+          {((isOwn ? ['Films', 'Saved', 'Crew'] : ['Films', 'Crew']) as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -271,26 +276,22 @@ export default function ProfilePage() {
                 }
               />
             ) : (
-              <ul className="flex flex-col">
-                {films.map((f) => (
-                  <li key={f.id}>
-                    <Link
-                      to={`/film/${f.id}`}
-                      className="grid grid-cols-[64px_minmax(0,1fr)_auto] gap-3 items-center py-2.5 border-b border-rule hover:bg-foreground/5"
-                    >
-                      <FilmStill film={f} className="w-16 h-16 border-[1.5px] border-foreground" />
-                      <span className="min-w-0 flex flex-col gap-0.5">
-                        <b className="text-[15px] leading-tight truncate">{f.title}</b>
-                        <span className="k-label text-[9.5px] text-muted-foreground truncate">
-                          {f.genre.join(' · ')} · {f.year}
-                          {f.isFilmOfTheWeek ? ' · Film of the week' : ''}
-                        </span>
-                      </span>
-                      <span className="k-label text-[10px]">{f.runtime ? `${f.runtime}m` : ''}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <FilmRows films={films} />
+            )
+          ) : tab === 'Saved' ? (
+            savedLoading ? (
+              <div className="flex flex-col gap-2" aria-hidden="true">
+                {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-16" />)}
+              </div>
+            ) : !savedFilms?.length ? (
+              <EmptyState
+                icon={Bookmark}
+                title="Nothing saved yet"
+                subtitle="Tap Save on a film to keep it here for later. Only you can see this list."
+                action={<Link to="/home" className="k-label text-[11px] font-semibold underline underline-offset-4 min-h-[44px] inline-flex items-center">Browse films →</Link>}
+              />
+            ) : (
+              <FilmRows films={savedFilms} />
             )
           ) : !isOwn ? (
             <p className="text-[14px] text-muted-foreground py-6">Crew lists are private. Send a call sheet to work together.</p>
@@ -389,5 +390,31 @@ function ConfirmDialog({
         </div>
       </div>
     </div>
+  )
+}
+
+/** One row per film: still, title, genre and year, runtime. */
+function FilmRows({ films }: { films: Film[] }) {
+  return (
+    <ul className="flex flex-col">
+      {films.map((f) => (
+        <li key={f.id}>
+          <Link
+            to={`/film/${f.id}`}
+            className="grid grid-cols-[64px_minmax(0,1fr)_auto] gap-3 items-center py-2.5 border-b border-rule hover:bg-foreground/5"
+          >
+            <FilmStill film={f} className="w-16 h-16 border-[1.5px] border-foreground" />
+            <span className="min-w-0 flex flex-col gap-0.5">
+              <b className="text-[15px] leading-tight truncate">{f.title}</b>
+              <span className="k-label text-[9.5px] text-muted-foreground truncate">
+                {f.genre.join(' · ')} · {f.year}
+                {f.isFilmOfTheWeek ? ' · Film of the week' : ''}
+              </span>
+            </span>
+            <span className="k-label text-[10px]">{f.runtime ? `${f.runtime}m` : ''}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

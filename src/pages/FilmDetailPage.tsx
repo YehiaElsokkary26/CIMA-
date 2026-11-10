@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, Loader2, MessageSquare, Play, Share2 } from 'lucide-react'
-import { useAddReview, useFilm, useFilmReviews, useMyVoteThisWeek, useRateFilm, useVoteFilm } from '@/hooks/useFilms'
+import { useAddReview, useFilm, useFilmReviews, useMyVoteThisWeek, useRateFilm, useToggleSave, useVoteFilm } from '@/hooks/useFilms'
 import { useAcceptCimaRequest, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
 import { formatTimeAgo } from '@/lib/utils'
@@ -31,6 +31,7 @@ export default function FilmDetailPage() {
   const { data: myVote, isLoading: checkingVote } = useMyVoteThisWeek()
   const vote = useVoteFilm()
   const rate = useRateFilm(id)
+  const toggleSave = useToggleSave(id)
   const acceptCrew = useAcceptCimaRequest()
   const crew = useCrewStatus(film?.uploader?.id, user?.id)
 
@@ -38,7 +39,6 @@ export default function FilmDetailPage() {
   const [playing, setPlaying] = useState(false)
   const [now, setNow] = useState(0)
   const [mediaDuration, setMediaDuration] = useState(0)
-  const [saved, setSaved] = useState(false)
   const [hoveredStar, setHoveredStar] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [pinToTime, setPinToTime] = useState(true)
@@ -239,17 +239,22 @@ export default function FilmDetailPage() {
               <Button variant="solid" className="flex-1" onClick={startPlayback}>
                 ▶ Play{film.runtime ? ` ${film.runtime} min` : ''}
               </Button>
-              <Button
-                variant={saved ? 'accent' : 'outline'}
-                className="flex-1"
-                aria-pressed={saved}
-                onClick={() => {
-                  setSaved((s) => !s)
-                  toast.success(saved ? 'Removed from your watchlist.' : 'Saved to your watchlist.')
-                }}
-              >
-                {saved ? 'Saved ✓' : 'Save'}
-              </Button>
+              {user && (
+                <Button
+                  variant={film.isSaved ? 'accent' : 'outline'}
+                  className="flex-1"
+                  aria-pressed={!!film.isSaved}
+                  disabled={toggleSave.isPending}
+                  onClick={() => {
+                    const next = !film.isSaved
+                    toggleSave.mutate(next, {
+                      onSuccess: () => toast.success(next ? 'Saved to your watchlist.' : 'Removed from your watchlist.'),
+                    })
+                  }}
+                >
+                  {film.isSaved ? 'Saved ✓' : 'Save'}
+                </Button>
+              )}
             </div>
           </section>
 

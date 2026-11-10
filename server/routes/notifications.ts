@@ -40,6 +40,17 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response, next: Ne
   } catch (err) { next(err) }
 })
 
+// ---- GET /api/notifications/unread-count  (the badge on the bell) -----------
+router.get('/unread-count', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query<{ c: number }>(
+      'SELECT COUNT(*)::int AS c FROM notifications WHERE user_id = $1 AND is_read = FALSE',
+      [req.userId]
+    )
+    res.json({ count: result.rows[0]?.c ?? 0 })
+  } catch (err) { next(err) }
+})
+
 // ---- PATCH /api/notifications/read-all  (must be before /:id) ---------------
 router.patch('/read-all', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {

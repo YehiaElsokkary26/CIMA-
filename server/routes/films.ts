@@ -47,6 +47,13 @@ router.get('/votes/mine', authMiddleware, async (req: AuthRequest, res: Response
   } catch (err) { next(err) }
 })
 
+// ---- GET /api/films/saved  (your watchlist; before /:id) --------------------
+router.get('/saved', authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    res.json(await listFilms({ savedBy: req.userId }))
+  } catch (err) { next(err) }
+})
+
 // ---- GET /api/films ---------------------------------------------------------
 router.get('/', async (req, res: Response, next: NextFunction) => {
   const genre = typeof req.query.genre === 'string' ? req.query.genre.slice(0, 50) : undefined
@@ -61,16 +68,19 @@ router.get('/:id', validUuid('id'), optionalAuth, async (req: AuthRequest, res: 
   try {
     const film = await getFilm(req.params.id as string)
     if (!film) throw notFound('Film')
-    // Signed-in viewers also get their own stars back.
+    // Signed-in viewers also get their own stars and whether they saved it.
     let myRating: number | undefined
+    let isSaved: boolean | undefined
     if (req.userId) {
-      const mine = await query<{ rating: number }>(
-        'SELECT rating FROM ratings WHERE film_id = $1 AND user_id = $2',
+      const mine = await query<{ rating: number | null; saved: boolean }>(
+        `SELECT (SELECT rating FROM ratings WHERE film_id = $1 AND user_id = $2) AS rating,
+                EXISTS (SELECT 1 FROM saved_films WHERE film_id = $1 AND user_id = $2) AS saved`,
         [film.id, req.userId]
       )
-      myRating = mine.rows[0]?.rating
+      myRating = mine.rows[0]?.rating ?? undefined
+      isSaved = !!mine.rows[0]?.saved
     }
-    res.json({ ...film, myRating })
+    res.json({ ...film, myRating, isSaved })
   } catch (err) { next(err) }
 })
 
@@ -111,6 +121,27 @@ router.post('/:id/vote', validUuid('id'), authMiddleware, async (req: AuthReques
       [req.params.id]
     )
     res.status(201).json({ ok: true, votes: countRes.rows[0].c })
+  } catch (err) { next(err) }
+})
+
+// ---- PUT / DELETE /api/films/:id/save  (watchlist; both are safe to repeat) --
+router.put('/:id/save', validUuid('id'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const filmRes = await query('SELECT id FROM films WHERE id = $1', [req.params.id])
+    if (!filmRes.rowCount) throw notFound('Film')
+    await query(
+      `INSERT INTO saved_films (user_id, film_id) VALUES ($1, $2)
+       ON CONFLICT (user_id, film_id) DO NOTHING`,
+      [req.userId, req.params.id]
+    )
+    res.json({ saved: true })
+  } catch (err) { next(err) }
+})
+
+router.delete('/:id/save', validUuid('id'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    await query('DELETE FROM saved_films WHERE user_id = $1 AND film_id = $2', [req.userId, req.params.id])
+    res.json({ saved: false })
   } catch (err) { next(err) }
 })
 

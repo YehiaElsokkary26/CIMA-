@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useUIStore } from '@/store/uiStore'
 import { Wordmark } from '@/components/klaket/primitives'
 import Avatar from '@/components/ui/Avatar'
+import UnreadBadge, { notificationsLabel } from '@/components/ui/UnreadBadge'
+import { useUnreadCount } from '@/hooks/useNotifications'
 import { mainNav } from './navLinks'
 import SearchField from './SearchField'
 
@@ -15,6 +17,7 @@ export default function Sidebar() {
   const location = useLocation()
   const { logout } = useAuth()
   const { isDarkMode, toggleDarkMode } = useUIStore()
+  const unread = useUnreadCount()
 
   const links = [
     ...mainNav(user?.role === 'filmmaker'),
@@ -40,6 +43,7 @@ export default function Sidebar() {
               key={link.to}
               to={link.to}
               aria-current={active ? 'page' : undefined}
+              aria-label={link.to === '/notifications' ? notificationsLabel(unread) : undefined}
               className={cn(
                 'flex items-center gap-3 px-5 min-h-[46px] k-label text-[11.5px] font-semibold border-y border-transparent',
                 isUpload
@@ -51,6 +55,7 @@ export default function Sidebar() {
             >
               <Icon size={18} aria-hidden="true" />
               {isUpload ? 'Upload a film' : link.label}
+              {link.to === '/notifications' && <UnreadBadge count={unread} variant="inline" />}
             </NavLink>
           )
         })}
