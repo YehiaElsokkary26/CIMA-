@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Film, User, Review, CimaRequest, CimaMember, Notification } from '@/types'
+import type { Film, User, Review, CimaRequest, CimaMember, SentCimaRequest, Notification } from '@/types'
 
 const api = axios.create({
   baseURL: '/api',
@@ -53,7 +53,7 @@ export const filmsApi = {
   myVoteThisWeek: () => api.get<{ filmId: string | null }>('/films/votes/mine'),
   rate: (id: string, rating: number) => api.post(`/films/${id}/rate`, { rating }),
   reviews: (id: string) => api.get<Review[]>(`/films/${id}/reviews`),
-  addReview: (id: string, data: { rating: number; body: string }) =>
+  addReview: (id: string, data: { rating?: number; body: string }) =>
     api.post<Review>(`/films/${id}/review`, data),
 }
 
@@ -72,7 +72,7 @@ export const usersApi = {
 
 // ---- Crew (server routes are still named /cima) ----------------------------
 export const cimaApi = {
-  mine: () => api.get<{ members: CimaMember[]; requests: CimaRequest[] }>('/cima/mine'),
+  mine: () => api.get<{ members: CimaMember[]; requests: CimaRequest[]; sent: SentCimaRequest[] }>('/cima/mine'),
   sendRequest: (targetUserId: string) => api.post(`/cima/request/${targetUserId}`),
   acceptRequest: (requestId: string) => api.post(`/cima/accept/${requestId}`),
   declineRequest: (requestId: string) => api.post(`/cima/decline/${requestId}`),

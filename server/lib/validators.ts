@@ -23,7 +23,7 @@ export const rateFilmSchema = z.object({
 
 /** Reviews double as "notes on the cut" in the app, which can be short. */
 export const addReviewSchema = z.object({
-  rating: z.number().int().min(1).max(5),
+  rating: z.number().int().min(1).max(5).optional(),
   body:   z.string().trim().min(2).max(4000),
 })
 

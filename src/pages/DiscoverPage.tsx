@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, Film as FilmIcon, Search, Users } from 'lucide-react'
 import { useFilmmakers, useFilms } from '@/hooks/useFilms'
-import { useSendCimaRequest } from '@/hooks/useCima'
+import { crewStatusFor, useAcceptCimaRequest, useCima, useSendCimaRequest } from '@/hooks/useCima'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
@@ -23,11 +23,13 @@ export default function DiscoverPage() {
   const [query, setQuery] = useState(params.get('q') ?? '')
   const [tab, setTab] = useState<Tab>(params.get('tab') === 'people' ? 'people' : 'films')
   const [scene, setScene] = useState('All')
-  const [asked, setAsked] = useState<Record<string, boolean>>({})
 
   const films = useFilms()
   const people = useFilmmakers()
   const sendRequest = useSendCimaRequest()
+  const acceptRequest = useAcceptCimaRequest()
+  const { data: crewData } = useCima()
+  const busy = sendRequest.isPending || acceptRequest.isPending
 
   const allFilms = useMemo(() => films.data ?? [], [films.data])
   const allPeople = useMemo(() => (people.data ?? []).filter((p) => p.id !== me?.id), [people.data, me?.id])
@@ -57,15 +59,32 @@ export default function DiscoverPage() {
   }
 
   const ask = (p: User) => {
-    if (asked[p.id]) return
-    setAsked((a) => ({ ...a, [p.id]: true }))
+    if (busy) return
+    const { status, requestId } = crewStatusFor(crewData, p.id, me?.id)
+    if (status === 'received' && requestId) {
+      acceptRequest.mutate(requestId, {
+        onSuccess: () => toast.success(`Signed on. ${p.name} is in your crew.`),
+        onError: () => toast.error('Couldn’t accept the call sheet. Try again.'),
+      })
+      return
+    }
+    if (status !== 'none') return
     sendRequest.mutate(p.id, {
       onSuccess: () => toast.success(`Call sheet sent to ${p.name}.`),
-      onError: () => {
-        setAsked((a) => ({ ...a, [p.id]: false }))
-        toast.error('Couldn’t send the call sheet. Try again.')
-      },
+      onError: () => toast.error('Couldn’t send the call sheet. Try again.'),
     })
+  }
+
+  const crewLabel = (p: User) => {
+    const { status } = crewStatusFor(crewData, p.id, me?.id)
+    if (status === 'crew') return '✓ IN YOUR CREW'
+    if (status === 'sent') return 'CALL SHEET SENT ✓'
+    if (status === 'received') return 'ACCEPT THEIR CALL SHEET'
+    return 'SEND A CALL SHEET'
+  }
+  const canAsk = (p: User) => {
+    const { status } = crewStatusFor(crewData, p.id, me?.id)
+    return !!crewData && !busy && (status === 'none' || status === 'received')
   }
 
   const active = tab === 'films' ? films : people
@@ -200,10 +219,10 @@ export default function DiscoverPage() {
                   <button
                     type="button"
                     onClick={() => ask(p)}
-                    disabled={asked[p.id]}
+                    disabled={!canAsk(p)}
                     className="press min-h-[46px] border-t-[1.5px] border-foreground font-extrabold text-[13px] bg-k-red text-k-paper disabled:bg-k-teal hover:brightness-110"
                   >
-                    {asked[p.id] ? 'CALL SHEET SENT ✓' : 'SEND A CALL SHEET'}
+                    {crewLabel(p)}
                   </button>
                 </li>
               ))}

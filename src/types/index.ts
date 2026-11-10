@@ -41,6 +41,12 @@ export interface Film {
   /** How many weeks this film has won Film of the Week */
   laurels?: number
   votes?: number
+  /** Signed-in viewer's own stars, on GET /films/:id. */
+  myRating?: number
+  /** Votes that won Film of the Week, on GET /films/featured/week. */
+  winningVotes?: number
+  /** Next two films from the same ballot, on GET /films/featured/week. */
+  runnerUps?: { id: string; title: string; votes: number }[]
   weekKey?: string
   createdAt: string
 }
@@ -50,7 +56,8 @@ export interface Review {
   filmId: string
   userId: string
   user?: User
-  rating: number
+  /** Notes can be posted without stars. */
+  rating: number | null
   body: string
   createdAt: string
 }
@@ -62,6 +69,13 @@ export interface CimaRequest {
   from?: User
   to?: User
   status: 'pending' | 'accepted' | 'declined'
+  createdAt: string
+}
+
+/** A call sheet you sent that is still waiting. */
+export interface SentCimaRequest {
+  id: string
+  toUserId: string
   createdAt: string
 }
 

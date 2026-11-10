@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS public.reviews (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   film_id    UUID        NOT NULL REFERENCES public.films(id) ON DELETE CASCADE,
   user_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  rating     SMALLINT    NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  rating     SMALLINT    CHECK (rating BETWEEN 1 AND 5),
   body       TEXT        NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -147,6 +147,8 @@ CREATE TABLE IF NOT EXISTS public.reviews (
 
 CREATE INDEX IF NOT EXISTS idx_reviews_film ON public.reviews(film_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user ON public.reviews(user_id);
+-- Notes can be posted without stars (older databases required a rating).
+ALTER TABLE public.reviews ALTER COLUMN rating DROP NOT NULL;
 
 -- -----------------------------------------------
 -- CIMA REQUESTS

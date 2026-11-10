@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Loader2, Trophy, X } from 'lucide-react'
-import { useFeaturedFilm, useFilms } from '@/hooks/useFilms'
+import { useFeaturedFilm } from '@/hooks/useFilms'
 import { timecode, weekNumber } from '@/lib/klaket'
 import type { Film } from '@/types'
 import { FilmStill } from '@/components/klaket/FilmCards'
@@ -16,7 +16,6 @@ const prefersReducedMotion = () =>
 export default function RevealPage() {
   const navigate = useNavigate()
   const { data: winner, isLoading } = useFeaturedFilm()
-  const { data: films } = useFilms()
 
   if (isLoading) {
     return (
@@ -54,16 +53,14 @@ export default function RevealPage() {
     )
   }
 
-  const others = (films ?? [])
-    .filter((f) => f.id !== winner.id && f.weekKey === winner.weekKey)
-    .sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
-    .slice(0, 2)
+  // Placed by the same ballot that picked the winner.
+  const others = winner.runnerUps ?? []
 
   return <RevealStage winner={winner} others={others} />
 }
 
 // Film of the week reveal: an academy-leader countdown, then the winning poster.
-function RevealStage({ winner, others }: { winner: Film; others: Film[] }) {
+function RevealStage({ winner, others }: { winner: Film; others: NonNullable<Film['runnerUps']> }) {
   const navigate = useNavigate()
 
   const [phase, setPhase] = useState<Phase>('ready')
@@ -144,7 +141,7 @@ function RevealStage({ winner, others }: { winner: Film; others: Film[] }) {
               <FilmStill film={winner} className="h-[280px] sm:h-[340px] border-b-2 border-k-paper" />
               <div className="p-3 flex flex-col gap-1">
                 <span className="k-label text-[10.5px] text-k-mustard font-semibold">
-                  ★ Winner · {(winner.votes ?? 0).toLocaleString()} votes
+                  ★ Winner · {(winner.winningVotes ?? 0).toLocaleString()} votes
                 </span>
                 <h1 className="k-display text-[28px] sm:text-[36px] uppercase">{winner.title}</h1>
                 <span className="k-label text-[10px] mt-1">

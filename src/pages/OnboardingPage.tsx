@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { Camera, Play } from 'lucide-react'
+import { Camera, Loader2, Play } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 import { useAuthStore } from '@/store/authStore'
 import { Wordmark } from '@/components/klaket/primitives'
 import Still from '@/components/klaket/Still'
@@ -26,10 +27,18 @@ const ROLES = [
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const setRole = useAuthStore((s) => s.setRole)
+  const { updateRole } = useAuth()
 
-  const choose = (role: 'filmmaker' | 'viewer') => {
-    setRole(role)
-    navigate('/home', { replace: true })
+  // Save the role on the server first: uploads check it there, not in the browser.
+  const choose = async (role: 'filmmaker' | 'viewer') => {
+    if (updateRole.isPending) return
+    try {
+      await updateRole.mutateAsync(role)
+      setRole(role)
+      navigate('/home', { replace: true })
+    } catch {
+      // useAuth shows the error toast; stay here so they can try again.
+    }
   }
 
   return (
@@ -47,13 +56,17 @@ export default function OnboardingPage() {
               key={role}
               type="button"
               onClick={() => choose(role)}
-              className={`press text-start border-[1.5px] border-foreground flex flex-col hover:-translate-y-0.5 transition-transform ${tone}`}
+              disabled={updateRole.isPending}
+              aria-busy={updateRole.isPending && updateRole.variables === role}
+              className={`press text-start disabled:opacity-70 border-[1.5px] border-foreground flex flex-col hover:-translate-y-0.5 transition-transform ${tone}`}
             >
               <div className="h-[140px] border-b-[1.5px] border-foreground overflow-hidden" aria-hidden="true">
                 <Still kind={still} />
               </div>
               <div className="p-3.5 flex flex-col gap-1.5">
-                <Icon size={20} aria-hidden="true" />
+                {updateRole.isPending && updateRole.variables === role
+                  ? <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+                  : <Icon size={20} aria-hidden="true" />}
                 <b className="k-display text-[22px]">{title}</b>
                 <span className="text-[14px] opacity-90">{body}</span>
               </div>
