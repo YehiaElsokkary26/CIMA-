@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, Film as FilmIcon, Search, Users } from 'lucide-react'
-import { useFilmmakers, useFilms } from '@/hooks/useFilms'
+import { useFilmmakers, useFilmPages } from '@/hooks/useFilms'
+import { useDebounced } from '@/hooks/useDebounced'
 import { crewStatusFor, useAcceptCimaRequest, useCima, useSendCimaRequest } from '@/hooks/useCima'
-import { cn } from '@/lib/utils'
+import { GENRES, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import type { User } from '@/types'
@@ -24,27 +25,28 @@ export default function DiscoverPage() {
   const [tab, setTab] = useState<Tab>(params.get('tab') === 'people' ? 'people' : 'films')
   const [scene, setScene] = useState('All')
 
-  const films = useFilms()
+  // Films are searched and filtered on the server, a page at a time.
+  const filmQuery = useDebounced(query.trim(), 300)
+  const films = useFilmPages(
+    { q: filmQuery || undefined, genre: tab === 'films' && scene !== 'All' ? scene : undefined },
+    24,
+  )
   const people = useFilmmakers()
   const sendRequest = useSendCimaRequest()
   const acceptRequest = useAcceptCimaRequest()
   const { data: crewData } = useCima()
   const busy = sendRequest.isPending || acceptRequest.isPending
 
-  const allFilms = useMemo(() => films.data ?? [], [films.data])
+  const filmResults = useMemo(() => films.data?.pages.flat() ?? [], [films.data])
   const allPeople = useMemo(() => (people.data ?? []).filter((p) => p.id !== me?.id), [people.data, me?.id])
 
   const scenes = useMemo(() => {
-    const src = tab === 'films' ? allFilms.flatMap((f) => f.genre) : allPeople.map((p) => p.topGenre ?? '')
+    if (tab === 'films') return ['All', ...GENRES]
+    const src = allPeople.map((p) => p.topGenre ?? '')
     return ['All', ...Array.from(new Set(src.filter(Boolean))).slice(0, 10)]
-  }, [allFilms, allPeople, tab])
+  }, [allPeople, tab])
 
   const q = query.trim().toLowerCase()
-
-  const filmResults = allFilms.filter((f) => {
-    const hay = [f.title, f.description, f.uploader?.name, f.uploader?.school, ...f.genre].join(' ').toLowerCase()
-    return (!q || hay.includes(q)) && (scene === 'All' || f.genre.includes(scene))
-  })
 
   const peopleResults = allPeople.filter((p) => {
     const hay = [p.name, p.city, p.school, p.bio, p.topGenre, ...(p.crewRoles ?? [])].join(' ').toLowerCase()
@@ -88,7 +90,7 @@ export default function DiscoverPage() {
   }
 
   const active = tab === 'films' ? films : people
-  const count = tab === 'films' ? filmResults.length : peopleResults.length
+  const count = tab === 'films' ? `${filmResults.length}${films.hasNextPage ? '+' : ''}` : peopleResults.length
 
   return (
     <div className="min-h-full">
@@ -167,8 +169,20 @@ export default function DiscoverPage() {
           ) : filmResults.length === 0 ? (
             <EmptyState icon={FilmIcon} title="No matches" subtitle="Try a different word or scene." />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filmResults.map((f) => <PosterCard key={f.id} film={f} />)}
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {filmResults.map((f) => <PosterCard key={f.id} film={f} />)}
+              </div>
+              {films.hasNextPage && (
+                <button
+                  type="button"
+                  onClick={() => films.fetchNextPage()}
+                  disabled={films.isFetchingNextPage}
+                  className="press min-h-[48px] border-[1.5px] border-foreground k-label text-[11px] font-semibold hover:bg-foreground/5 disabled:opacity-60"
+                >
+                  {films.isFetchingNextPage ? 'Loading…' : 'Load more'}
+                </button>
+              )}
             </div>
           )
         ) : people.isPending ? (

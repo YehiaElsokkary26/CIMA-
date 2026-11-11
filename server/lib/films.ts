@@ -68,32 +68,61 @@ export function mapFilm(f: any) {
   }
 }
 
-export async function listFilms(opts: { genre?: string; sort?: string; uploaderId?: string; savedBy?: string } = {}) {
+export type FilmSort = 'newest' | 'top' | 'discussed' | 'votes'
+
+export interface ListFilmsOptions {
+  genre?: string
+  sort?: FilmSort
+  uploaderId?: string
+  savedBy?: string
+  /** Search title, logline, genre and filmmaker name. */
+  q?: string
+  /** Only films released in the current voting week (UTC). */
+  thisWeek?: boolean
+  limit?: number
+  offset?: number
+}
+
+/** Never send more than this many films in one response. */
+export const MAX_PAGE = 100
+
+export async function listFilms(opts: ListFilmsOptions = {}) {
   const where: string[] = []
   const params: unknown[] = []
-  if (opts.genre) {
-    params.push(opts.genre)
-    where.push(`$${params.length} = ANY(f.genre)`)
+  const add = (value: unknown) => {
+    params.push(value)
+    return `$${params.length}`
   }
-  if (opts.uploaderId) {
-    params.push(opts.uploaderId)
-    where.push(`f.uploader_id = $${params.length}`)
+  if (opts.genre) where.push(`${add(opts.genre)} = ANY(f.genre)`)
+  if (opts.uploaderId) where.push(`f.uploader_id = ${add(opts.uploaderId)}`)
+  if (opts.thisWeek) where.push(`(f.created_at AT TIME ZONE 'UTC')::date >= ${VOTE_WEEK_SQL}`)
+  if (opts.q) {
+    // Escape LIKE wildcards so "100%" is searched literally.
+    const like = add(`%${opts.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`)
+    where.push(`(f.title ILIKE ${like} OR f.description ILIKE ${like} OR p.name ILIKE ${like} OR p.school ILIKE ${like}
+                 OR EXISTS (SELECT 1 FROM unnest(f.genre) g WHERE g ILIKE ${like}))`)
   }
-  let savedRef = ''
-  if (opts.savedBy) {
-    params.push(opts.savedBy)
-    savedRef = `$${params.length}`
-  }
+  const savedRef = opts.savedBy ? add(opts.savedBy) : ''
+
   let sql = FILM_SELECT
   // A watchlist: only films this person saved, most recently saved first.
   if (savedRef) sql += ` JOIN saved_films s ON s.film_id = f.id AND s.user_id = ${savedRef}`
   if (where.length) sql += ` WHERE ${where.join(' AND ')}`
 
-  sql += savedRef
-    ? ' ORDER BY s.created_at DESC'
-    : opts.sort === 'top'
-      ? ' ORDER BY avg_rating DESC NULLS LAST, f.created_at DESC'
-      : ' ORDER BY f.created_at DESC'
+  // f.id last keeps the order stable, so pages never repeat or skip a film.
+  const order: Record<FilmSort, string> = {
+    newest:    'f.created_at DESC',
+    top:       'avg_rating DESC NULLS LAST, f.created_at DESC',
+    discussed: 'rating_count DESC, f.created_at DESC',
+    votes:     'votes DESC, f.created_at DESC',
+  }
+  sql += savedRef ? ' ORDER BY s.created_at DESC' : ` ORDER BY ${order[opts.sort ?? 'newest'] ?? order.newest}`
+  sql += ', f.id'
+
+  const limit = Math.min(Math.max(1, Math.floor(opts.limit ?? MAX_PAGE)), MAX_PAGE)
+  const offset = Math.max(0, Math.floor(opts.offset ?? 0))
+  sql += ` LIMIT ${add(limit)} OFFSET ${add(offset)}`
+
   const result = await query(sql, params)
   return result.rows.map(mapFilm)
 }

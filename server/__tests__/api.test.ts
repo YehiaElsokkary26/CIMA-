@@ -136,7 +136,7 @@ describe('films', () => {
     await request(app).get("/api/films?genre=Drama'; DROP TABLE films;--")
     const call = db.called(/FROM\s+films f/)[0]
     expect(call.sql).not.toContain('DROP TABLE')
-    expect(call.params).toEqual(["Drama'; DROP TABLE films;--"])
+    expect(call.params).toEqual(["Drama'; DROP TABLE films;--", 100, 0])
   })
 
   it('returns 400 for a malformed film id without querying the database', async () => {
@@ -204,7 +204,7 @@ describe('films', () => {
 
     it('records one vote and returns the new count', async () => {
       const headers = signIn('t', { id: ids.me })
-      db.on(/SELECT id FROM films/, [{ id: ids.film }])
+      db.on(/AS open FROM films/, [{ open: true }])
       db.on(/INSERT INTO votes/, [{ id: 'v1' }])
       db.on(/SELECT COUNT\(\*\)::int AS c FROM votes/, [{ c: 8 }])
       const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
@@ -213,9 +213,18 @@ describe('films', () => {
       expect(db.called(/INSERT INTO votes/)[0].params).toEqual([ids.film, ids.me])
     })
 
+    it('refuses votes for films from earlier weeks', async () => {
+      const headers = signIn('t', { id: ids.me })
+      db.on(/AS open FROM films/, [{ open: false }])
+      const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
+      expect(res.status).toBe(409)
+      expect(res.body.code).toBe('VOTING_CLOSED')
+      expect(db.called(/INSERT INTO votes/)).toHaveLength(0)
+    })
+
     it('returns 409 for a second vote in the same week', async () => {
       const headers = signIn('t', { id: ids.me })
-      db.on(/SELECT id FROM films/, [{ id: ids.film }])
+      db.on(/AS open FROM films/, [{ open: true }])
       db.on(/INSERT INTO votes/, () => ({ rows: [], rowCount: 0 }))
       const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
       expect(res.status).toBe(409)

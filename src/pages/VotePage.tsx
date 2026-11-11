@@ -18,7 +18,8 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 // then lock the vote. One vote per person per week (enforced by the server).
 export default function VotePage() {
   const user = useAuthStore((s) => s.user)
-  const { data: serverFilms, isPending: isLoading, isError, refetch } = useFilms()
+  // Only this week's films are on the ballot (the server enforces this too).
+  const { data: serverFilms, isPending: isLoading, isError, refetch } = useFilms({ week: 'current' })
   const { data: myVote, isLoading: checkingVote } = useMyVoteThisWeek()
   const vote = useVoteFilm()
 

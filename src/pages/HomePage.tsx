@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { AlertCircle, Film as FilmIcon, Search } from 'lucide-react'
-import { useFeaturedFilm, useFilms, useMyVoteThisWeek } from '@/hooks/useFilms'
+import { useFeaturedFilm, useFilmPages, useFilms, useMyVoteThisWeek } from '@/hooks/useFilms'
+import { useDebounced } from '@/hooks/useDebounced'
+import type { FilmListParams } from '@/lib/api'
 import { useRecommendations } from '@/hooks/useRecommendations'
-import { getCurrentWeekKey, getWeekCountdown } from '@/lib/votingUtils'
+import { getWeekCountdown } from '@/lib/votingUtils'
 import { timecode, weekNumber } from '@/lib/klaket'
 import { GENRES, cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -22,7 +24,12 @@ import Button from '@/components/ui/Button'
 
 type SortOption = 'Latest' | 'Top rated' | 'Most discussed'
 const SORTS: SortOption[] = ['Latest', 'Top rated', 'Most discussed']
-const PAGE_SIZE = 8
+const PAGE_SIZE = 24
+const SORT_PARAM: Record<SortOption, FilmListParams['sort']> = {
+  Latest: 'newest',
+  'Top rated': 'top',
+  'Most discussed': 'discussed',
+}
 const POSTER_GRID = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3'
 
 export default function HomePage() {
@@ -38,13 +45,21 @@ export default function HomePage() {
 
   const [genre, setGenre] = useState('All')
   const [sort, setSort] = useState<SortOption>('Latest')
-  const [visible, setVisible] = useState(PAGE_SIZE)
 
-  const { data: serverFilms, isPending: isLoading, isError, refetch } = useFilms()
+  // The newest films (recommendations, genre chips, fallback slate), this
+  // week's ballot, and "All films" one page at a time, filtered on the server.
+  const { data: recentFilms, isPending: isLoading, isError, refetch } = useFilms({ limit: 100 })
+  const { data: ballot } = useFilms({ week: 'current', sort: 'votes' })
+  const pages = useFilmPages({ genre: genre === 'All' ? undefined : genre, sort: SORT_PARAM[sort] }, PAGE_SIZE)
   const { data: featured } = useFeaturedFilm()
   const { data: myVote } = useMyVoteThisWeek()
 
-  const allFilms: Film[] = useMemo(() => serverFilms ?? [], [serverFilms])
+  // Search runs on the server once typing pauses.
+  const searchTerm = useDebounced(searchQuery.trim(), 300)
+  const search = useFilms({ q: searchTerm, limit: 60 }, { enabled: !!searchTerm })
+  const searching = !!searchQuery.trim() && (searchTerm !== searchQuery.trim() || search.isPending)
+
+  const allFilms: Film[] = useMemo(() => recentFilms ?? [], [recentFilms])
   const recommendations = useRecommendations(user, allFilms, 4, myVote?.filmId)
   const week = weekNumber()
 
@@ -53,7 +68,7 @@ export default function HomePage() {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return []
     const scored: Array<{ film: Film; score: number }> = []
-    for (const film of allFilms) {
+    for (const film of search.data ?? []) {
       const title = film.title.toLowerCase()
       const name = (film.uploader?.name ?? '').toLowerCase()
       const desc = (film.description ?? '').toLowerCase()
@@ -68,25 +83,17 @@ export default function HomePage() {
       if (score) scored.push({ film, score })
     }
     return scored.sort((a, b) => b.score - a.score).map((s) => s.film)
-  }, [allFilms, searchQuery])
+  }, [search.data, searchQuery])
 
-  // This week's slate: films entered this week, most votes first.
+  // This week's slate: films entered this week, most votes first. Before any
+  // are entered, show the newest films so the section isn't empty.
   const slate = useMemo(() => {
-    const wk = getCurrentWeekKey()
-    const others = allFilms.filter((f) => f.id !== featured?.id)
-    const thisWeek = others.filter((f) => f.weekKey === wk)
-    return [...(thisWeek.length ? thisWeek : others)].sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
-  }, [allFilms, featured?.id])
+    const thisWeek = (ballot ?? []).filter((f) => f.id !== featured?.id)
+    if (thisWeek.length) return thisWeek
+    return allFilms.filter((f) => f.id !== featured?.id).sort((a, b) => (b.votes ?? 0) - (a.votes ?? 0))
+  }, [ballot, allFilms, featured?.id])
 
-  const filtered = useMemo(() => {
-    const byGenre =
-      genre === 'All' ? allFilms : allFilms.filter((f) => f.genre.some((g) => g.toLowerCase() === genre.toLowerCase()))
-    const sorted = [...byGenre]
-    if (sort === 'Top rated') sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-    else if (sort === 'Most discussed') sorted.sort((a, b) => (b.ratingCount ?? 0) - (a.ratingCount ?? 0))
-    else sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    return sorted
-  }, [allFilms, genre, sort])
+  const filtered: Film[] = useMemo(() => pages.data?.pages.flat() ?? [], [pages.data])
 
   const genres = useMemo(() => {
     const present = new Set(allFilms.flatMap((f) => f.genre))
@@ -123,10 +130,17 @@ export default function HomePage() {
   if (searchQuery) {
     return (
       <div className="min-h-full">
-        <Band tone="solid" left={`Results for “${searchQuery}”`} right={`${searchResults.length} films`} />
+        <Band tone="solid" left={`Results for “${searchQuery}”`} right={searching ? 'Searching…' : `${searchResults.length} films`} />
         <div className="max-w-6xl mx-auto px-4 py-4">
-          {isLoading ? (
+          {searching ? (
             <div className={POSTER_GRID}>{Array.from({ length: 4 }).map((_, i) => <PosterCardSkeleton key={i} />)}</div>
+          ) : search.isError ? (
+            <EmptyState
+              icon={AlertCircle}
+              title="Search didn’t go through"
+              subtitle="Something went wrong reaching the server."
+              action={<Button variant="solid" size="sm" onClick={() => search.refetch()}>Retry</Button>}
+            />
           ) : searchResults.length === 0 ? (
             <EmptyState
               icon={Search}
@@ -178,8 +192,6 @@ export default function HomePage() {
     )
   }
 
-  const highlightIndex = highlightedId ? filtered.findIndex((f) => f.id === highlightedId) + 1 : 0
-  const shown = filtered.slice(0, Math.max(visible, highlightIndex))
 
   return (
     <div className="min-h-full">
@@ -195,7 +207,7 @@ export default function HomePage() {
         )}
 
         <section aria-label="This week’s slate" className="flex flex-col gap-3">
-          <SectionHeader title="THIS WEEK’S SLATE" action={{ to: '/vote', label: `Vote · ${slate.length} films` }} />
+          <SectionHeader title="THIS WEEK’S SLATE" action={{ to: '/vote', label: `Vote · ${ballot?.length ?? 0} films` }} />
           {isLoading
             ? Array.from({ length: 3 }).map((_, i) => <SlateFilmCardSkeleton key={i} />)
             : slate.slice(0, 4).map((f) => <SlateFilmCard key={f.id} film={f} />)}
@@ -235,7 +247,7 @@ export default function HomePage() {
       )}
 
       <section aria-label="All films" className="max-w-6xl mx-auto px-4 mt-10 flex flex-col gap-3">
-        <SectionHeader title="ALL FILMS" meta={`${filtered.length} films`} />
+        <SectionHeader title="ALL FILMS" meta={`${filtered.length}${pages.hasNextPage ? '+' : ''} films`} />
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="scroll-x flex gap-1.5 -mx-4 px-4 sm:mx-0 sm:px-0" role="group" aria-label="Filter by scene (genre)">
@@ -244,10 +256,7 @@ export default function HomePage() {
                 key={g}
                 type="button"
                 aria-pressed={genre === g}
-                onClick={() => {
-                  setGenre(g)
-                  setVisible(PAGE_SIZE)
-                }}
+                onClick={() => setGenre(g)}
                 className={cn(
                   'shrink-0 k-label text-[11px] font-semibold px-3 min-h-[36px] border-[1.5px] border-foreground press',
                   genre === g ? 'bg-solid text-solid-foreground' : 'hover:bg-foreground/5',
@@ -272,24 +281,32 @@ export default function HomePage() {
           </div>
         </div>
 
-        {isLoading ? (
+        {pages.isPending ? (
           <div className={POSTER_GRID}>{Array.from({ length: 8 }).map((_, i) => <PosterCardSkeleton key={i} />)}</div>
+        ) : pages.isError ? (
+          <EmptyState
+            icon={AlertCircle}
+            title="Couldn’t load films"
+            subtitle="Something went wrong reaching the server."
+            action={<Button variant="solid" size="sm" onClick={() => pages.refetch()}>Retry</Button>}
+          />
         ) : filtered.length === 0 ? (
           <EmptyState icon={FilmIcon} title={`No ${genre} yet`} subtitle="Try another scene, or upload the first one." />
         ) : (
           <>
             <div className={POSTER_GRID}>
-              {shown.map((f) => (
+              {filtered.map((f) => (
                 <PosterCard key={f.id} film={f} domId={`published-film-${f.id}`} highlighted={highlightedId === f.id} />
               ))}
             </div>
-            {shown.length < filtered.length && (
+            {pages.hasNextPage && (
               <button
                 type="button"
-                onClick={() => setVisible(shown.length + PAGE_SIZE)}
-                className="press mt-2 min-h-[48px] border-[1.5px] border-foreground k-label text-[11px] font-semibold hover:bg-foreground/5"
+                onClick={() => pages.fetchNextPage()}
+                disabled={pages.isFetchingNextPage}
+                className="press mt-2 min-h-[48px] border-[1.5px] border-foreground k-label text-[11px] font-semibold hover:bg-foreground/5 disabled:opacity-60"
               >
-                Load {Math.min(PAGE_SIZE, filtered.length - shown.length)} more
+                {pages.isFetchingNextPage ? 'Loading…' : 'Load more'}
               </button>
             )}
           </>

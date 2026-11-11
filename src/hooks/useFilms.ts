@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
-import { filmsApi, usersApi, discoverApi } from '@/lib/api'
+import { filmsApi, usersApi, discoverApi, type FilmListParams } from '@/lib/api'
 import { uploadFile } from '@/lib/storage'
 import { toast } from '@/store/toastStore'
 import type { Film } from '@/types'
@@ -26,10 +26,22 @@ function apiErrorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
 
-export function useFilms(params?: { genre?: string; sort?: string }) {
+export function useFilms(params?: FilmListParams, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['films', params],
     queryFn: async () => (await filmsApi.list(params)).data,
+    staleTime: 2 * 60 * 1000,
+    enabled: options.enabled ?? true,
+  })
+}
+
+/** The film list one page at a time, for "Load more". */
+export function useFilmPages(params: Omit<FilmListParams, 'limit' | 'offset'>, pageSize = 24) {
+  return useInfiniteQuery({
+    queryKey: ['films', 'pages', params, pageSize],
+    queryFn: async ({ pageParam }) => (await filmsApi.list({ ...params, limit: pageSize, offset: pageParam })).data,
+    initialPageParam: 0,
+    getNextPageParam: (last, all) => (last.length < pageSize ? undefined : all.length * pageSize),
     staleTime: 2 * 60 * 1000,
   })
 }
@@ -169,28 +181,27 @@ export function useUploadFilm() {
       let videoUrl: string | undefined
       let thumbnailUrl: string | undefined
       let trailerUrl: string | undefined
-      const uploadCount = [params.videoFile, params.thumbFile, params.trailerFile].filter(Boolean).length
-      const totalStages = uploadCount + 1
-      let completedStages = 0
-      const updateProgress = (status: string) =>
-        params.onProgress?.(Math.round((completedStages / totalStages) * 100), status)
-
-      if (params.videoFile) {
-        updateProgress('Uploading film video…')
-        videoUrl = await uploadFile('films', params.videoFile, `${params.uploaderId}/${Date.now()}-${params.videoFile.name}`)
-        completedStages += 1
-      }
-      if (params.thumbFile) {
-        updateProgress('Uploading thumbnail…')
-        thumbnailUrl = await uploadFile('thumbnails', params.thumbFile, `${params.uploaderId}/${Date.now()}-thumb-${params.thumbFile.name}`)
-        completedStages += 1
-      }
-      if (params.trailerFile) {
-        updateProgress('Uploading trailer…')
-        trailerUrl = await uploadFile('trailers', params.trailerFile, `${params.uploaderId}/${Date.now()}-trailer-${params.trailerFile.name}`)
-        completedStages += 1
+      // Progress follows bytes sent, so a big film moves the bar steadily.
+      // The last 5% is publishing the film record once the files are up.
+      const files = [params.videoFile, params.thumbFile, params.trailerFile].filter((x): x is File => !!x)
+      const totalBytes = files.reduce((n, file) => n + file.size, 0) || 1
+      let doneBytes = 0
+      const report = (status: string, fileBytes = 0) =>
+        params.onProgress?.(Math.min(95, Math.floor(((doneBytes + fileBytes) / totalBytes) * 95)), status)
+      const send = async (bucket: string, file: File, name: string, status: string) => {
+        report(status)
+        const url = await uploadFile(bucket, file, `${params.uploaderId}/${Date.now()}-${name}`, (fraction) =>
+          report(status, fraction * file.size),
+        )
+        doneBytes += file.size
+        return url
       }
 
+      if (params.videoFile) videoUrl = await send('films', params.videoFile, params.videoFile.name, 'Uploading film video…')
+      if (params.thumbFile) thumbnailUrl = await send('thumbnails', params.thumbFile, `thumb-${params.thumbFile.name}`, 'Uploading thumbnail…')
+      if (params.trailerFile) trailerUrl = await send('trailers', params.trailerFile, `trailer-${params.trailerFile.name}`, 'Uploading trailer…')
+
+      const updateProgress = (status: string) => params.onProgress?.(95, status)
       updateProgress('Publishing film…')
       const { data } = await filmsApi.create({
         title: params.title,
