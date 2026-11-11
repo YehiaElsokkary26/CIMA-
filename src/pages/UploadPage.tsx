@@ -7,6 +7,7 @@ import { CREW_ROLES } from '@/lib/crewRoles'
 import { posterColors, weekNumber } from '@/lib/klaket'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
+import { uploadLimitMB } from '@/lib/storage'
 import { Clap } from '@/components/klaket/primitives'
 import { FilmStill } from '@/components/klaket/FilmCards'
 import Input from '@/components/ui/Input'
@@ -54,9 +55,18 @@ export default function UploadPage() {
   const toggleGenre = (g: string) =>
     setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
 
+  // Say "too big" when the file is picked, not after a long upload.
+  const fitsLimit = (f: File, bucket: string, input: HTMLInputElement) => {
+    const mb = uploadLimitMB(bucket)
+    if (f.size <= mb * 1024 * 1024) return true
+    toast.error(`That file is ${fileSize(f.size)}. The upload limit is ${mb} MB. Export a smaller version and try again.`)
+    input.value = ''
+    return false
+  }
+
   const pickVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
-    if (!f) return
+    if (!f || !fitsLimit(f, 'films', e.target)) return
     setVideoFile(f)
     // Fill in the runtime from the file if it wasn't typed in.
     if (!runtime) {
@@ -81,7 +91,7 @@ export default function UploadPage() {
 
   const pickTrailer = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
-    if (!f) return
+    if (!f || !fitsLimit(f, 'trailers', e.target)) return
     setTrailerFile(f)
     setTrailerPreview(URL.createObjectURL(f))
   }
@@ -248,7 +258,7 @@ export default function UploadPage() {
             >
               <Clapperboard size={28} aria-hidden="true" />
               <b className="text-[15px]">{videoFile ? 'Replace video file' : 'Choose a video file'}</b>
-              <span className="k-label text-[10px] text-muted-foreground">MP4, MOV or WebM</span>
+              <span className="k-label text-[10px] text-muted-foreground">MP4, MOV or WebM · up to {uploadLimitMB('films')} MB</span>
               <input id="video-file" type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" onChange={pickVideo} className="sr-only" />
             </label>
             {videoFile && (

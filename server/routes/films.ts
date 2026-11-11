@@ -6,7 +6,7 @@ import { validate, validUuid, rateFilmSchema, addReviewSchema, createFilmSchema,
 import { removeOwnedFiles } from '../lib/storage'
 import { notFound, AppError } from '../lib/errors'
 import { createNotification } from '../lib/notify'
-import { VOTE_WEEK_SQL, getFilm, getOrPickFilmOfTheWeek, listFilms } from '../lib/films'
+import { VOTE_WEEK_SQL, getFilm, getOrPickFilmOfTheWeek, listFilms, type FilmSort } from '../lib/films'
 
 const router = Router()
 
@@ -56,11 +56,26 @@ router.get('/saved', authMiddleware, async (req: AuthRequest, res: Response, nex
 })
 
 // ---- GET /api/films ---------------------------------------------------------
+// Query: genre, sort (newest | top | discussed | votes), q (search),
+// week=current (this week's ballot), limit (1-100, default 100), offset.
+// Always a plain array; a page shorter than `limit` is the last one.
+const SORTS: FilmSort[] = ['newest', 'top', 'discussed', 'votes']
 router.get('/', async (req, res: Response, next: NextFunction) => {
-  const genre = typeof req.query.genre === 'string' ? req.query.genre.slice(0, 50) : undefined
-  const sort = req.query.sort === 'top' ? 'top' : 'newest'
+  const str = (k: string, max: number) => (typeof req.query[k] === 'string' ? (req.query[k] as string).trim().slice(0, max) : '')
+  const num = (k: string) => {
+    const n = Number(req.query[k])
+    return Number.isFinite(n) ? n : undefined
+  }
+  const sort = SORTS.includes(req.query.sort as FilmSort) ? (req.query.sort as FilmSort) : 'newest'
   try {
-    res.json(await listFilms({ genre, sort }))
+    res.json(await listFilms({
+      genre: str('genre', 50) || undefined,
+      sort,
+      q: str('q', 100) || undefined,
+      thisWeek: req.query.week === 'current',
+      limit: num('limit'),
+      offset: num('offset'),
+    }))
   } catch (err) { next(err) }
 })
 
@@ -105,8 +120,16 @@ router.post('/', authMiddleware, isFilmmaker, validate(createFilmSchema), async 
 // ---- POST /api/films/:id/vote  (one vote per user per week) -----------------
 router.post('/:id/vote', validUuid('id'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const filmRes = await query('SELECT id FROM films WHERE id = $1', [req.params.id])
+    // Each week's vote is between the films released that week (Monday to
+    // Sunday, UTC), the same slate the Vote page shows.
+    const filmRes = await query<{ open: boolean }>(
+      `SELECT (created_at AT TIME ZONE 'UTC')::date >= ${VOTE_WEEK_SQL} AS open FROM films WHERE id = $1`,
+      [req.params.id]
+    )
     if (!filmRes.rowCount) throw notFound('Film')
+    if (!filmRes.rows[0].open) {
+      throw new AppError('Voting is only open for films released this week', 409, 'VOTING_CLOSED')
+    }
 
     const result = await query(
       `INSERT INTO votes (film_id, user_id)

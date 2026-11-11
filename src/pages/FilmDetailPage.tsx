@@ -7,6 +7,7 @@ import {
 } from '@/hooks/useFilms'
 import { useAcceptCimaRequest, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
+import { getCurrentWeekKey } from '@/lib/votingUtils'
 import { formatTimeAgo } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
@@ -89,7 +90,9 @@ export default function FilmDetailPage() {
   const votedFilmId = myVote?.filmId ?? null
   const votedThis = votedFilmId === film.id
   const votedOther = votedFilmId !== null && !votedThis
-  const canVote = !!user && !votedFilmId && !checkingVote
+  // Only films released this week are on this week's ballot (the server enforces it too).
+  const onBallot = film.weekKey === getCurrentWeekKey()
+  const canVote = !!user && !votedFilmId && !checkingVote && onBallot
 
   const startPlayback = () => {
     if (!src) {
@@ -332,6 +335,8 @@ export default function FilmDetailPage() {
               </span>
               {votedThis ? (
                 <span className="k-label text-[10.5px] font-semibold min-h-[40px] flex items-center">✓ You circled this film</span>
+              ) : !onBallot ? (
+                <span className="k-label text-[10.5px] min-h-[40px] flex items-center">Voting was the week it came out</span>
               ) : votedOther ? (
                 <Link to="/vote" className="k-label text-[10.5px] underline underline-offset-2 min-h-[40px] flex items-center">
                   You voted for another film this week →

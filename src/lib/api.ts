@@ -39,9 +39,18 @@ api.interceptors.response.use(
 )
 
 // ---- Films --------------------------------------------------------------------
+/** Server-side filters and paging for GET /films (a page shorter than `limit` is the last). */
+export interface FilmListParams {
+  genre?: string
+  sort?: 'newest' | 'top' | 'discussed' | 'votes'
+  q?: string
+  week?: 'current'
+  limit?: number
+  offset?: number
+}
+
 export const filmsApi = {
-  list: (params?: { genre?: string; sort?: string }) =>
-    api.get<Film[]>('/films', { params }),
+  list: (params?: FilmListParams) => api.get<Film[]>('/films', { params }),
   featured: () => api.get<Film>('/films/featured/week'),
   get: (id: string) => api.get<Film>(`/films/${id}`),
   create: (data: {
