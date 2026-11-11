@@ -43,6 +43,8 @@ export interface Film {
   votes?: number
   /** Signed-in viewer's own stars, on GET /films/:id. */
   myRating?: number
+  /** Whether the signed-in viewer saved it to their watchlist, on GET /films/:id. */
+  isSaved?: boolean
   /** Votes that won Film of the Week, on GET /films/featured/week. */
   winningVotes?: number
   /** Next two films from the same ballot, on GET /films/featured/week. */

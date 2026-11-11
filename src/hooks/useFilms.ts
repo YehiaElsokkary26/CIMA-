@@ -210,3 +210,38 @@ export function useUploadFilm() {
     onError: (err) => toast.error(apiErrorMessage(err, 'Upload failed')),
   })
 }
+
+/** Your watchlist, newest save first. */
+export function useSavedFilms(enabled = true) {
+  const userId = useAuthStore((s) => s.user?.id)
+  return useQuery({
+    queryKey: ['films', 'saved', userId],
+    queryFn: async () => (await filmsApi.saved()).data,
+    enabled: enabled && !!userId,
+  })
+}
+
+/** Save or unsave a film. Pass the state you want it to end up in. */
+export function useToggleSave(filmId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (save: boolean): Promise<boolean> => {
+      await (save ? filmsApi.save(filmId) : filmsApi.unsave(filmId))
+      return save
+    },
+    onMutate: async (save) => {
+      await qc.cancelQueries({ queryKey: ['film', filmId] })
+      const before = qc.getQueryData<Film>(['film', filmId])
+      if (before) qc.setQueryData<Film>(['film', filmId], { ...before, isSaved: save })
+      return { before }
+    },
+    onError: (err, _save, ctx) => {
+      if (ctx?.before) qc.setQueryData(['film', filmId], ctx.before)
+      toast.error(apiErrorMessage(err, 'Couldn’t update your watchlist. Try again.'))
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['film', filmId] })
+      qc.invalidateQueries({ queryKey: ['films', 'saved'] })
+    },
+  })
+}

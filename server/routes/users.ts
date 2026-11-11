@@ -75,7 +75,8 @@ router.patch('/me', authMiddleware, validate(updateUserSchema), async (req: Auth
          bio                       = COALESCE($2, bio),
          school                    = COALESCE($3, school),
          city                      = COALESCE($4, city),
-         top_genre                 = COALESCE($5, top_genre),
+         -- Sending an empty top genre clears it; leaving it out keeps it.
+         top_genre                 = CASE WHEN $5::text IS NULL THEN top_genre ELSE NULLIF($5, '') END,
          looking_for_collaborators = COALESCE($6, looking_for_collaborators),
          avatar_url                = COALESCE($7, avatar_url),
          banner_url                = COALESCE($8, banner_url),

@@ -51,6 +51,9 @@ export const filmsApi = {
   }) => api.post<Film>('/films', data),
   vote: (id: string) => api.post<{ ok: true; votes: number }>(`/films/${id}/vote`),
   myVoteThisWeek: () => api.get<{ filmId: string | null }>('/films/votes/mine'),
+  saved: () => api.get<Film[]>('/films/saved'),
+  save: (id: string) => api.put<{ saved: true }>(`/films/${id}/save`),
+  unsave: (id: string) => api.delete<{ saved: false }>(`/films/${id}/save`),
   rate: (id: string, rating: number) => api.post(`/films/${id}/rate`, { rating }),
   reviews: (id: string) => api.get<Review[]>(`/films/${id}/reviews`),
   addReview: (id: string, data: { rating?: number; body: string }) =>
@@ -87,6 +90,7 @@ export const discoverApi = {
 // ---- Notifications ----------------------------------------------------------
 export const notificationsApi = {
   list: () => api.get<Notification[]>('/notifications'),
+  unreadCount: () => api.get<{ count: number }>('/notifications/unread-count'),
   markRead: (id: string) => api.patch(`/notifications/${id}/read`),
   markAllRead: () => api.patch('/notifications/read-all'),
 }
