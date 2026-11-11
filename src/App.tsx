@@ -10,6 +10,8 @@ import AppShell from '@/components/layout/AppShell'
 import WelcomePage from '@/pages/WelcomePage'
 import LoginPage from '@/pages/LoginPage'
 import RegisterPage from '@/pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import OnboardingPage from '@/pages/OnboardingPage'
 import HomePage from '@/pages/HomePage'
 import VotePage from '@/pages/VotePage'
@@ -106,6 +108,9 @@ export default function App() {
         <Route path="/welcome" element={<PublicOnlyRoute><WelcomePage /></PublicOnlyRoute>} />
         <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+        <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+        {/* Not guarded: the reset link signs you in, and the page must stay open. */}
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Role selection: signed in, no role yet */}
         <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />

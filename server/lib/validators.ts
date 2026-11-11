@@ -53,6 +53,26 @@ export const updateUserSchema = z.object({
   crewRoles:               tagList.optional(),
 })
 
+/** Editing a film: the text details only. Files stay as uploaded. */
+export const updateFilmSchema = z.object({
+  title:        z.string().trim().min(1).max(200).optional(),
+  description:  shortText(2000).optional(),
+  genre:        tagList.min(1).optional(),
+  runtime:      z.number().int().positive().max(600).nullable().optional(),
+  year:         z.number().int().min(1888).max(new Date().getFullYear() + 1).nullable().optional(),
+  uploaderRole: shortText(100).optional(),
+}).refine((v) => Object.keys(v).length > 0, { message: 'Nothing to change' })
+
+/** Editing a note: new text, and optionally new stars (null removes them). */
+export const updateReviewSchema = z.object({
+  body:   z.string().trim().min(2).max(4000),
+  rating: z.number().int().min(1).max(5).nullable().optional(),
+})
+
+export const deleteAccountSchema = z.object({
+  confirm: z.literal('DELETE'),
+})
+
 export const roleChangeSchema = z.object({
   role: z.enum(['filmmaker', 'viewer']),
 })

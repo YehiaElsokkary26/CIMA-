@@ -53,10 +53,11 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
       ),
       // Call sheets you sent that are still waiting, so buttons can say "Pending".
       query(
-        `SELECT id, to_user_id, created_at
-         FROM   cima_requests
-         WHERE  from_user_id = $1 AND status = 'pending'
-         ORDER  BY created_at DESC`,
+        `SELECT cr.id, cr.to_user_id, cr.created_at, ${PUBLIC_PROFILE}
+         FROM   cima_requests cr
+         JOIN   profiles p ON p.id = cr.to_user_id
+         WHERE  cr.from_user_id = $1 AND cr.status = 'pending'
+         ORDER  BY cr.created_at DESC`,
         [req.userId]
       ),
     ])
@@ -67,7 +68,7 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response, next
         id: r.id, fromUserId: r.uid, toUserId: req.userId, status: r.status, createdAt: r.created_at,
         from: mapPerson(r),
       })),
-      sent: sentRes.rows.map((s) => ({ id: s.id, toUserId: s.to_user_id, createdAt: s.created_at })),
+      sent: sentRes.rows.map((s) => ({ id: s.id, toUserId: s.to_user_id, createdAt: s.created_at, to: mapPerson(s) })),
     })
   } catch (err) { next(err) }
 })
@@ -168,6 +169,40 @@ router.post('/decline/:requestId', validUuid('requestId'), authMiddleware, async
       [req.params.requestId, req.userId]
     )
     if (!result.rowCount) throw notFound('Call sheet')
+    res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// ---- POST /api/cima/cancel/:requestId  (take back a call sheet you sent) ----
+router.post('/cancel/:requestId', validUuid('requestId'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `UPDATE cima_requests SET status = 'cancelled', updated_at = NOW()
+       WHERE id = $1 AND from_user_id = $2 AND status = 'pending'
+       RETURNING to_user_id`,
+      [req.params.requestId, req.userId]
+    )
+    if (!result.rowCount) throw notFound('Call sheet')
+    // The "sent you a call sheet" notification would now lead nowhere.
+    await query(
+      `DELETE FROM notifications
+       WHERE user_id = $1 AND from_user_id = $2 AND type = 'cima_request' AND is_read = FALSE`,
+      [result.rows[0].to_user_id, req.userId]
+    )
+    res.json({ ok: true })
+  } catch (err) { next(err) }
+})
+
+// ---- DELETE /api/cima/members/:userId  (leave each other's crew) -----------
+// Crew is mutual, so this removes both sides. No notification is sent.
+router.delete('/members/:userId', validUuid('userId'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `DELETE FROM cima_members
+       WHERE (owner_id = $1 AND member_id = $2) OR (owner_id = $2 AND member_id = $1)`,
+      [req.userId, req.params.userId]
+    )
+    if (!result.rowCount) throw notFound('Crew member')
     res.json({ ok: true })
   } catch (err) { next(err) }
 })

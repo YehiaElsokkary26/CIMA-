@@ -2,7 +2,8 @@ import { Router, Response, NextFunction } from 'express'
 import { query } from '../db'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/auth'
 import { isFilmmaker } from '../middleware/role'
-import { validate, validUuid, rateFilmSchema, addReviewSchema, createFilmSchema } from '../lib/validators'
+import { validate, validUuid, rateFilmSchema, addReviewSchema, createFilmSchema, updateFilmSchema, updateReviewSchema } from '../lib/validators'
+import { removeOwnedFiles } from '../lib/storage'
 import { notFound, AppError } from '../lib/errors'
 import { createNotification } from '../lib/notify'
 import { VOTE_WEEK_SQL, getFilm, getOrPickFilmOfTheWeek, listFilms } from '../lib/films'
@@ -253,6 +254,94 @@ router.post('/:id/review', validUuid('id'), authMiddleware, validate(addReviewSc
       rating: rv.rating, body: rv.body, createdAt: rv.created_at,
       user: { id: u.id, name: u.name, role: u.role, avatarUrl: u.avatar_url ?? undefined, email: '', createdAt: '' },
     })
+  } catch (err) { next(err) }
+})
+
+// ---- PATCH /api/films/:id  (uploader edits the details) ---------------------
+router.patch('/:id', validUuid('id'), authMiddleware, validate(updateFilmSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { title, description, genre, runtime, year, uploaderRole } = req.body
+  try {
+    const own = await query('SELECT uploader_id FROM films WHERE id = $1', [req.params.id])
+    if (!own.rowCount) throw notFound('Film')
+    if (own.rows[0].uploader_id !== req.userId) throw new AppError('Only the filmmaker can edit this film', 403, 'FORBIDDEN')
+
+    // undefined = leave as is; null = clear (runtime and year only).
+    await query(
+      `UPDATE films SET
+         title         = COALESCE($1, title),
+         description   = CASE WHEN $2::text IS NULL THEN description ELSE NULLIF($2, '') END,
+         genre         = COALESCE($3, genre),
+         runtime_min   = CASE WHEN $4::boolean THEN $5::int ELSE runtime_min END,
+         release_year  = CASE WHEN $6::boolean THEN $7::int ELSE release_year END,
+         uploader_role = CASE WHEN $8::text IS NULL THEN uploader_role ELSE NULLIF($8, '') END,
+         updated_at    = NOW()
+       WHERE id = $9`,
+      [
+        title ?? null, description ?? null, genre ?? null,
+        runtime !== undefined, runtime ?? null,
+        year !== undefined, year ?? null,
+        uploaderRole ?? null, req.params.id,
+      ]
+    )
+    res.json(await getFilm(req.params.id as string))
+  } catch (err) { next(err) }
+})
+
+// ---- DELETE /api/films/:id  (uploader removes the film and its files) -------
+router.delete('/:id', validUuid('id'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const result = await query(
+      `DELETE FROM films WHERE id = $1 AND uploader_id = $2
+       RETURNING video_url, thumbnail_url, trailer_url`,
+      [req.params.id, req.userId]
+    )
+    if (!result.rowCount) {
+      const exists = await query('SELECT 1 FROM films WHERE id = $1', [req.params.id])
+      if (exists.rowCount) throw new AppError('Only the filmmaker can delete this film', 403, 'FORBIDDEN')
+      throw notFound('Film')
+    }
+    // Votes, ratings, notes and saves go with the row (ON DELETE CASCADE).
+    const f = result.rows[0]
+    const filesRemoved = await removeOwnedFiles(req.userId!, [f.video_url, f.thumbnail_url, f.trailer_url])
+    res.json({ ok: true, filesRemoved })
+  } catch (err) { next(err) }
+})
+
+// ---- PATCH / DELETE /api/films/:id/reviews/:reviewId  (author only) ---------
+router.patch('/:id/reviews/:reviewId', validUuid('id', 'reviewId'), authMiddleware, validate(updateReviewSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const { body, rating } = req.body
+  try {
+    const result = await query(
+      `UPDATE reviews SET
+         body       = $1,
+         rating     = CASE WHEN $2::boolean THEN $3::smallint ELSE rating END,
+         updated_at = NOW()
+       WHERE id = $4 AND film_id = $5 AND user_id = $6
+       RETURNING id, film_id, user_id, rating, body, created_at`,
+      [body, rating !== undefined, rating ?? null, req.params.reviewId, req.params.id, req.userId]
+    )
+    if (!result.rowCount) throw notFound('Note')
+    if (rating) {
+      await query(
+        `INSERT INTO ratings (film_id, user_id, rating) VALUES ($1,$2,$3)
+         ON CONFLICT (film_id, user_id) DO UPDATE SET rating = $3, updated_at = NOW()`,
+        [req.params.id, req.userId, rating]
+      )
+    }
+    const rv = result.rows[0]
+    res.json({ id: rv.id, filmId: rv.film_id, userId: rv.user_id, rating: rv.rating, body: rv.body, createdAt: rv.created_at })
+  } catch (err) { next(err) }
+})
+
+router.delete('/:id/reviews/:reviewId', validUuid('id', 'reviewId'), authMiddleware, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    // Your stars stay: they are a separate rating you can change on the film.
+    const result = await query(
+      'DELETE FROM reviews WHERE id = $1 AND film_id = $2 AND user_id = $3 RETURNING id',
+      [req.params.reviewId, req.params.id, req.userId]
+    )
+    if (!result.rowCount) throw notFound('Note')
+    res.json({ ok: true })
   } catch (err) { next(err) }
 })
 

@@ -59,3 +59,19 @@ export function useCrewStatus(userId: string | undefined, meId: string | undefin
   const { data, isPending } = useCima()
   return { ...crewStatusFor(data, userId, meId), isPending }
 }
+
+export function useCancelCimaRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (requestId: string) => cimaApi.cancelRequest(requestId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cima'] }),
+  })
+}
+
+export function useRemoveCrewMember() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => cimaApi.removeMember(userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cima'] }),
+  })
+}

@@ -79,6 +79,7 @@ export interface SentCimaRequest {
   id: string
   toUserId: string
   createdAt: string
+  to?: User
 }
 
 export interface CimaMember {
