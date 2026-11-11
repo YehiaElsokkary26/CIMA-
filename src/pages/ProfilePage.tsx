@@ -15,6 +15,7 @@ import RoleBadge from '@/components/profile/RoleBadge'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 type Tab = 'Films' | 'Saved' | 'Crew'
 
@@ -338,57 +339,6 @@ export default function ProfilePage() {
           }}
         />
       )}
-    </div>
-  )
-}
-
-/* ─── Centered confirmation dialog ──────────────────────────────────────── */
-
-function ConfirmDialog({
-  title,
-  body,
-  confirm,
-  onConfirm,
-  onCancel,
-}: {
-  title: string
-  body: string
-  confirm: string
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  const cancelRef = useRef<HTMLButtonElement>(null)
-  useEffect(() => {
-    cancelRef.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onCancel])
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onCancel}>
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-title"
-        aria-describedby="confirm-body"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm border-[1.5px] border-foreground bg-background"
-      >
-        <div className="clap h-3" aria-hidden="true" />
-        <div className="p-4 flex flex-col gap-2">
-          <h2 id="confirm-title" className="k-display text-[24px]">{title}</h2>
-          <p id="confirm-body" className="text-[14px] text-muted-foreground">{body}</p>
-        </div>
-        <div className="grid grid-cols-2 border-t-[1.5px] border-foreground">
-          <button ref={cancelRef} type="button" onClick={onCancel} className="min-h-[48px] font-extrabold text-[13px] border-e-[1.5px] border-foreground hover:bg-foreground/5">
-            CANCEL
-          </button>
-          <button type="button" onClick={onConfirm} className="min-h-[48px] font-extrabold text-[13px] bg-k-red text-k-paper hover:brightness-110">
-            {confirm}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

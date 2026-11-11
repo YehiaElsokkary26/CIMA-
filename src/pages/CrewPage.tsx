@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertCircle, Inbox, Users } from 'lucide-react'
-import { useAcceptCimaRequest, useCima, useDeclineCimaRequest } from '@/hooks/useCima'
+import { AlertCircle, Inbox, Send, UserMinus, Users } from 'lucide-react'
+import { useAcceptCimaRequest, useCancelCimaRequest, useCima, useDeclineCimaRequest, useRemoveCrewMember } from '@/hooks/useCima'
 import { formatTimeAgo } from '@/lib/utils'
 import { toast } from '@/store/toastStore'
-import type { CimaRequest } from '@/types'
+import type { CimaMember, CimaRequest } from '@/types'
 import { Band, PageTitle } from '@/components/klaket/primitives'
 import Avatar from '@/components/ui/Avatar'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { CallSheetSkeleton } from '@/components/ui/Skeleton'
 
 export default function CrewPage() {
@@ -16,6 +17,10 @@ export default function CrewPage() {
   const accept = useAcceptCimaRequest()
   const decline = useDeclineCimaRequest()
   const [answers, setAnswers] = useState<Record<string, 'yes' | 'no'>>({})
+  const cancel = useCancelCimaRequest()
+  const remove = useRemoveCrewMember()
+  const [removing, setRemoving] = useState<CimaMember | null>(null)
+  const sent = data?.sent ?? []
 
   const members = data?.members ?? []
   const requests = (data?.requests ?? []).filter((r) => r.status === 'pending' || answers[r.id])
@@ -25,7 +30,7 @@ export default function CrewPage() {
     const name = req.from?.name ?? 'They'
     setAnswers((a) => ({ ...a, [req.id]: yes ? 'yes' : 'no' }))
     ;(yes ? accept : decline).mutate(req.id, {
-      onSuccess: () => toast.success(yes ? `Signed on. ${name} is in your crew.` : `Declined. ${name} has been told.`),
+      onSuccess: () => toast.success(yes ? `Signed on. ${name} is in your crew.` : `Declined ${name}’s call sheet.`),
       onError: () => {
         setAnswers((a) => {
           const next = { ...a }
@@ -67,17 +72,26 @@ export default function CrewPage() {
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
                 {members.map((m) => (
-                  <Link
-                    key={m.id}
-                    to={`/profile/${m.user.id}`}
-                    className="press border-[1.5px] border-foreground bg-card p-2 flex flex-col gap-1.5 min-w-0 hover:-translate-y-px transition-transform"
-                  >
-                    <Avatar name={m.user.name} src={m.user.avatarUrl} size="md" />
-                    <b className="text-[12.5px] leading-tight truncate">{m.user.name}</b>
-                    <span className="k-label text-[9px] text-muted-foreground truncate">
-                      {m.user.crewRoles?.join(' · ') || m.user.school || 'Crew'}
-                    </span>
-                  </Link>
+                  <div key={m.id} className="relative min-w-0">
+                    <Link
+                      to={`/profile/${m.user.id}`}
+                      className="press border-[1.5px] border-foreground bg-card p-2 flex flex-col gap-1.5 min-w-0 h-full hover:-translate-y-px transition-transform"
+                    >
+                      <Avatar name={m.user.name} src={m.user.avatarUrl} size="md" />
+                      <b className="text-[12.5px] leading-tight truncate pe-6">{m.user.name}</b>
+                      <span className="k-label text-[9px] text-muted-foreground truncate">
+                        {m.user.crewRoles?.join(' · ') || m.user.school || 'Crew'}
+                      </span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setRemoving(m)}
+                      aria-label={`Remove ${m.user.name} from your crew`}
+                      className="absolute top-1 end-1 w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-hot hover:bg-hot/10 press"
+                    >
+                      <UserMinus size={14} aria-hidden="true" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -148,7 +162,65 @@ export default function CrewPage() {
               })
             )}
           </section>
+
+          {sent.length > 0 && (
+            <>
+              <Band left={`Sent · ${sent.length} waiting`} right="Their answer pending" />
+              <section aria-label="Call sheets you sent" className="max-w-4xl mx-auto px-4 py-4">
+                <ul className="flex flex-col">
+                  {sent.map((r) => (
+                    <li key={r.id} className="flex items-center gap-3 py-2.5 border-b border-rule">
+                      <Avatar name={r.to?.name ?? '?'} src={r.to?.avatarUrl} size="sm" />
+                      <span className="min-w-0 flex-1 flex flex-col">
+                        <Link to={`/profile/${r.toUserId}`} className="font-bold text-[14px] truncate hover:text-hot">
+                          {r.to?.name ?? 'Unknown filmmaker'}
+                        </Link>
+                        <span className="k-label text-[9.5px] text-muted-foreground flex items-center gap-1">
+                          <Send size={10} aria-hidden="true" /> Sent {formatTimeAgo(r.createdAt)}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={cancel.isPending && cancel.variables === r.id}
+                        onClick={() =>
+                          cancel.mutate(r.id, {
+                            onSuccess: () => toast.success(`Call sheet to ${r.to?.name ?? 'them'} withdrawn.`),
+                            onError: () => toast.error('Couldn’t withdraw it. Try again.'),
+                          })
+                        }
+                        className="press shrink-0 min-h-[40px] px-3 border-[1.5px] border-foreground k-label text-[10.5px] font-semibold hover:bg-foreground/5 disabled:opacity-60"
+                      >
+                        {cancel.isPending && cancel.variables === r.id ? 'Withdrawing…' : 'Withdraw'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </>
+          )}
         </>
+      )}
+
+      {removing && (
+        <ConfirmDialog
+          title={`Remove ${removing.user.name}?`}
+          body="You’ll come off each other’s crew. They won’t be notified, and you can send a new call sheet later."
+          confirm="REMOVE"
+          busy={remove.isPending}
+          onCancel={() => setRemoving(null)}
+          onConfirm={() =>
+            remove.mutate(removing.user.id, {
+              onSuccess: () => {
+                toast.success(`${removing.user.name} is off your crew.`)
+                setRemoving(null)
+              },
+              onError: () => {
+                toast.error('Couldn’t remove them. Try again.')
+                setRemoving(null)
+              },
+            })
+          }
+        />
       )}
     </div>
   )

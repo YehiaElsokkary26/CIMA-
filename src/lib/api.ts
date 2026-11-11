@@ -54,6 +54,12 @@ export const filmsApi = {
   saved: () => api.get<Film[]>('/films/saved'),
   save: (id: string) => api.put<{ saved: true }>(`/films/${id}/save`),
   unsave: (id: string) => api.delete<{ saved: false }>(`/films/${id}/save`),
+  update: (id: string, data: { title?: string; description?: string; genre?: string[]; runtime?: number | null; year?: number | null; uploaderRole?: string }) =>
+    api.patch<Film>(`/films/${id}`, data),
+  remove: (id: string) => api.delete<{ ok: true }>(`/films/${id}`),
+  updateReview: (filmId: string, reviewId: string, data: { body: string; rating?: number | null }) =>
+    api.patch<Review>(`/films/${filmId}/reviews/${reviewId}`, data),
+  deleteReview: (filmId: string, reviewId: string) => api.delete(`/films/${filmId}/reviews/${reviewId}`),
   rate: (id: string, rating: number) => api.post(`/films/${id}/rate`, { rating }),
   reviews: (id: string) => api.get<Review[]>(`/films/${id}/reviews`),
   addReview: (id: string, data: { rating?: number; body: string }) =>
@@ -71,6 +77,8 @@ export const usersApi = {
   }>) => api.patch<User>('/users/me', data),
   changeRole: (role: 'filmmaker' | 'viewer') =>
     api.post<User>('/users/me/role', { role }),
+  /** Permanently deletes your account. The server needs the confirmation word. */
+  deleteMe: () => api.delete<{ ok: true }>('/users/me', { data: { confirm: 'DELETE' } }),
 }
 
 // ---- Crew (server routes are still named /cima) ----------------------------
@@ -79,6 +87,8 @@ export const cimaApi = {
   sendRequest: (targetUserId: string) => api.post(`/cima/request/${targetUserId}`),
   acceptRequest: (requestId: string) => api.post(`/cima/accept/${requestId}`),
   declineRequest: (requestId: string) => api.post(`/cima/decline/${requestId}`),
+  cancelRequest: (requestId: string) => api.post(`/cima/cancel/${requestId}`),
+  removeMember: (userId: string) => api.delete(`/cima/members/${userId}`),
 }
 
 // ---- Discover ---------------------------------------------------------------

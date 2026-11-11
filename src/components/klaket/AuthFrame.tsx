@@ -4,7 +4,8 @@ import { cn } from '@/lib/utils'
 import { Wordmark } from './primitives'
 
 interface AuthFrameProps {
-  mode: 'in' | 'up'
+  /** Which tab is active. Leave out to hide the Sign in / Create account switch. */
+  mode?: 'in' | 'up'
   eyebrow: string
   heading: string
   children: React.ReactNode
@@ -29,6 +30,7 @@ export default function AuthFrame({ mode, eyebrow, heading, children }: AuthFram
           <h1 className="k-display text-[34px]" style={{ fontStretch: '120%' }}>{heading}</h1>
         </div>
 
+        {mode && (
         <nav aria-label="Account" className="grid grid-cols-2 mt-5 border-[1.5px] border-foreground">
           {(['in', 'up'] as const).map((m) => (
             <Link
@@ -45,6 +47,7 @@ export default function AuthFrame({ mode, eyebrow, heading, children }: AuthFram
             </Link>
           ))}
         </nav>
+        )}
 
         {children}
       </div>

@@ -1,8 +1,9 @@
 import { Router, Response, NextFunction } from 'express'
-import { query } from '../db'
+import { query, supabaseAdmin } from '../db'
 import { authMiddleware, optionalAuth, AuthRequest } from '../middleware/auth'
-import { validate, validUuid, updateUserSchema, roleChangeSchema } from '../lib/validators'
-import { notFound } from '../lib/errors'
+import { validate, validUuid, updateUserSchema, roleChangeSchema, deleteAccountSchema } from '../lib/validators'
+import { AppError, notFound } from '../lib/errors'
+import { removeAllFilesOf } from '../lib/storage'
 import { listFilms } from '../lib/films'
 
 const router = Router()
@@ -107,6 +108,21 @@ router.post('/me/role', authMiddleware, validate(roleChangeSchema), async (req: 
     if (!result.rowCount) throw notFound('User')
     const counts = await getUserCounts(req.userId!)
     res.json(mapUser(result.rows[0], counts, true))
+  } catch (err) { next(err) }
+})
+
+// ---- DELETE /api/users/me  (delete your account and everything in it) -------
+// The body must say { "confirm": "DELETE" } so a stray request can't do this.
+router.delete('/me', authMiddleware, validate(deleteAccountSchema), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const userId = req.userId!
+  try {
+    // Deleting the auth user cascades to the profile and, from there, to
+    // films, votes, ratings, notes, crew, notifications and saved films.
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    if (error) throw new AppError('Couldn’t delete your account right now. Try again in a minute.', 502, 'DELETE_FAILED')
+    // Files go last and best-effort: the account is already gone.
+    const filesRemoved = await removeAllFilesOf(userId)
+    res.json({ ok: true, filesRemoved })
   } catch (err) { next(err) }
 })
 

@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AlertCircle, ArrowLeft, Loader2, MessageSquare, Play, Share2 } from 'lucide-react'
-import { useAddReview, useFilm, useFilmReviews, useMyVoteThisWeek, useRateFilm, useToggleSave, useVoteFilm } from '@/hooks/useFilms'
+import { AlertCircle, ArrowLeft, Loader2, MessageSquare, Pencil, Play, Share2, Trash2 } from 'lucide-react'
+import {
+  useAddReview, useDeleteFilm, useDeleteReview, useFilm, useFilmReviews, useMyVoteThisWeek,
+  useRateFilm, useToggleSave, useUpdateReview, useVoteFilm,
+} from '@/hooks/useFilms'
 import { useAcceptCimaRequest, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
 import { formatTimeAgo } from '@/lib/utils'
@@ -13,6 +16,8 @@ import StarRating from '@/components/ui/StarRating'
 import Button from '@/components/ui/Button'
 import Avatar from '@/components/ui/Avatar'
 import EmptyState from '@/components/ui/EmptyState'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import EditFilmDialog from '@/components/klaket/EditFilmDialog'
 
 function tcToSeconds(tc: string): number {
   const [h, m, s] = tc.split(':').map((n) => parseInt(n, 10) || 0)
@@ -34,6 +39,9 @@ export default function FilmDetailPage() {
   const toggleSave = useToggleSave(id)
   const acceptCrew = useAcceptCimaRequest()
   const crew = useCrewStatus(film?.uploader?.id, user?.id)
+  const deleteFilm = useDeleteFilm(id)
+  const updateReview = useUpdateReview(id)
+  const deleteReview = useDeleteReview(id)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -42,6 +50,10 @@ export default function FilmDetailPage() {
   const [hoveredStar, setHoveredStar] = useState<number | null>(null)
   const [draft, setDraft] = useState('')
   const [pinToTime, setPinToTime] = useState(true)
+  const [editingFilm, setEditingFilm] = useState(false)
+  const [confirmDeleteFilm, setConfirmDeleteFilm] = useState(false)
+  const [editingNote, setEditingNote] = useState<{ id: string; tc: string | null; text: string } | null>(null)
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
 
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/home'))
 
@@ -256,6 +268,24 @@ export default function FilmDetailPage() {
                 </Button>
               )}
             </div>
+            {isOwn && (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingFilm(true)}
+                  className="press flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] border-[1.5px] border-foreground k-label text-[10.5px] font-semibold hover:bg-foreground/5"
+                >
+                  <Pencil size={14} aria-hidden="true" /> Edit details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteFilm(true)}
+                  className="press flex-1 inline-flex items-center justify-center gap-1.5 min-h-[44px] border-[1.5px] border-hot text-hot k-label text-[10.5px] font-semibold hover:bg-hot/10"
+                >
+                  <Trash2 size={14} aria-hidden="true" /> Delete film
+                </button>
+              </div>
+            )}
           </section>
 
           {/* Credits */}
@@ -368,8 +398,76 @@ export default function FilmDetailPage() {
                       <span className="text-[12px] text-muted-foreground">
                         {n.rating ? `★ ${n.rating} · ` : ''}{formatTimeAgo(n.createdAt)}
                       </span>
+                      {user?.id === n.userId && editingNote?.id !== n.id && (
+                        <span className="ms-auto flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingNote({ id: n.id, tc, text })}
+                            aria-label="Edit your note"
+                            className="w-9 h-9 flex items-center justify-center hover:bg-foreground/5 press"
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingNoteId(n.id)}
+                            aria-label="Delete your note"
+                            className="w-9 h-9 flex items-center justify-center text-hot hover:bg-hot/10 press"
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                          </button>
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[14.5px] leading-relaxed">{text}</p>
+                    {editingNote?.id === n.id ? (
+                      <form
+                        className="flex flex-col gap-2"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          const t = editingNote.text.trim()
+                          if (t.length < 2) return
+                          // Keep the timecode the note was pinned to.
+                          const body = editingNote.tc ? `[${editingNote.tc}] ${t}` : t
+                          updateReview.mutate(
+                            { reviewId: n.id, body },
+                            {
+                              onSuccess: () => {
+                                setEditingNote(null)
+                                toast.success('Note updated.')
+                              },
+                            },
+                          )
+                        }}
+                      >
+                        <textarea
+                          value={editingNote.text}
+                          onChange={(e) => setEditingNote({ ...editingNote, text: e.target.value })}
+                          aria-label="Edit your note"
+                          rows={2}
+                          maxLength={4000}
+                          autoFocus
+                          className="input-k py-2.5 resize-none leading-relaxed"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setEditingNote(null)}
+                            className="press min-h-[38px] px-3 border-[1.5px] border-foreground k-label text-[10.5px] font-semibold"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={updateReview.isPending || editingNote.text.trim().length < 2}
+                            className="press min-h-[38px] px-3 bg-solid text-solid-foreground k-label text-[10.5px] font-semibold disabled:opacity-50"
+                          >
+                            {updateReview.isPending ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <p className="text-[14.5px] leading-relaxed">{text}</p>
+                    )}
                   </li>
                 )
               })}
@@ -411,6 +509,44 @@ export default function FilmDetailPage() {
           </form>
         </section>
       </div>
+
+      {editingFilm && <EditFilmDialog film={film} onClose={() => setEditingFilm(false)} />}
+      {confirmDeleteFilm && (
+        <ConfirmDialog
+          title="Delete this film?"
+          body={`“${film.title}” and its video, poster, votes and notes will be deleted for good. This can’t be undone.`}
+          confirm="DELETE FILM"
+          busy={deleteFilm.isPending}
+          onCancel={() => setConfirmDeleteFilm(false)}
+          onConfirm={() =>
+            deleteFilm.mutate(undefined, {
+              onSuccess: () => {
+                toast.success(`“${film.title}” was deleted.`)
+                navigate('/profile/me', { replace: true })
+              },
+              onError: () => setConfirmDeleteFilm(false),
+            })
+          }
+        />
+      )}
+      {deletingNoteId && (
+        <ConfirmDialog
+          title="Delete your note?"
+          body="The note will be removed. Your star rating for this film stays."
+          confirm="DELETE NOTE"
+          busy={deleteReview.isPending}
+          onCancel={() => setDeletingNoteId(null)}
+          onConfirm={() =>
+            deleteReview.mutate(deletingNoteId, {
+              onSuccess: () => {
+                setDeletingNoteId(null)
+                toast.success('Note deleted.')
+              },
+              onError: () => setDeletingNoteId(null),
+            })
+          }
+        />
+      )}
     </div>
   )
 }

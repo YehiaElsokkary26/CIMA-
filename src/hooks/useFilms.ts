@@ -245,3 +245,49 @@ export function useToggleSave(filmId: string) {
     },
   })
 }
+
+export function useUpdateFilm(filmId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: Parameters<typeof filmsApi.update>[1]) => (await filmsApi.update(filmId, data)).data,
+    onSuccess: (film) => {
+      qc.setQueryData<Film>(['film', filmId], (before) => ({ ...before, ...film }))
+      qc.invalidateQueries({ queryKey: ['films'] })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Couldn’t save your changes. Try again.')),
+  })
+}
+
+export function useDeleteFilm(filmId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => filmsApi.remove(filmId),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: ['film', filmId] })
+      qc.invalidateQueries({ queryKey: ['films'] })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Couldn’t delete the film. Try again.')),
+  })
+}
+
+export function useUpdateReview(filmId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reviewId, ...data }: { reviewId: string; body: string; rating?: number | null }) =>
+      filmsApi.updateReview(filmId, reviewId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['film-reviews', filmId] })
+      qc.invalidateQueries({ queryKey: ['film', filmId] })
+    },
+    onError: (err) => toast.error(apiErrorMessage(err, 'Couldn’t save your note. Try again.')),
+  })
+}
+
+export function useDeleteReview(filmId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (reviewId: string) => filmsApi.deleteReview(filmId, reviewId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['film-reviews', filmId] }),
+    onError: (err) => toast.error(apiErrorMessage(err, 'Couldn’t delete your note. Try again.')),
+  })
+}

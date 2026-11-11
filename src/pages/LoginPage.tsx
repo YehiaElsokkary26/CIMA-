@@ -69,6 +69,9 @@ export default function LoginPage() {
         )}
         <Input label="Email" type="email" autoComplete="email" placeholder="you@school.edu" value={email} onChange={(e) => setEmail(e.target.value)} required />
         <Input label="Password" type="password" autoComplete="current-password" placeholder="Your password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <Link to="/forgot-password" state={{ email }} className="-mt-1.5 self-end text-[13px] font-semibold underline underline-offset-4 min-h-[36px] flex items-center">
+          Forgot password?
+        </Link>
 
         <div className="mt-3 flex flex-col">
           <Clap className="h-2.5 border-[1.5px] border-b-0 border-foreground" />
