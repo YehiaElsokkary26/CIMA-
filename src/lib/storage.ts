@@ -30,7 +30,7 @@ export function safeStoragePath(path: string): string {
   const parts = path.split('/')
   const name = parts.pop() ?? ''
   const dot = name.lastIndexOf('.')
-  const base = (dot > 0 ? name.slice(0, dot) : name).normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')
+  const base = (dot > 0 ? name.slice(0, dot) : name).normalize('NFKD').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/-{2,}/g, '-').replace(/^-+|-+$/g, '')
   const ext = dot > 0 ? name.slice(dot + 1).replace(/[^A-Za-z0-9]/g, '').toLowerCase() : ''
   return [...parts, (base || 'file') + (ext ? '.' + ext : '')].join('/')
 }
@@ -41,7 +41,8 @@ function uploadError(status: number, serverMessage: string): Error {
     return new Error(`That file is bigger than the upload limit (${MAX_UPLOAD_MB} MB).`)
   }
   if (/mime|content type|not supported/i.test(serverMessage)) return new Error('That file type isn’t supported here.')
-  if (status === 401 || status === 403) return new Error('Your session expired. Sign in again, then retry the upload.')
+  if (/row-level security|unauthorized|not allowed/i.test(serverMessage)) return new Error('You can only upload into your own space. Sign out and back in, then try again.')
+  if (status === 401) return new Error('Your session expired. Sign in again, then retry the upload.')
   if (status === 0) return new Error('The upload stopped. Check your connection and try again.')
   return new Error(serverMessage || 'Upload failed. Try again.')
 }

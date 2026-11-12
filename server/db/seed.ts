@@ -185,6 +185,27 @@ async function seed() {
     console.log('  ✓ Film of the week set (STATIC)')
   }
 
+  // 4b. Last week's ballot behind that pick: 3 votes for STATIC, 2 for COPPER CITY.
+  const LAST_WEEK_VOTES = [
+    { film: 'STATIC',      voter: 'viewer@cima.film' },
+    { film: 'STATIC',      voter: 'fatima@cima.film' },
+    { film: 'STATIC',      voter: 'sana@cima.film' },
+    { film: 'COPPER CITY', voter: 'karim@cima.film' },
+    { film: 'COPPER CITY', voter: 'leila@cima.film' },
+  ]
+  for (const v of LAST_WEEK_VOTES) {
+    const filmId = filmIds[v.film]
+    const userId = emailToId[v.voter]
+    if (!filmId || !userId) continue
+    await pool.query(
+      `INSERT INTO votes (film_id, user_id, week_start)
+       VALUES ($1, $2, date_trunc('week', now() AT TIME ZONE 'UTC')::date - 7)
+       ON CONFLICT (user_id, week_start) DO NOTHING`,
+      [filmId, userId]
+    )
+  }
+  console.log('  ✓ Last week\'s votes (STATIC 3, COPPER CITY 2)')
+
   // 5. Ratings
   const RATINGS = [
     { film: 'STATIC',         raterEmail: 'viewer@cima.film', rating: 5 },
@@ -234,14 +255,27 @@ async function seed() {
   const fatimaId = emailToId['fatima@cima.film']
   const karimId  = emailToId['karim@cima.film']
   const sanaId   = emailToId['sana@cima.film']
-  if (demoId && fatimaId && karimId && sanaId) {
-    for (const memberId of [fatimaId, karimId, sanaId]) {
+  const omarId   = emailToId['omar@cima.film']
+  const yusufId  = emailToId['yusuf@cima.film']
+  if (demoId && fatimaId && karimId && sanaId && omarId) {
+    for (const memberId of [fatimaId, karimId, sanaId, omarId]) {
       await pool.query(
         `INSERT INTO cima_members (owner_id, member_id) VALUES ($1,$2), ($2,$1) ON CONFLICT DO NOTHING`,
         [demoId, memberId]
       )
     }
-    console.log('  ✓ Crew seeded (demo@cima.film + 3 filmmakers, both ways)')
+    console.log('  ✓ Crew seeded (demo@cima.film + 4 filmmakers, both ways)')
+  }
+
+  // A real call sheet waiting for the demo filmmaker, so the notification
+  // below leads somewhere and "Sign on" can be tried.
+  if (demoId && yusufId) {
+    await pool.query(
+      `INSERT INTO cima_requests (from_user_id, to_user_id, status) VALUES ($1, $2, 'pending')
+       ON CONFLICT (from_user_id, to_user_id) DO NOTHING`,
+      [yusufId, demoId]
+    )
+    console.log('  ✓ Call sheet from Yusuf waiting for demo@cima.film')
   }
 
   // 8. Demo notifications
@@ -249,7 +283,7 @@ async function seed() {
     const staticId = filmIds['STATIC']
     const notifs = [
       [demoId, 'review',        'Fatima El-Riad left a note on "STATIC"',            fatimaId, staticId ?? null],
-      [demoId, 'cima_request',  'Sana Younis sent you a call sheet',                   sanaId ?? null, null],
+      [demoId, 'cima_request',  'Yusuf Al-Amin sent you a call sheet',                 yusufId ?? null, null],
       [demoId, 'rating',        'Karim Nassar rated "STATIC" 5 stars',                 karimId, staticId ?? null],
       [demoId, 'cima_accepted', 'Omar Hadid signed on to your crew',             emailToId['omar@cima.film'] ?? null, null],
     ]

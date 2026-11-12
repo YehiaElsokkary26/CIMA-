@@ -38,3 +38,6 @@ npm-debug.log*
 
 # ---- Test coverage ---------------
 coverage/
+
+# Local test setup data (npm run dev:local)
+server/local/.data/

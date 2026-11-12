@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { cn, formatRuntime } from '@/lib/utils'
+import { cn, formatRuntime, plural } from '@/lib/utils'
 import { posterColors, rollFor, runtimeLabel, stillKindFor, timecode } from '@/lib/klaket'
 import type { Film } from '@/types'
 import Still from './Still'
@@ -66,7 +66,7 @@ export function SlateFilmCard({ film, className }: { film: Film; className?: str
             {film.uploader?.school ? ` · ${film.uploader.school}` : ''}
           </p>
           <p className="k-label text-[10px] text-muted-foreground mt-auto pt-1">
-            {(film.votes ?? 0).toLocaleString()} votes
+            {plural(film.votes ?? 0, 'vote')}
             {film.rating ? ` · ★ ${film.rating.toFixed(1)}` : ''}
           </p>
         </div>

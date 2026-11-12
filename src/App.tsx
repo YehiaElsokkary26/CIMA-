@@ -85,14 +85,20 @@ export default function App() {
       }
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Supabase holds its session lock while it runs this callback (for example
+    // when the tab becomes visible again). Our API client asks Supabase for the
+    // session on every request, so awaiting one here would wait on that same
+    // lock forever and freeze every later request. Do the work after it returns.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         logout()
       } else if (session && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) {
-        try {
-          const profile = (await usersApi.get(session.user.id)).data
-          setAuth(session.access_token, profile)
-        } catch { /* profile row may not exist yet right after signup */ }
+        setTimeout(async () => {
+          try {
+            const profile = (await usersApi.get(session.user.id)).data
+            setAuth(session.access_token, profile)
+          } catch { /* profile row may not exist yet right after signup */ }
+        }, 0)
       }
     })
 

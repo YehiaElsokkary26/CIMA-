@@ -122,11 +122,14 @@ router.post('/:id/vote', validUuid('id'), authMiddleware, async (req: AuthReques
   try {
     // Each week's vote is between the films released that week (Monday to
     // Sunday, UTC), the same slate the Vote page shows.
-    const filmRes = await query<{ open: boolean }>(
-      `SELECT (created_at AT TIME ZONE 'UTC')::date >= ${VOTE_WEEK_SQL} AS open FROM films WHERE id = $1`,
+    const filmRes = await query<{ open: boolean; uploader_id: string }>(
+      `SELECT (created_at AT TIME ZONE 'UTC')::date >= ${VOTE_WEEK_SQL} AS open, uploader_id FROM films WHERE id = $1`,
       [req.params.id]
     )
     if (!filmRes.rowCount) throw notFound('Film')
+    if (filmRes.rows[0].uploader_id === req.userId) {
+      throw new AppError('You can’t vote for your own film', 403, 'OWN_FILM')
+    }
     if (!filmRes.rows[0].open) {
       throw new AppError('Voting is only open for films released this week', 409, 'VOTING_CLOSED')
     }

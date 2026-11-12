@@ -6,6 +6,7 @@ import { timecode, weekNumber } from '@/lib/klaket'
 import type { Film } from '@/types'
 import { FilmStill } from '@/components/klaket/FilmCards'
 import EmptyState from '@/components/ui/EmptyState'
+import { plural } from '@/lib/utils'
 
 type Phase = 'ready' | 'count' | 'done'
 
@@ -141,7 +142,7 @@ function RevealStage({ winner, others }: { winner: Film; others: NonNullable<Fil
               <FilmStill film={winner} className="h-[280px] sm:h-[340px] border-b-2 border-k-paper" />
               <div className="p-3 flex flex-col gap-1">
                 <span className="k-label text-[10.5px] text-k-mustard font-semibold">
-                  ★ Winner · {(winner.winningVotes ?? 0).toLocaleString()} votes
+                  ★ Winner · {plural(winner.winningVotes ?? 0, 'vote')}
                 </span>
                 <h1 className="k-display text-[28px] sm:text-[36px] uppercase">{winner.title}</h1>
                 <span className="k-label text-[10px] mt-1">
