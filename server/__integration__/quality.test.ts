@@ -88,4 +88,15 @@ describe('voting rule: only this week’s films', () => {
     // The refusal doesn't use up their vote.
     await api().post(`/api/films/${fresh.id}/vote`).set(v.auth).expect(201)
   })
+
+  it('filmmakers can’t vote for their own film', async () => {
+    const fm = await filmmaker()
+    const own = await makeFilm(fm)
+    const res = await api().post(`/api/films/${own.id}/vote`).set(fm.auth)
+    expect(res.status).toBe(403)
+    expect(res.body.code).toBe('OWN_FILM')
+    // Their weekly vote is still free for someone else's film.
+    const other = await makeFilm(await filmmaker())
+    await api().post(`/api/films/${other.id}/vote`).set(fm.auth).expect(201)
+  })
 })

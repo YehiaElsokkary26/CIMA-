@@ -15,7 +15,9 @@ import Input from '@/components/ui/Input'
 const STEPS = ['Slate it', 'Cut it', 'Release'] as const
 
 function fileSize(bytes: number) {
-  return bytes > 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1e6))} MB`
+  // Same units as the upload limit (1 MB = 1024 × 1024 bytes), so “52 MB” never passes a 50 MB limit.
+  const MB = 1024 * 1024
+  return bytes >= 1024 * MB ? `${(bytes / (1024 * MB)).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / MB))} MB`
 }
 
 export default function UploadPage() {

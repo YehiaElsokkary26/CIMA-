@@ -4,7 +4,7 @@ import { AlertCircle, Film as FilmIcon, Search, Users } from 'lucide-react'
 import { useFilmmakers, useFilmPages } from '@/hooks/useFilms'
 import { useDebounced } from '@/hooks/useDebounced'
 import { crewStatusFor, useAcceptCimaRequest, useCima, useSendCimaRequest } from '@/hooks/useCima'
-import { GENRES, cn } from '@/lib/utils'
+import { GENRES, cn, plural } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import type { User } from '@/types'
@@ -90,7 +90,9 @@ export default function DiscoverPage() {
   }
 
   const active = tab === 'films' ? films : people
-  const count = tab === 'films' ? `${filmResults.length}${films.hasNextPage ? '+' : ''}` : peopleResults.length
+  const count = tab === 'films'
+    ? (films.hasNextPage ? `${filmResults.length}+ films` : plural(filmResults.length, 'film'))
+    : plural(peopleResults.length, 'person', 'people')
 
   return (
     <div className="min-h-full">
@@ -151,7 +153,7 @@ export default function DiscoverPage() {
         )}
       </div>
 
-      <Band tone="solid" left={`Scene: ${scene}`} right={`${count} ${tab === 'films' ? 'films' : 'people'}`} />
+      <Band tone="solid" left={`Scene: ${scene}`} right={count} />
 
       <div className="max-w-6xl mx-auto px-4 py-4">
         {active.isError ? (

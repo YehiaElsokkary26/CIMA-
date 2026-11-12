@@ -4,7 +4,7 @@ import { AlertCircle, Film as FilmIcon } from 'lucide-react'
 import { useFilms, useMyVoteThisWeek, useVoteFilm } from '@/hooks/useFilms'
 import { getCurrentWeekKey, getMsUntilNextWeek, getWeekCountdown } from '@/lib/votingUtils'
 import { timecode, weekNumber } from '@/lib/klaket'
-import { cn } from '@/lib/utils'
+import { cn, plural } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import type { Film } from '@/types'
@@ -108,15 +108,17 @@ export default function VotePage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3.5 gap-y-5 p-4">
               {films.map((f, i) => {
                 const selected = f.id === picked
+                // You can't vote for your own film (the server refuses it too).
+                const own = f.uploaderId === user?.id
                 return (
                   <button
                     key={f.id}
                     type="button"
-                    disabled={!!locked}
+                    disabled={!!locked || own}
                     onClick={() => setPicked(f.id)}
                     aria-pressed={selected}
-                    aria-label={`Vote for ${f.title} by ${f.uploader?.name ?? 'unknown'}`}
-                    className="relative flex flex-col gap-1 text-start disabled:cursor-default focus-visible:outline-k-mustard"
+                    aria-label={own ? `${f.title}: your film, you can't vote for it` : `Vote for ${f.title} by ${f.uploader?.name ?? 'unknown'}`}
+                    className={cn('relative flex flex-col gap-1 text-start disabled:cursor-default focus-visible:outline-k-mustard', own && !locked && 'opacity-60')}
                   >
                     <FilmStill film={f} className="h-[112px] sm:h-[140px]" />
                     <span className="flex justify-between k-label text-[9.5px]">
@@ -124,7 +126,7 @@ export default function VotePage() {
                       <span className="text-k-sand">{f.runtime ? timecode(f.runtime * 60).slice(3, 8) : ''}</span>
                     </span>
                     <span className="font-extrabold text-[14px] leading-tight line-clamp-2">{f.title}</span>
-                    <span className="text-[11.5px] text-k-sand truncate">{f.uploader?.name ?? 'Unknown'}</span>
+                    <span className="text-[11.5px] text-k-sand truncate">{own ? 'Your film' : f.uploader?.name ?? 'Unknown'}</span>
                     {selected && <VoteCircle className="-left-2.5 -top-2.5 w-[calc(100%+20px)] h-[calc(100%+20px)]" />}
                   </button>
                 )
@@ -154,7 +156,7 @@ export default function VotePage() {
           >
             <span>{locked ? 'VOTE LOCKED ✓' : vote.isPending ? 'LOCKING…' : 'LOCK MY VOTE'}</span>
             <span className="k-label text-[11px] font-normal">
-              {films.length} films · {totalVotes.toLocaleString()} votes
+              {plural(films.length, 'film')} · {plural(totalVotes, 'vote')}
             </span>
           </button>
           <Link to="/reveal" className="k-label text-[11px] text-k-sand hover:text-k-mustard self-start py-2">

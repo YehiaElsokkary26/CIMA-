@@ -8,7 +8,7 @@ import {
 import { useAcceptCimaRequest, useCrewStatus, useSendCimaRequest } from '@/hooks/useCima'
 import { rollFor, splitTimecodedNote, timecode } from '@/lib/klaket'
 import { getCurrentWeekKey } from '@/lib/votingUtils'
-import { formatTimeAgo } from '@/lib/utils'
+import { formatTimeAgo, plural } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { toast } from '@/store/toastStore'
 import { FilmStill } from '@/components/klaket/FilmCards'
@@ -92,7 +92,7 @@ export default function FilmDetailPage() {
   const votedOther = votedFilmId !== null && !votedThis
   // Only films released this week are on this week's ballot (the server enforces it too).
   const onBallot = film.weekKey === getCurrentWeekKey()
-  const canVote = !!user && !votedFilmId && !checkingVote && onBallot
+  const canVote = !!user && !votedFilmId && !checkingVote && onBallot && !isOwn
 
   const startPlayback = () => {
     if (!src) {
@@ -331,10 +331,12 @@ export default function FilmDetailPage() {
             <div className="border-[1.5px] border-foreground bg-k-mustard text-k-ink p-3 flex flex-col gap-1">
               <span className="k-label text-[10px] font-semibold">This week’s vote</span>
               <span className="font-black text-[18px]" style={{ fontStretch: '115%' }}>
-                {(film.votes ?? 0).toLocaleString()} VOTES
+                {plural(film.votes ?? 0, 'VOTE', 'VOTES')}
               </span>
               {votedThis ? (
                 <span className="k-label text-[10.5px] font-semibold min-h-[40px] flex items-center">✓ You circled this film</span>
+              ) : isOwn ? (
+                <span className="k-label text-[10.5px] min-h-[40px] flex items-center">You can’t vote for your own film</span>
               ) : !onBallot ? (
                 <span className="k-label text-[10.5px] min-h-[40px] flex items-center">Voting was the week it came out</span>
               ) : votedOther ? (

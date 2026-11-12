@@ -13,5 +13,5 @@
     "noUnusedParameters": false
   },
   "include": ["./**/*.ts"],
-  "exclude": ["node_modules", "dist", "__integration__", "vitest.integration.config.ts"]
+  "exclude": ["node_modules", "dist", "__integration__", "vitest.integration.config.ts", "local"]
 }

@@ -7,7 +7,7 @@ import type { FilmListParams } from '@/lib/api'
 import { useRecommendations } from '@/hooks/useRecommendations'
 import { getWeekCountdown } from '@/lib/votingUtils'
 import { timecode, weekNumber } from '@/lib/klaket'
-import { GENRES, cn } from '@/lib/utils'
+import { GENRES, cn, plural } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useSearchStore } from '@/store/searchStore'
 import type { Film } from '@/types'
@@ -130,7 +130,7 @@ export default function HomePage() {
   if (searchQuery) {
     return (
       <div className="min-h-full">
-        <Band tone="solid" left={`Results for “${searchQuery}”`} right={searching ? 'Searching…' : `${searchResults.length} films`} />
+        <Band tone="solid" left={`Results for “${searchQuery}”`} right={searching ? 'Searching…' : plural(searchResults.length, 'film')} />
         <div className="max-w-6xl mx-auto px-4 py-4">
           {searching ? (
             <div className={POSTER_GRID}>{Array.from({ length: 4 }).map((_, i) => <PosterCardSkeleton key={i} />)}</div>
@@ -207,7 +207,7 @@ export default function HomePage() {
         )}
 
         <section aria-label="This week’s slate" className="flex flex-col gap-3">
-          <SectionHeader title="THIS WEEK’S SLATE" action={{ to: '/vote', label: `Vote · ${ballot?.length ?? 0} films` }} />
+          <SectionHeader title="THIS WEEK’S SLATE" action={{ to: '/vote', label: `Vote · ${plural(ballot?.length ?? 0, 'film')}` }} />
           {isLoading
             ? Array.from({ length: 3 }).map((_, i) => <SlateFilmCardSkeleton key={i} />)
             : slate.slice(0, 4).map((f) => <SlateFilmCard key={f.id} film={f} />)}
@@ -247,7 +247,7 @@ export default function HomePage() {
       )}
 
       <section aria-label="All films" className="max-w-6xl mx-auto px-4 mt-10 flex flex-col gap-3">
-        <SectionHeader title="ALL FILMS" meta={`${filtered.length}${pages.hasNextPage ? '+' : ''} films`} />
+        <SectionHeader title="ALL FILMS" meta={pages.hasNextPage ? `${filtered.length}+ films` : plural(filtered.length, 'film')} />
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="scroll-x flex gap-1.5 -mx-4 px-4 sm:mx-0 sm:px-0" role="group" aria-label="Filter by scene (genre)">
@@ -324,7 +324,7 @@ function FilmOfTheWeekPoster({ film }: { film: Film }) {
       <div className="bg-k-red text-k-paper border-[1.5px] border-foreground overflow-hidden">
         <div className="flex justify-between gap-2 px-3 py-2.5 k-label text-[10.5px]">
           <span className="font-semibold">★ Film of the week</span>
-          <span>{(film.winningVotes ?? film.votes ?? 0).toLocaleString()} votes</span>
+          <span>{plural(film.winningVotes ?? film.votes ?? 0, 'vote')}</span>
         </div>
         <FilmStill film={film} className="mx-3 h-[250px] sm:h-[300px] border-[1.5px] border-k-ink" />
         <div className="px-3 pt-3 pb-1">

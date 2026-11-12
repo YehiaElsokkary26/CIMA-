@@ -204,7 +204,7 @@ describe('films', () => {
 
     it('records one vote and returns the new count', async () => {
       const headers = signIn('t', { id: ids.me })
-      db.on(/AS open FROM films/, [{ open: true }])
+      db.on(/AS open, uploader_id FROM films/, [{ open: true }])
       db.on(/INSERT INTO votes/, [{ id: 'v1' }])
       db.on(/SELECT COUNT\(\*\)::int AS c FROM votes/, [{ c: 8 }])
       const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
@@ -213,9 +213,18 @@ describe('films', () => {
       expect(db.called(/INSERT INTO votes/)[0].params).toEqual([ids.film, ids.me])
     })
 
+    it('refuses a vote for your own film', async () => {
+      const headers = signIn('t', { id: ids.me })
+      db.on(/AS open, uploader_id FROM films/, [{ open: true, uploader_id: ids.me }])
+      const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
+      expect(res.status).toBe(403)
+      expect(res.body.code).toBe('OWN_FILM')
+      expect(db.called(/INSERT INTO votes/)).toHaveLength(0)
+    })
+
     it('refuses votes for films from earlier weeks', async () => {
       const headers = signIn('t', { id: ids.me })
-      db.on(/AS open FROM films/, [{ open: false }])
+      db.on(/AS open, uploader_id FROM films/, [{ open: false }])
       const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
       expect(res.status).toBe(409)
       expect(res.body.code).toBe('VOTING_CLOSED')
@@ -224,7 +233,7 @@ describe('films', () => {
 
     it('returns 409 for a second vote in the same week', async () => {
       const headers = signIn('t', { id: ids.me })
-      db.on(/AS open FROM films/, [{ open: true }])
+      db.on(/AS open, uploader_id FROM films/, [{ open: true }])
       db.on(/INSERT INTO votes/, () => ({ rows: [], rowCount: 0 }))
       const res = await request(app).post(`/api/films/${ids.film}/vote`).set(headers)
       expect(res.status).toBe(409)
