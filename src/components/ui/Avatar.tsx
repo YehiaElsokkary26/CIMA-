@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { cn, getInitials } from '@/lib/utils'
 
 interface AvatarProps {
@@ -24,6 +25,9 @@ function tintFor(name: string) {
 }
 
 export default function Avatar({ src, name, size = 'md', className }: AvatarProps) {
+  // If the picture won't load, show the initials instead of a broken box.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const showImage = !!src && failedSrc !== src
   return (
     <div
       className={cn(
@@ -31,10 +35,10 @@ export default function Avatar({ src, name, size = 'md', className }: AvatarProp
         sizes[size],
         className,
       )}
-      style={src ? undefined : { background: tintFor(name), color: '#F1E8D3' }}
+      style={showImage ? undefined : { background: tintFor(name), color: '#F1E8D3' }}
     >
-      {src ? (
-        <img src={src} alt="" className="w-full h-full object-cover" />
+      {showImage ? (
+        <img src={src} alt="" className="w-full h-full object-cover" onError={() => setFailedSrc(src ?? null)} />
       ) : (
         <span className="font-extrabold" aria-hidden="true">{getInitials(name)}</span>
       )}
