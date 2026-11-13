@@ -40,6 +40,8 @@ export default function ProfilePage() {
   // Each profile opens on its films (Saved only exists on your own).
   useEffect(() => setTab('Films'), [profileId])
   const [confirmLogout, setConfirmLogout] = useState(false)
+  // A banner link that won't load falls back to the illustrated portrait.
+  const [failedBanner, setFailedBanner] = useState<string | null>(null)
 
   const profile = isOwn ? currentUser : fetchedProfile
   const films = fetchedFilms ?? []
@@ -93,9 +95,9 @@ export default function ProfilePage() {
     <div className="min-h-full">
       {/* Poster header: their banner photo, or the illustrated portrait */}
       <section className="relative overflow-hidden bg-k-teal text-k-paper border-b-[1.5px] border-foreground">
-        {profile.bannerUrl ? (
+        {profile.bannerUrl && failedBanner !== profile.bannerUrl ? (
           <>
-            <img src={profile.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <img src={profile.bannerUrl} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setFailedBanner(profile.bannerUrl ?? null)} />
             <div className="halftone absolute inset-0 opacity-30 mix-blend-multiply" aria-hidden="true" />
             <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(21,18,14,.85) 20%, rgba(21,18,14,.15) 75%)' }} aria-hidden="true" />
           </>

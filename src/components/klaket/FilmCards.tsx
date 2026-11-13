@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { cn, formatRuntime, plural } from '@/lib/utils'
 import { posterColors, rollFor, runtimeLabel, stillKindFor, timecode } from '@/lib/klaket'
@@ -8,14 +9,19 @@ import { Clap, Slate } from './primitives'
 /* ─── Film still: the real thumbnail with a halftone screen, or an illustration ─ */
 
 export function FilmStill({ film, className }: { film: Pick<Film, 'id' | 'title' | 'thumbnailUrl'>; className?: string }) {
+  // A dead or blocked image link shows the illustration instead of a broken box.
+  // Keyed by URL, so a new thumbnail gets a fresh try.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const showImage = !!film.thumbnailUrl && failedSrc !== film.thumbnailUrl
   return (
     <div className={cn('relative overflow-hidden bg-k-ink', className)}>
-      {film.thumbnailUrl ? (
+      {showImage ? (
         <>
           <img
             src={film.thumbnailUrl}
             alt=""
             loading="lazy"
+            onError={() => setFailedSrc(film.thumbnailUrl ?? null)}
             className="absolute inset-0 w-full h-full object-cover"
             style={{ filter: 'contrast(1.08) saturate(0.85)' }}
           />

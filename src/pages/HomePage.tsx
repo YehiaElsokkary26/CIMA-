@@ -211,12 +211,13 @@ export default function HomePage() {
           {isLoading
             ? Array.from({ length: 3 }).map((_, i) => <SlateFilmCardSkeleton key={i} />)
             : slate.slice(0, 4).map((f) => <SlateFilmCard key={f.id} film={f} />)}
-          {slate.length > 4 && (
+          {/* The contact sheet shows the whole ballot, Film of the Week included. */}
+          {(ballot?.length ?? 0) > 4 && (
             <Link
               to="/vote"
               className="press k-label text-[11px] font-semibold text-center min-h-[44px] flex items-center justify-center border-[1.5px] border-foreground hover:bg-foreground/5"
             >
-              See all {slate.length} films on the contact sheet →
+              See all {plural(ballot?.length ?? 0, 'film')} on the contact sheet →
             </Link>
           )}
         </section>
